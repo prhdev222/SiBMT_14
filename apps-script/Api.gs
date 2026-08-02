@@ -23,11 +23,34 @@
  *
  * "Anyone" ที่นี่หมายถึงใครก็ตามที่รู้ URL — token จึงเป็นตัวกั้นจริง
  * ข้อมูลที่ผ่านช่องทางนี้เป็นตารางเวรของบุคลากร ไม่มีข้อมูลผู้ป่วย
+ *
+ * ── ใช้ URL เดียวกันกับ LINE webhook ได้ ─────────────────────────
+ * doPost ด้านล่างแยกทางให้แล้วตามรูปร่างของ payload
+ * ถ้าจะทำ LINE webhook ให้เอา Web app URL เดียวกันนี้ไปใส่ที่
+ * LINE Developers Console → Messaging API → Webhook URL
+ * ไม่ต้อง deploy แยก และห้ามประกาศ doPost ตัวที่สองในไฟล์อื่น
  */
 
+/**
+ * ประตูเดียวของทั้งโปรเจกต์
+ *
+ * ⚠️ หนึ่งโปรเจกต์ Apps Script มี doPost ได้ตัวเดียวเท่านั้น
+ * ถ้าวันหนึ่งเพิ่ม LINE webhook (ให้คนทักเข้ามาแล้วระบบตอบกลับ) แล้วไปประกาศ
+ * doPost อีกตัวในไฟล์อื่น Apps Script จะใช้ตัวใดตัวหนึ่งเงียบ ๆ โดยไม่ฟ้อง error
+ * อีกฟีเจอร์จะเสียไปแบบหาสาเหตุยากมาก
+ *
+ * จึงแยกทางกันที่นี่ตั้งแต่ต้น: ดูรูปร่างของ payload แล้วส่งต่อให้ถูกเจ้าของ
+ * (ตอนนี้ Notify.gs ส่งข้อความออกทาง UrlFetchApp อย่างเดียว ยังไม่ต้องใช้ doPost)
+ */
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
+
+    // LINE ส่ง webhook มาในรูป { destination: "...", events: [...] } และไม่มี token
+    // ต่างจากคำสั่งของ dashboard ที่มี action กับ token เสมอ
+    if (body.events && body.destination) {
+      return handleLineWebhook_(body);
+    }
 
     if (!isAuthorized_(body.token)) {
       return jsonResponse_({ ok: false, error: 'token ไม่ถูกต้อง' });
@@ -39,6 +62,21 @@ function doPost(e) {
     console.error('Schedule API error: ' + err);
     return jsonResponse_({ ok: false, error: String(err && err.message ? err.message : err) });
   }
+}
+
+/**
+ * รับ webhook จาก LINE
+ *
+ * ยังไม่ได้ทำอะไรกับข้อความที่เข้ามา — แต่ต้องตอบ 200 ให้ได้
+ * เพราะปุ่ม Verify ใน LINE Developers Console จะไม่ผ่านถ้าไม่ตอบ
+ * และ LINE จะหยุดส่ง webhook ให้ถ้าปลายทางตอบไม่สำเร็จบ่อย ๆ
+ *
+ * เมื่อถึงเวลาทำจริง ให้เขียนไฟล์ LineWebhook.gs แล้วย้ายเนื้อในมาไว้ที่นั่น
+ * โดยไม่ต้องแตะ doPost อีก
+ */
+function handleLineWebhook_(body) {
+  console.log('LINE webhook: ' + (body.events || []).length + ' event(s)');
+  return ContentService.createTextOutput('OK');
 }
 
 /**
