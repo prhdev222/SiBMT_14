@@ -42,6 +42,23 @@
  * จึงแยกทางกันที่นี่ตั้งแต่ต้น: ดูรูปร่างของ payload แล้วส่งต่อให้ถูกเจ้าของ
  * (ตอนนี้ Notify.gs ส่งข้อความออกทาง UrlFetchApp อย่างเดียว ยังไม่ต้องใช้ doPost)
  */
+/**
+ * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
+ *
+ * ไม่มีฟังก์ชันนี้ Apps Script จะขึ้นหน้าแดง "Script function not found: doGet"
+ * ซึ่งดูเหมือน deploy พังทั้งที่ปกติดี — คนตั้งค่ามักเอา URL ไปเปิดดูก่อนเสมอ
+ * จึงตอบข้อความยืนยันสั้น ๆ ให้รู้ว่ามาถูกที่แล้ว
+ *
+ * หน้านี้ใครก็เปิดได้ (deploy แบบ Anyone) จึงต้องไม่มีข้อมูลอะไรทั้งสิ้น
+ * ไม่บอกว่าเป็นระบบอะไร ไม่แตะชีต ไม่อ่าน Script Properties
+ */
+function doGet() {
+  return ContentService.createTextOutput(
+    'OK — endpoint นี้รับเฉพาะคำสั่งแบบ POST\n' +
+      'เห็นข้อความนี้แปลว่า deploy สำเร็จและ URL ถูกต้องแล้ว',
+  ).setMimeType(ContentService.MimeType.TEXT);
+}
+
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
