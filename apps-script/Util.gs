@@ -1,0 +1,163 @@
+/**
+ * ฟังก์ชันช่วยเหลือทั่วไป — การเข้าถึงชีตแบบอิงชื่อคอลัมน์ และการนับเวลาทำการ
+ *
+ * หลักการ: เข้าถึงคอลัมน์ด้วย "ชื่อหัวตาราง" เสมอ ห้ามอิงเลขคอลัมน์
+ * เพราะ Google Form จะแทรกคอลัมน์ใหม่เมื่อเพิ่มคำถาม ทำให้ลำดับเลื่อน
+ */
+
+function getSheet_(name) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
+  if (!sheet) throw new Error('ไม่พบชีตชื่อ "' + name + '" — ตรวจสอบ SHEETS ใน Config.gs');
+  return sheet;
+}
+
+/** อ่านหัวตารางแถวแรก คืนเป็น map ชื่อคอลัมน์ → index (เริ่มที่ 0) */
+function headerMap_(sheet) {
+  const lastCol = sheet.getLastColumn();
+  if (lastCol === 0) return {};
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const map = {};
+  headers.forEach(function (h, i) {
+    const key = String(h).trim();
+    if (key) map[key] = i;
+  });
+  return map;
+}
+
+/**
+ * เพิ่มคอลัมน์ที่ยังไม่มีต่อท้ายชีต แล้วคืน headerMap ที่อัปเดตแล้ว
+ * ใช้ตอนติดตั้งครั้งแรก เพราะคอลัมน์ที่ระบบสร้างเองไม่ได้มาจากฟอร์ม
+ */
+function ensureColumns_(sheet, names) {
+  let map = headerMap_(sheet);
+  const missing = names.filter(function (n) { return !(n in map); });
+  if (missing.length === 0) return map;
+
+  const startCol = sheet.getLastColumn() + 1;
+  sheet.getRange(1, startCol, 1, missing.length).setValues([missing]);
+  return headerMap_(sheet);
+}
+
+/** อ่านทุกแถวเป็น array ของ object โดยแนบเลขแถวจริงไว้ที่ _row */
+function readRows_(sheet) {
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+  if (lastRow < 2) return [];
+
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const values = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+  return values.map(function (row, i) {
+    const obj = { _row: i + 2 };
+    headers.forEach(function (h, c) {
+      const key = String(h).trim();
+      if (key) obj[key] = row[c];
+    });
+    return obj;
+  });
+}
+
+function setCell_(sheet, map, rowNumber, columnName, value) {
+  if (!(columnName in map)) {
+    throw new Error('ไม่พบคอลัมน์ "' + columnName + '" ในชีต ' + sheet.getName());
+  }
+  sheet.getRange(rowNumber, map[columnName] + 1).setValue(value);
+}
+
+/* ------------------------------------------------------------------ */
+/* เวลาทำการ                                                           */
+/* ------------------------------------------------------------------ */
+
+/** อ่านรายการวันหยุดจากชีต คืนเป็น Set ของสตริง yyyy-MM-dd */
+function loadHolidays_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.holidays);
+  const set = {};
+  if (!sheet || sheet.getLastRow() < 2) return set;
+
+  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
+  values.forEach(function (r) {
+    if (r[0] instanceof Date) {
+      set[Utilities.formatDate(r[0], TIMEZONE, 'yyyy-MM-dd')] = true;
+    } else if (r[0]) {
+      set[String(r[0]).trim()] = true;
+    }
+  });
+  return set;
+}
+
+function isWorkingDay_(date, holidays) {
+  const day = date.getDay();
+  if (BUSINESS.workingDays.indexOf(day) === -1) return false;
+  const key = Utilities.formatDate(date, TIMEZONE, 'yyyy-MM-dd');
+  return !holidays[key];
+}
+
+function atHour_(date, hour) {
+  const d = new Date(date);
+  d.setHours(hour, 0, 0, 0);
+  return d;
+}
+
+/**
+ * นับชั่วโมงทำการระหว่างสองเวลา (FR-013)
+ *
+ * นับเฉพาะ จันทร์–ศุกร์ 08:00–16:00 ไม่รวมวันหยุด
+ * เคสที่ยื่นเย็นวันศุกร์จึงไม่ถูกนับเวลาข้ามเสาร์-อาทิตย์
+ */
+function businessHoursBetween_(start, end, holidays) {
+  if (!(start instanceof Date) || !(end instanceof Date)) return 0;
+  if (end <= start) return 0;
+
+  let total = 0;
+  const cursor = new Date(start);
+  cursor.setHours(0, 0, 0, 0);
+
+  // กันลูปไม่รู้จบกรณีข้อมูลวันที่ผิดปกติ — จำกัดที่ 2 ปี
+  let guard = 0;
+  while (cursor < end && guard < 800) {
+    guard++;
+    if (isWorkingDay_(cursor, holidays)) {
+      const dayStart = atHour_(cursor, BUSINESS.startHour);
+      const dayEnd = atHour_(cursor, BUSINESS.endHour);
+      const from = Math.max(start.getTime(), dayStart.getTime());
+      const to = Math.min(end.getTime(), dayEnd.getTime());
+      if (to > from) total += (to - from) / 3600000;
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return Math.round(total * 10) / 10;
+}
+
+function isTerminal_(status) {
+  return TERMINAL_STATUSES.indexOf(String(status).trim()) !== -1;
+}
+
+function alertLevelFor_(hours, status) {
+  if (isTerminal_(status)) return 'none';
+  if (hours >= ESCALATION.redHours) return 'red';
+  if (hours >= ESCALATION.yellowHours) return 'yellow';
+  return 'none';
+}
+
+function toDate_(value) {
+  if (value instanceof Date) return value;
+  if (!value) return null;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/** แปลงอายุเป็นช่วงอายุ เช่น 45 → "40–49" (ใช้ตอนถอดชื่อ) */
+function ageBand_(age) {
+  const n = Number(age);
+  if (!isFinite(n) || n < 0) return '';
+  const lo = Math.floor(n / 10) * 10;
+  return lo + '–' + (lo + 9);
+}
+
+function logStatusChange_(referralId, oldStatus, newStatus, changedBy, note) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.statusLog);
+  if (!sheet) return;
+  sheet.appendRow([new Date(), referralId, oldStatus, newStatus, changedBy, note || '']);
+}

@@ -1,0 +1,224 @@
+/**
+ * ทำงานทุกครั้งที่มีการส่ง Google Form
+ *
+ * หน้าที่:
+ *  1. สร้าง referral_id
+ *  2. บันทึกเวลาที่ติ๊กช่องรับทราบ (หลักฐานหลักตาม PDPA-002)
+ *  3. แปลงข้อความตัวเลือกกลุ่ม → ค่า referral_type
+ *  4. ตั้งสถานะเริ่มต้น (กลุ่ม 4 ตอบกลับอัตโนมัติทันที)
+ *  5. ตรวจเคสที่อาจซ้ำภายใน 30 วัน (FR-014)
+ *
+ * ตั้ง trigger แบบ "From spreadsheet → On form submit" ผ่าน setupTriggers()
+ */
+
+/**
+ * คอลัมน์ที่ระบบสร้างเอง ไม่ได้มาจากฟอร์ม
+ * รวมคอลัมน์กลางที่รวมค่าจากคำถามซ้ำหลายกลุ่ม (ดู MERGED_COLUMNS ใน Config.gs)
+ */
+const SYSTEM_COLUMNS = [
+  'referral_id',
+  'consent_acknowledged_at',
+  'status',
+  ...Object.keys(MERGED_COLUMNS),
+  'assigned_to',
+  'elapsed_business_hours',
+  'alert_level',
+  'yellow_alert_sent_at',
+  'red_alert_sent_at',
+  'possible_duplicate_of',
+  'advice_record',
+  'incomplete_reason',
+  'appointment_note',
+  'fellow_assigned',
+  'closed_at',
+];
+
+function onFormSubmit(e) {
+  const lock = LockService.getScriptLock();
+  // รอได้ถึง 30 วินาที กันกรณีส่งฟอร์มพร้อมกันแล้ว referral_id ชนกัน
+  lock.waitLock(30000);
+  try {
+    const sheet = getSheet_(SHEETS.referrals);
+    const map = ensureColumns_(sheet, SYSTEM_COLUMNS);
+    const row = e && e.range ? e.range.getRow() : sheet.getLastRow();
+
+    const submittedAt = toDate_(sheet.getRange(row, 1).getValue()) || new Date();
+
+    // 1. referral_id
+    const referralId = generateReferralId_(sheet, map, submittedAt);
+    setCell_(sheet, map, row, 'referral_id', referralId);
+
+    // 2. หลักฐานการรับทราบ — ใช้ timestamp เดียวกับตอนส่งฟอร์ม
+    setCell_(sheet, map, row, 'consent_acknowledged_at', submittedAt);
+
+    // 3. referral_type — แปลงข้อความตัวเลือกในฟอร์มเป็นค่าที่ระบบใช้
+    const typeLabel = String(readCell_(sheet, map, row, 'referral_type') || '').trim();
+    const referralType = TYPE_FROM_FORM_LABEL[typeLabel] || typeLabel;
+    setCell_(sheet, map, row, 'referral_type', referralType);
+
+    // 3.1 รวมคำถามที่ถามซ้ำหลายกลุ่มลงคอลัมน์กลาง
+    mergeGroupColumns_(sheet, map, row);
+
+    // 4. สถานะเริ่มต้น
+    const initialStatus = referralType === TYPES.general ? 'Auto Replied' : 'Submitted';
+    setCell_(sheet, map, row, 'status', initialStatus);
+    setCell_(sheet, map, row, 'elapsed_business_hours', 0);
+    setCell_(sheet, map, row, 'alert_level', 'none');
+    logStatusChange_(referralId, '', initialStatus, 'system', 'สร้างจากแบบฟอร์ม');
+
+    // 5. ตรวจเคสซ้ำ
+    const duplicateOf = findPossibleDuplicate_(sheet, row, referralId, submittedAt);
+    if (duplicateOf) {
+      setCell_(sheet, map, row, 'possible_duplicate_of', duplicateOf);
+    }
+
+    // 6. ส่ง Referral ID กลับให้แพทย์ผู้ส่ง ถ้ากรอกอีเมลไว้
+    const email = String(readCell_(sheet, map, row, 'referrer_email') || '').trim();
+    if (email) {
+      sendReferralIdEmail_(email, referralId, referralType);
+    }
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * ส่งรหัสอ้างอิงกลับให้แพทย์ผู้ส่งทางอีเมล
+ *
+ * จำเป็นเพราะ Confirmation message ของ Google Form เป็นข้อความคงที่
+ * ใส่ Referral ID ไม่ได้ (รหัสสร้างหลังฟอร์มถูกส่งไปแล้ว)
+ * แพทย์จึงต้องมีช่องทางรู้รหัสของตัวเอง สำหรับใช้อ้างอิงตอนส่งข้อมูลเพิ่ม
+ *
+ * อีเมลนี้ **ไม่มีข้อมูลผู้ป่วยใด ๆ** มีเพียงรหัสและกลุ่มงาน
+ */
+function sendReferralIdEmail_(email, referralId, referralType) {
+  const groupNo = GROUP_NUMBER[referralType] || '-';
+
+  const body =
+    'ได้รับข้อมูลการส่งต่อผู้ป่วยเรียบร้อยแล้ว\n\n' +
+    'รหัสอ้างอิง (Referral ID): ' + referralId + '\n' +
+    'กลุ่มที่: ' + groupNo + '\n\n' +
+    'กรุณาเก็บรหัสนี้ไว้ หากต้องการส่งข้อมูลเพิ่มเติมหรือสอบถามความคืบหน้า\n' +
+    'ให้แจ้งรหัสนี้กับเจ้าหน้าที่\n\n' +
+    'ทีมงานจะรับเรื่องในรอบประจำวันเวลา 10:00 น. ของวันทำการ\n' +
+    'และตอบกลับภายใน 48 ชั่วโมงทำการ\n\n' +
+    'สอบถามเพิ่มเติม โทร ' + CONTACT_PHONE + ' (จันทร์-ศุกร์ 08:00-16:00 น.)\n\n' +
+    '--\n' +
+    'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช\n' +
+    'อีเมลนี้ส่งจากระบบอัตโนมัติ กรุณาอย่าตอบกลับ';
+
+  try {
+    MailApp.sendEmail({
+      to: email,
+      subject: 'รหัสอ้างอิงการส่งต่อผู้ป่วย ' + referralId,
+      body: body,
+    });
+  } catch (err) {
+    // ส่งอีเมลไม่สำเร็จต้องไม่ทำให้การรับเคสล้มเหลว
+    console.error('ส่งอีเมลรหัสอ้างอิงไม่สำเร็จ (' + referralId + '): ' + err);
+  }
+}
+
+function readCell_(sheet, map, row, columnName) {
+  if (!(columnName in map)) return '';
+  return sheet.getRange(row, map[columnName] + 1).getValue();
+}
+
+/**
+ * รวมค่าจากคอลัมน์ที่ Google Form แตกไว้รายกลุ่ม ลงคอลัมน์กลาง
+ *
+ * เช่น diagnosis_g1 / diagnosis_g2 / diagnosis_g3 / diagnosis_g4 → diagnosis
+ * หนึ่งเคสตอบได้กลุ่มเดียว จึงมีคอลัมน์ต้นทางเดียวที่มีค่า ที่เหลือว่าง
+ */
+function mergeGroupColumns_(sheet, map, row) {
+  Object.keys(MERGED_COLUMNS).forEach(function (target) {
+    if (!(target in map)) return;
+
+    const sources = MERGED_COLUMNS[target];
+    let value = '';
+    for (let i = 0; i < sources.length; i++) {
+      const raw = String(readCell_(sheet, map, row, sources[i]) || '').trim();
+      if (raw) { value = raw; break; }
+    }
+    setCell_(sheet, map, row, target, value);
+  });
+}
+
+/**
+ * รูปแบบ HEM-YYYYMMDD-NNNN โดย NNNN เริ่มใหม่ทุกวัน
+ * นับจากรหัสที่มีอยู่จริงในชีต ไม่ใช้ตัวนับแยก เพื่อให้ทนต่อการรีเซ็ต property
+ */
+function generateReferralId_(sheet, map, submittedAt) {
+  const datePart = Utilities.formatDate(submittedAt, TIMEZONE, 'yyyyMMdd');
+  const prefix = 'HEM-' + datePart + '-';
+
+  let maxSeq = 0;
+  const lastRow = sheet.getLastRow();
+  if (lastRow >= 2 && 'referral_id' in map) {
+    const ids = sheet.getRange(2, map['referral_id'] + 1, lastRow - 1, 1).getValues();
+    ids.forEach(function (r) {
+      const id = String(r[0] || '');
+      if (id.indexOf(prefix) === 0) {
+        const seq = parseInt(id.substring(prefix.length), 10);
+        if (isFinite(seq) && seq > maxSeq) maxSeq = seq;
+      }
+    });
+  }
+
+  const next = String(maxSeq + 1);
+  return prefix + '0000'.substring(next.length) + next;
+}
+
+/**
+ * ตรวจเคสที่อาจซ้ำ (FR-014)
+ *
+ * ระบบไม่เก็บชื่อและ HN จึงเทียบด้วยสัญญาณที่ไม่ระบุตัวตน:
+ *  - สัญญาณหลัก: เบอร์แพทย์ผู้ส่งเดียวกัน + อายุเท่ากัน + เพศเดียวกัน
+ *  - สัญญาณรอง: โรงพยาบาลเดียวกัน + อายุ + เพศ + กลุ่มโรคเดียวกัน
+ *
+ * คืนค่าเป็น referral_id ที่สงสัย หรือ '' ถ้าไม่พบ
+ * ผลลัพธ์ใช้เพื่อ "ให้เจ้าหน้าที่ตรวจสอบ" เท่านั้น ห้ามรวมเคสอัตโนมัติ
+ */
+function findPossibleDuplicate_(sheet, currentRow, currentId, submittedAt) {
+  const rows = readRows_(sheet);
+  const current = rows.filter(function (r) { return r._row === currentRow; })[0];
+  if (!current) return '';
+
+  const cutoff = new Date(submittedAt.getTime() - DUPLICATE_WINDOW_DAYS * 86400000);
+  const age = String(current['patient_age'] || '').trim();
+  const sex = String(current['patient_sex'] || '').trim();
+  const phone = normalizePhone_(current['referrer_phone']);
+  const org = String(current['referrer_org'] || '').trim();
+  const group = String(current['disease_group'] || '').trim();
+
+  if (!age || !sex) return '';
+
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const other = rows[i];
+    if (other._row === currentRow) continue;
+    if (String(other['referral_id'] || '') === currentId) continue;
+
+    const otherAt = toDate_(other['submitted_at'] || other['Timestamp']);
+    if (!otherAt || otherAt < cutoff) continue;
+
+    const sameAge = String(other['patient_age'] || '').trim() === age;
+    const sameSex = String(other['patient_sex'] || '').trim() === sex;
+    if (!sameAge || !sameSex) continue;
+
+    const samePhone = phone && normalizePhone_(other['referrer_phone']) === phone;
+    const sameOrgGroup =
+      org &&
+      String(other['referrer_org'] || '').trim() === org &&
+      group &&
+      String(other['disease_group'] || '').trim() === group;
+
+    if (samePhone || sameOrgGroup) {
+      return String(other['referral_id'] || '');
+    }
+  }
+  return '';
+}
+
+function normalizePhone_(value) {
+  return String(value || '').replace(/\D/g, '');
+}
