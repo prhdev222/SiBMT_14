@@ -9,6 +9,16 @@
  */
 
 import { readFileSync } from "node:fs";
+import dns from "node:dns";
+
+/**
+ * บังคับให้ต่อผ่าน IPv4 ก่อน
+ *
+ * เครื่องที่ IPv6 ตั้งค่าไว้แต่ใช้จริงไม่ได้ (พบบ่อยในเครือข่ายโรงพยาบาล)
+ * จะทำให้ Node วิ่งไปหา IPv6 ก่อนแล้วรอจนหมดเวลา ขึ้นเป็น "fetch failed"
+ * ทั้งที่เครือข่ายใช้งานได้ปกติ — สลับลำดับให้ลอง IPv4 ก่อนจึงข้ามปัญหานี้ไป
+ */
+dns.setDefaultResultOrder("ipv4first");
 
 const REQUIRED = {
   fellows: ["fellow_name", "active", "note"],
