@@ -34,6 +34,8 @@ export async function addClinicDaysAction(input: {
   repeatWeeks: number;
   maxSlots: number;
   note: string;
+  startTime: string;
+  endTime: string;
 }): Promise<ActionResult> {
   // นอก try โดยตั้งใจ — requireSession() ทำงานด้วยการ throw redirect
   // ถ้าอยู่ใน try จะถูก catch กลืนแล้วกลายเป็นข้อความ error แทนการเด้งไปหน้า login

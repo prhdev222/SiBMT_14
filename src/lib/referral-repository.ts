@@ -115,6 +115,8 @@ export async function loadFellowSchedule(): Promise<FellowScheduleSource> {
               ? slots
               : DEFAULT_SLOTS_PER_FELLOW,
           note: text(row["note"]),
+          startTime: toTimeHHmm(row["start_time"]),
+          endTime: toTimeHHmm(row["end_time"]),
           // แถวแรกของชีตเป็นหัวตาราง ข้อมูลแถวแรกจึงเป็นแถวที่ 2
           rowNumber: index + 2,
         };
@@ -229,6 +231,28 @@ function toIsoDate(value: string | undefined): string | null {
 
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/**
+ * ทำให้เวลาออกมาเป็น "HH:mm" เสมอ
+ *
+ * ฝั่งที่เขียนตั้งคอลัมน์เป็นข้อความไว้แล้ว แต่แถวที่คนพิมพ์เองในชีตยังหลุด
+ * มาเป็น "9:00:00 AM" หรือ "9:00" ได้ เพราะ Sheets ตีความเป็นเวลาให้เอง
+ */
+function toTimeHHmm(value: string | undefined): string {
+  const raw = text(value);
+  if (!raw) return "";
+
+  const match = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+  if (!match) return "";
+
+  let hour = Number(match[1]);
+  const period = match[3]?.toUpperCase();
+  if (period === "PM" && hour < 12) hour += 12;
+  if (period === "AM" && hour === 12) hour = 0;
+  if (hour > 23) return "";
+
+  return `${String(hour).padStart(2, "0")}:${match[2]}`;
 }
 
 function text(value: string | undefined): string {

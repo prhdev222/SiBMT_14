@@ -214,7 +214,8 @@ function EmptyState({ source }: { source: FellowScheduleSource }) {
                 <th className="pr-6 pb-1 text-left font-medium">clinic_date</th>
                 <th className="pr-6 pb-1 text-left font-medium">fellow_name</th>
                 <th className="pr-6 pb-1 text-left font-medium">max_slots</th>
-                <th className="pb-1 text-left font-medium">note</th>
+                <th className="pr-6 pb-1 text-left font-medium">start_time</th>
+                <th className="pb-1 text-left font-medium">end_time</th>
               </tr>
             </thead>
             <tbody className="font-mono text-zinc-700">
@@ -222,13 +223,15 @@ function EmptyState({ source }: { source: FellowScheduleSource }) {
                 <td className="pr-6">2026-08-05</td>
                 <td className="pr-6">พญ. สุดา</td>
                 <td className="pr-6">2</td>
-                <td>—</td>
+                <td className="pr-6">09:00</td>
+                <td>12:00</td>
               </tr>
               <tr>
                 <td className="pr-6">2026-08-05</td>
                 <td className="pr-6">นพ. ธนกร</td>
                 <td className="pr-6">2</td>
-                <td>—</td>
+                <td className="pr-6">13:00</td>
+                <td>16:00</td>
               </tr>
             </tbody>
           </table>

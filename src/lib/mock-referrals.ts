@@ -302,4 +302,9 @@ export const MOCK_FELLOW_SCHEDULE: FellowClinicDay[] = [
   { clinicDate: "2026-08-26", fellowName: "พญ. สุดา", maxSlots: 2, note: "" },
   { clinicDate: "2026-09-02", fellowName: "นพ. ธนกร", maxSlots: 2, note: "" },
   { clinicDate: "2026-09-09", fellowName: "พญ. สุดา", maxSlots: 2, note: "" },
-].map((day, index) => ({ ...day, rowNumber: index + 2 }));
+].map((day, index) => ({
+  ...day,
+  startTime: "09:00",
+  endTime: "12:00",
+  rowNumber: index + 2,
+}));

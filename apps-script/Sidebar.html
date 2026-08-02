@@ -63,8 +63,19 @@
 
   <div id="preview" class="hint"></div>
 
+  <div class="row">
+    <div>
+      <label>เวลาเริ่มออกตรวจ</label>
+      <input type="time" id="startTime" value="09:00">
+    </div>
+    <div>
+      <label>เวลาสิ้นสุด</label>
+      <input type="time" id="endTime" value="12:00">
+    </div>
+  </div>
+
   <label>หมายเหตุ (ไม่บังคับ)</label>
-  <input id="note" placeholder="เช่น ครึ่งวันเช้า">
+  <input id="note" placeholder="เช่น ตรวจร่วมกับอาจารย์">
 
   <button id="addBtn" onclick="doAddDays()">เพิ่มลงตาราง</button>
   <div id="msg" class="msg"></div>
@@ -146,6 +157,8 @@
         startDate: document.getElementById('startDate').value,
         repeatWeeks: document.getElementById('repeatWeeks').value,
         maxSlots: document.getElementById('maxSlots').value,
+        startTime: document.getElementById('startTime').value,
+        endTime: document.getElementById('endTime').value,
         note: document.getElementById('note').value
       });
   }

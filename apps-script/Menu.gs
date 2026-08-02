@@ -90,9 +90,14 @@ function addClinicDays(payload) {
   const slots = Number(payload.maxSlots) || FELLOW_DEFAULT_SLOTS;
   const repeatWeeks = Math.max(1, Math.min(52, Number(payload.repeatWeeks) || 1));
   const note = String(payload.note || '').trim();
+  const startTime = cleanTime_(payload.startTime);
+  const endTime = cleanTime_(payload.endTime);
 
   if (!fellowName) throw new Error('กรุณาเลือกชื่อ fellow');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) throw new Error('รูปแบบวันที่ไม่ถูกต้อง');
+  if (startTime && endTime && endTime <= startTime) {
+    throw new Error('เวลาสิ้นสุดต้องหลังเวลาเริ่ม');
+  }
 
   const sheet = getSheet_(SHEETS.fellowSchedule);
   const existing = {};
@@ -113,15 +118,51 @@ function addClinicDays(payload) {
     const iso = Utilities.formatDate(d, TIMEZONE, 'yyyy-MM-dd');
 
     if (existing[iso + '|' + fellowName]) { skipped++; continue; }
-    toAdd.push([d, fellowName, slots, note]);
+    toAdd.push({
+      clinic_date: d,
+      fellow_name: fellowName,
+      max_slots: slots,
+      note: note,
+      start_time: startTime,
+      end_time: endTime,
+    });
   }
 
   if (toAdd.length > 0) {
-    sheet.getRange(sheet.getLastRow() + 1, 1, toAdd.length, 4).setValues(toAdd);
-    sheet.getRange(2, 1, sheet.getLastRow(), 1).setNumberFormat('yyyy-mm-dd');
+    // เขียนตามชื่อหัวตาราง ไม่ใช่ตำแหน่งคงที่
+    // เพราะคอลัมน์ใหม่ถูกเติมต่อท้าย ชีตเก่ากับชีตใหม่จึงเรียงไม่เหมือนกันได้
+    const map = headerMap_(sheet);
+    const width = sheet.getLastColumn();
+    const rows = toAdd.map(function (item) {
+      const row = new Array(width).fill('');
+      Object.keys(item).forEach(function (column) {
+        if (column in map) row[map[column]] = item[column];
+      });
+      return row;
+    });
+
+    const firstRow = sheet.getLastRow() + 1;
+    sheet.getRange(firstRow, 1, rows.length, width).setValues(rows);
+
+    // กันไม่ให้ Sheets แปลง "09:00" เป็นชนิดเวลาแล้วส่งกลับมาคนละรูปแบบ
+    ['start_time', 'end_time'].forEach(function (column) {
+      if (column in map) {
+        sheet.getRange(firstRow, map[column] + 1, rows.length, 1).setNumberFormat('@');
+      }
+    });
+    if ('clinic_date' in map) {
+      sheet.getRange(2, map['clinic_date'] + 1, sheet.getLastRow() - 1, 1)
+        .setNumberFormat('yyyy-mm-dd');
+    }
   }
 
   return { added: toAdd.length, skipped: skipped };
+}
+
+/** รับเฉพาะ HH:mm — ค่าอื่นถือว่าไม่ได้ระบุเวลา */
+function cleanTime_(value) {
+  const raw = String(value || '').trim();
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(raw) ? raw : '';
 }
 
 /** สรุปวันออกตรวจของเดือนที่เลือก ให้หน้าจอแสดงว่ากรอกอะไรไปแล้ว */

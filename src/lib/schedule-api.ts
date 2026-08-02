@@ -73,6 +73,8 @@ export function addClinicDays(payload: {
   repeatWeeks: number;
   maxSlots: number;
   note: string;
+  startTime: string;
+  endTime: string;
 }): Promise<AddClinicDaysResult> {
   return callApi<AddClinicDaysResult>({ action: "addClinicDays", payload });
 }

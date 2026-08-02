@@ -25,6 +25,17 @@ const SHEETS = {
  */
 const FELLOW_DEFAULT_SLOTS = 2;
 
+/**
+ * คอลัมน์ของชีต fellow_schedule
+ *
+ * เก็บเวลาเป็นข้อความ HH:mm ไม่ใช่ชนิดเวลาของ Sheets โดยตั้งใจ
+ * ถ้าปล่อยให้ Sheets ตีความเป็นเวลา มันจะเก็บเป็นเศษของวันแล้วส่งกลับมา
+ * เป็น "9:00:00 AM" บ้าง เลขทศนิยมบ้าง ขึ้นกับรูปแบบที่ผู้ใช้ตั้งไว้
+ */
+const FELLOW_SCHEDULE_COLUMNS = [
+  'clinic_date', 'fellow_name', 'max_slots', 'note', 'start_time', 'end_time',
+];
+
 /** เวลาทำการที่ใช้นับ SLA (FR-013) */
 const BUSINESS = {
   startHour: 8,

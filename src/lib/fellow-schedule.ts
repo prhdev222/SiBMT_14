@@ -19,6 +19,9 @@ export interface FellowClinicDay {
   fellowName: string;
   maxSlots: number;
   note: string;
+  /** "HH:mm" หรือสตริงว่างเมื่อไม่ได้ระบุเวลา */
+  startTime: string;
+  endTime: string;
   /**
    * เลขแถวจริงในชีต (แถวแรกคือหัวตาราง = 1)
    * ต้องมีเพื่อสั่งลบแถวนั้นได้ และส่งไปให้ Apps Script ตรวจซ้ำก่อนลบ
@@ -126,4 +129,11 @@ export function formatMonthTh(yearMonth: string): string {
 /** "2026-08-05" → 5 */
 export function dayOfMonth(date: string): number {
   return Number(date.slice(8, 10));
+}
+
+/** "09:00" + "12:00" → "09:00–12:00" — คืนสตริงว่างเมื่อไม่ได้ระบุเวลา */
+export function formatTimeRange(startTime: string, endTime: string): string {
+  if (startTime && endTime) return `${startTime}–${endTime}`;
+  if (startTime) return `${startTime} น.`;
+  return "";
 }

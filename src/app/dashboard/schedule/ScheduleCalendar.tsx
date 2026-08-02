@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { dayOfMonth, type ScheduleDay } from "@/lib/fellow-schedule";
+import {
+  dayOfMonth,
+  formatTimeRange,
+  type ScheduleDay,
+} from "@/lib/fellow-schedule";
 import { ScheduleEditor } from "./ScheduleEditor";
 
 const WEEKDAY_LABELS = ["จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส.", "อา."];
@@ -97,6 +101,11 @@ export function ScheduleCalendar({
                       {/* ตัดคำแทนการตัดท้ายด้วย … — ชื่อ fellow คือสาระของช่องนี้
                           ถ้าอ่านไม่ออกว่าใคร ปฏิทินก็ไม่มีประโยชน์บนจอแคบ */}
                       <p className="font-medium break-words">{f.fellowName}</p>
+                      {formatTimeRange(f.startTime, f.endTime) && (
+                        <p className="tabular-nums opacity-80">
+                          {formatTimeRange(f.startTime, f.endTime)}
+                        </p>
+                      )}
                       <p className="tabular-nums">
                         {f.isFull ? "เต็ม" : `ว่าง ${f.remaining}`} ({f.booked}/
                         {f.maxSlots})

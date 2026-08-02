@@ -8,7 +8,10 @@ import {
   removeClinicDayAction,
   type ActionResult,
 } from "./actions";
-import type { FellowDayAvailability } from "@/lib/fellow-schedule";
+import {
+  formatTimeRange,
+  type FellowDayAvailability,
+} from "@/lib/fellow-schedule";
 
 const TH_MONTH = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
                   "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
@@ -48,8 +51,16 @@ export function ScheduleEditor({
   const [fellowName, setFellowName] = useState(fellows[0] ?? "");
   const [weeks, setWeeks] = useState(1);
   const [slots, setSlots] = useState(2);
+  const [startTime, setStartTime] = useState("09:00");
+  const [endTime, setEndTime] = useState("12:00");
   const [note, setNote] = useState("");
   const [newFellow, setNewFellow] = useState("");
+
+  // ปล่อยให้กดบันทึกแล้วค่อยรู้ว่าเวลากลับหัวเป็นการเสียเที่ยว บอกตั้งแต่พิมพ์
+  const timeError =
+    startTime && endTime && endTime <= startTime
+      ? "เวลาสิ้นสุดต้องหลังเวลาเริ่ม"
+      : null;
 
   function run(fn: () => Promise<ActionResult>) {
     setResult(null);
@@ -92,6 +103,12 @@ export function ScheduleEditor({
               >
                 <span>
                   <span className="font-medium text-zinc-800">{f.fellowName}</span>
+                  {formatTimeRange(f.startTime, f.endTime) && (
+                    <span className="text-zinc-600 tabular-nums">
+                      {" "}
+                      {formatTimeRange(f.startTime, f.endTime)}
+                    </span>
+                  )}
                   <span className="text-zinc-500 tabular-nums">
                     {" "}
                     — นัดแล้ว {f.booked}/{f.maxSlots}
@@ -173,6 +190,41 @@ export function ScheduleEditor({
               </label>
             </div>
 
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-sm">
+                <span className="block text-xs text-zinc-500 mb-1">
+                  เวลาเริ่มออกตรวจ
+                </span>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 tabular-nums"
+                />
+              </label>
+
+              <label className="text-sm">
+                <span className="block text-xs text-zinc-500 mb-1">
+                  เวลาสิ้นสุด
+                </span>
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  aria-invalid={timeError !== null}
+                  className={`w-full rounded-md border px-2 py-1.5 tabular-nums ${
+                    timeError ? "border-red-400" : "border-zinc-300"
+                  }`}
+                />
+              </label>
+            </div>
+
+            {timeError && (
+              <p role="alert" className="text-xs text-red-600">
+                {timeError}
+              </p>
+            )}
+
             <label className="block text-sm">
               <span className="block text-xs text-zinc-500 mb-1">
                 หมายเหตุ (ไม่บังคับ)
@@ -180,7 +232,7 @@ export function ScheduleEditor({
               <input
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="เช่น ครึ่งวันเช้า"
+                placeholder="เช่น ตรวจร่วมกับอาจารย์"
                 className="w-full rounded-md border border-zinc-300 px-2 py-1.5"
               />
             </label>
@@ -194,7 +246,7 @@ export function ScheduleEditor({
             </p>
 
             <button
-              disabled={pending || !fellowName}
+              disabled={pending || !fellowName || timeError !== null}
               onClick={() =>
                 run(() =>
                   addClinicDaysAction({
@@ -203,6 +255,8 @@ export function ScheduleEditor({
                     repeatWeeks: weeks,
                     maxSlots: slots,
                     note,
+                    startTime,
+                    endTime,
                   }),
                 )
               }
