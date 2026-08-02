@@ -1,208 +1,256 @@
-export type Status =
-  | "Submitted"
-  | "Pending Review"
-  | "Incomplete"
-  | "Ready for Triage"
-  | "Triaged"
-  | "Assigned"
-  | "Appointment Pending"
-  | "Appointment Confirmed"
-  | "Rejected / Redirected"
-  | "Closed";
+/**
+ * ข้อมูลตัวอย่างสำหรับ MVP dashboard — ของจริงจะมาจาก Google Sheet `referrals`
+ * โครงสร้างอ้างอิง src/lib/referral-types.ts
+ */
 
-export type Urgency = "Routine" | "Urgent" | "Very Urgent";
-
-export type DiseaseGroup =
-  | "Acute Leukemia"
-  | "Lymphoma"
-  | "Multiple Myeloma"
-  | "Stem Cell Transplantation"
-  | "Other Hematology";
-
-export interface Referral {
-  referralId: string;
-  submittedAt: string;
-  referrerOrg: string;
-  urgency: Urgency;
-  diseaseGroup: DiseaseGroup;
-  status: Status;
-  assignedTo: string | null;
-  slaOverdue: boolean;
-  followUpDate: string | null;
-  note: string;
-}
-
-export const STATUS_LABEL_TH: Record<Status, string> = {
-  Submitted: "ส่งข้อมูลแล้ว",
-  "Pending Review": "รอตรวจความครบถ้วน",
-  Incomplete: "ข้อมูลไม่ครบ",
-  "Ready for Triage": "พร้อมคัดกรอง",
-  Triaged: "คัดกรองแล้ว",
-  Assigned: "มอบหมายแล้ว",
-  "Appointment Pending": "รอประสานวันนัด",
-  "Appointment Confirmed": "ยืนยันวันนัดแล้ว",
-  "Rejected / Redirected": "ไม่เข้าเกณฑ์ / ส่งต่อช่องทางอื่น",
-  Closed: "ปิดเคสแล้ว",
-};
-
-export const STATUS_COLOR: Record<Status, string> = {
-  Submitted: "bg-blue-100 text-blue-800",
-  "Pending Review": "bg-amber-100 text-amber-800",
-  Incomplete: "bg-red-100 text-red-800",
-  "Ready for Triage": "bg-amber-100 text-amber-800",
-  Triaged: "bg-indigo-100 text-indigo-800",
-  Assigned: "bg-indigo-100 text-indigo-800",
-  "Appointment Pending": "bg-amber-100 text-amber-800",
-  "Appointment Confirmed": "bg-green-100 text-green-800",
-  "Rejected / Redirected": "bg-zinc-200 text-zinc-700",
-  Closed: "bg-zinc-200 text-zinc-700",
-};
-
-export const URGENCY_LABEL_TH: Record<Urgency, string> = {
-  Routine: "ปกติ",
-  Urgent: "เร่งด่วน",
-  "Very Urgent": "เร่งด่วนมาก",
-};
-
-export const URGENCY_COLOR: Record<Urgency, string> = {
-  Routine: "bg-zinc-200 text-zinc-700",
-  Urgent: "bg-orange-100 text-orange-800",
-  "Very Urgent": "bg-red-100 text-red-800",
-};
-
-export const DISEASE_GROUP_LABEL_TH: Record<DiseaseGroup, string> = {
-  "Acute Leukemia": "มะเร็งเม็ดเลือดขาวเฉียบพลัน",
-  Lymphoma: "มะเร็งต่อมน้ำเหลือง",
-  "Multiple Myeloma": "มัยอิโลมา",
-  "Stem Cell Transplantation": "ปลูกถ่ายไขกระดูก/สเต็มเซลล์",
-  "Other Hematology": "โลหิตวิทยาอื่น ๆ",
-};
+import type { Referral } from "./referral-types";
 
 export const MOCK_REFERRALS: Referral[] = [
+  /* ---------- กลุ่มที่ 1: Transplant appointment ---------- */
   {
-    referralId: "HEM-20260721-0001",
-    submittedAt: "2026-07-21 09:12",
-    referrerOrg: "โรงพยาบาลสมุทรสาคร",
-    urgency: "Very Urgent",
+    referralId: "HEM-20260727-0001",
+    referralType: "TRANSPLANT_APPOINTMENT",
     diseaseGroup: "Acute Leukemia",
-    status: "Incomplete",
-    assignedTo: null,
-    slaOverdue: true,
-    followUpDate: "2026-07-23",
-    note: "ขาดผล flow cytometry",
-  },
-  {
-    referralId: "HEM-20260722-0002",
-    submittedAt: "2026-07-22 11:40",
-    referrerOrg: "โรงพยาบาลราชบุรี",
+    submittedAt: "2026-07-27 09:12",
+    referrerOrg: "โรงพยาบาลสมุทรสาคร",
+    referrerPhone: "081-234-5678",
     urgency: "Urgent",
-    diseaseGroup: "Lymphoma",
-    status: "Ready for Triage",
-    assignedTo: null,
-    slaOverdue: false,
-    followUpDate: "2026-07-24",
-    note: "",
+    status: "Incomplete",
+    assignedTo: "พญ. สุดา (Fellow transplant)",
+    elapsedBusinessHours: 50,
+    followUpDate: "2026-07-30",
+    possibleDuplicateOf: null,
+    note: "ขาดผล Chromosome และ Molecular mutation — แจ้งขอเอกสารเพิ่มแล้ว",
   },
   {
-    referralId: "HEM-20260722-0003",
-    submittedAt: "2026-07-22 14:05",
-    referrerOrg: "โรงพยาบาลนครปฐม",
-    urgency: "Routine",
+    referralId: "HEM-20260728-0002",
+    referralType: "TRANSPLANT_APPOINTMENT",
     diseaseGroup: "Multiple Myeloma",
-    status: "Triaged",
-    assignedTo: "พญ. สุดา",
-    slaOverdue: false,
-    followUpDate: "2026-07-28",
-    note: "",
-  },
-  {
-    referralId: "HEM-20260723-0004",
-    submittedAt: "2026-07-23 08:55",
-    referrerOrg: "โรงพยาบาลสมเด็จพระพุทธเลิศหล้า",
-    urgency: "Very Urgent",
-    diseaseGroup: "Stem Cell Transplantation",
-    status: "Assigned",
-    assignedTo: "นพ. ธนกร",
-    slaOverdue: true,
-    followUpDate: "2026-07-24",
-    note: "รอ HLA typing ผู้บริจาค",
-  },
-  {
-    referralId: "HEM-20260723-0005",
-    submittedAt: "2026-07-23 13:20",
-    referrerOrg: "โรงพยาบาลเพชรบุรี",
+    submittedAt: "2026-07-28 11:40",
+    referrerOrg: "โรงพยาบาลราชบุรี",
+    referrerPhone: "089-111-2233",
     urgency: "Routine",
-    diseaseGroup: "Other Hematology",
+    status: "Slot Reserved",
+    assignedTo: "พญ. สุดา (Fellow transplant)",
+    elapsedBusinessHours: 14,
+    followUpDate: "2026-08-05",
+    possibleDuplicateOf: null,
+    note: "จองคิววันที่ 5 ส.ค. (คิวที่ 1 จาก 2)",
+  },
+  {
+    referralId: "HEM-20260729-0003",
+    referralType: "TRANSPLANT_APPOINTMENT",
+    diseaseGroup: "Lymphoma",
+    submittedAt: "2026-07-29 08:05",
+    referrerOrg: "โรงพยาบาลนครปฐม",
+    referrerPhone: "086-555-9090",
+    urgency: "Urgent",
     status: "Pending Review",
     assignedTo: null,
-    slaOverdue: false,
-    followUpDate: "2026-07-25",
-    note: "",
+    elapsedBusinessHours: 2,
+    followUpDate: "2026-07-30",
+    possibleDuplicateOf: null,
+    note: "รอแอดมินกลางจัดคิว fellow",
+  },
+  {
+    referralId: "HEM-20260722-0004",
+    referralType: "TRANSPLANT_APPOINTMENT",
+    diseaseGroup: "Acute Leukemia",
+    submittedAt: "2026-07-22 14:20",
+    referrerOrg: "โรงพยาบาลสมเด็จพระพุทธเลิศหล้า",
+    referrerPhone: "092-777-1414",
+    urgency: "Urgent",
+    status: "Appointment Confirmed",
+    assignedTo: "พญ. สุดา (Fellow transplant)",
+    elapsedBusinessHours: 20,
+    followUpDate: "2026-08-03",
+    possibleDuplicateOf: null,
+    note: "นัด 3 ส.ค. 08:00 น. ที่ OPD 700 — พี่น้องมาตรวจ HLA ด้วย",
+  },
+  {
+    referralId: "HEM-20260730-0015",
+    referralType: "TRANSPLANT_APPOINTMENT",
+    diseaseGroup: "MDS",
+    submittedAt: "2026-07-30 09:15",
+    referrerOrg: "โรงพยาบาลสุราษฎร์ธานี",
+    referrerPhone: "081-447-2200",
+    urgency: "Urgent",
+    status: "Pending Review",
+    assignedTo: null,
+    elapsedBusinessHours: 6,
+    followUpDate: "2026-08-03",
+    possibleDuplicateOf: null,
+    note: "High-risk MDS (IPSS-R 5.5) — พิจารณา allogeneic SCT",
+  },
+
+  /* ---------- กลุ่มที่ 2: Regimen consult ---------- */
+  {
+    referralId: "HEM-20260728-0005",
+    referralType: "REGIMEN_CONSULT",
+    diseaseGroup: "Lymphoma",
+    submittedAt: "2026-07-28 13:02",
+    referrerOrg: "โรงพยาบาลเพชรบุรี",
+    referrerPhone: "084-321-7788",
+    urgency: "Routine",
+    status: "Awaiting Attending",
+    assignedTo: "นพ. ปกรณ์ (R3 วอร์ดเคโม)",
+    elapsedBusinessHours: 12,
+    followUpDate: "2026-07-30",
+    possibleDuplicateOf: null,
+    note: "เลือกสูตร R-CHOP จาก Template Library แล้ว รออาจารย์ตรวจทาน",
   },
   {
     referralId: "HEM-20260724-0006",
-    submittedAt: "2026-07-24 10:02",
-    referrerOrg: "โรงพยาบาลสระบุรี",
-    urgency: "Urgent",
-    diseaseGroup: "Lymphoma",
-    status: "Appointment Pending",
-    assignedTo: "พยาบาลกาญจนา",
-    slaOverdue: false,
-    followUpDate: "2026-07-27",
-    note: "รอผู้ป่วยยืนยันวันนัด",
-  },
-  {
-    referralId: "HEM-20260724-0007",
-    submittedAt: "2026-07-24 15:48",
-    referrerOrg: "โรงพยาบาลอ่างทอง",
-    urgency: "Routine",
+    referralType: "REGIMEN_CONSULT",
     diseaseGroup: "Acute Leukemia",
-    status: "Appointment Confirmed",
-    assignedTo: "นพ. ธนกร",
-    slaOverdue: false,
-    followUpDate: "2026-08-01",
-    note: "",
+    submittedAt: "2026-07-24 10:15",
+    referrerOrg: "โรงพยาบาลสระบุรี",
+    referrerPhone: "081-909-3344",
+    urgency: "Urgent",
+    status: "Advice Sent",
+    assignedTo: "พญ. ชนิกา (R2 วอร์ดเคโม)",
+    elapsedBusinessHours: 18,
+    followUpDate: null,
+    possibleDuplicateOf: null,
+    note: "ส่งคำแนะนำสูตรยาและเบอร์ติดต่อกลับให้แพทย์ต้นทางแล้ว",
   },
   {
-    referralId: "HEM-20260725-0008",
-    submittedAt: "2026-07-25 09:30",
+    referralId: "HEM-20260727-0007",
+    referralType: "REGIMEN_CONSULT",
+    diseaseGroup: "Other Hematology",
+    submittedAt: "2026-07-27 15:48",
+    referrerOrg: "โรงพยาบาลอ่างทอง",
+    referrerPhone: "087-222-6161",
+    urgency: "Routine",
+    status: "Pending Review",
+    assignedTo: null,
+    elapsedBusinessHours: 26,
+    followUpDate: "2026-07-30",
+    possibleDuplicateOf: null,
+    note: "ไม่มีสูตรมาตรฐานตรงเคส — ต้องปรึกษาอาจารย์โดยตรง",
+  },
+  {
+    referralId: "HEM-20260730-0016",
+    referralType: "REGIMEN_CONSULT",
+    diseaseGroup: "CML",
+    submittedAt: "2026-07-30 11:40",
+    referrerOrg: "โรงพยาบาลราชบุรี",
+    referrerPhone: "089-330-7788",
+    urgency: "Routine",
+    status: "Awaiting Attending",
+    assignedTo: "พญ. ชนิกา (R2 วอร์ดเคโม)",
+    elapsedBusinessHours: 4,
+    followUpDate: "2026-08-03",
+    possibleDuplicateOf: null,
+    note: "ดื้อ imatinib — ปรึกษาการเปลี่ยน TKI",
+  },
+
+  /* ---------- กลุ่มที่ 3: Chemo admission ---------- */
+  {
+    referralId: "HEM-20260723-0008",
+    referralType: "CHEMO_ADMISSION",
+    diseaseGroup: "Acute Leukemia",
+    submittedAt: "2026-07-23 08:55",
     referrerOrg: "โรงพยาบาลสิงห์บุรี",
+    referrerPhone: "083-444-5252",
     urgency: "Urgent",
+    status: "Awaiting Attending",
+    assignedTo: "นพ. ปกรณ์ (R3 วอร์ดเคโม)",
+    elapsedBusinessHours: 52,
+    followUpDate: "2026-07-30",
+    possibleDuplicateOf: null,
+    note: "รออาจารย์ตรวจทานก่อนตอบกลับ — ค้างเกิน 48 ชม.",
+  },
+  {
+    referralId: "HEM-20260728-0009",
+    referralType: "CHEMO_ADMISSION",
+    diseaseGroup: "Lymphoma",
+    submittedAt: "2026-07-28 09:30",
+    referrerOrg: "โรงพยาบาลชัยนาท",
+    referrerPhone: "090-808-1212",
+    urgency: "Urgent",
+    status: "Readiness Visit Scheduled",
+    assignedTo: "พญ. ชนิกา (R2 วอร์ดเคโม)",
+    elapsedBusinessHours: 16,
+    followUpDate: "2026-07-31",
+    possibleDuplicateOf: null,
+    note: "นัดประเมินร่างกายที่ OPD 700 วันที่ 31 ก.ค. — จนท. ทำนัดแล้ว",
+  },
+  {
+    referralId: "HEM-20260729-0010",
+    referralType: "CHEMO_ADMISSION",
     diseaseGroup: "Multiple Myeloma",
+    submittedAt: "2026-07-29 07:45",
+    referrerOrg: "โรงพยาบาลกาญจนบุรี",
+    referrerPhone: "085-676-8899",
+    urgency: "Routine",
     status: "Submitted",
     assignedTo: null,
-    slaOverdue: false,
+    elapsedBusinessHours: 3,
     followUpDate: null,
+    possibleDuplicateOf: "HEM-20260728-0002",
+    note: "ระบบพบชื่อ-นามสกุลใกล้เคียงกับเคสกลุ่ม 1 ที่ยื่นเมื่อวาน — ให้ตรวจสอบ",
+  },
+  {
+    referralId: "HEM-20260721-0011",
+    referralType: "CHEMO_ADMISSION",
+    diseaseGroup: "Aplastic Anemia / BMF",
+    submittedAt: "2026-07-21 14:10",
+    referrerOrg: "โรงพยาบาลสุพรรณบุรี",
+    referrerPhone: "088-343-7070",
+    urgency: "Routine",
+    status: "Advice Sent",
+    assignedTo: "นพ. ปกรณ์ (R3 วอร์ดเคโม)",
+    elapsedBusinessHours: 22,
+    followUpDate: null,
+    possibleDuplicateOf: null,
+    note: "ประเมินแล้วแพทย์ต้นทางดูแลต่อได้เอง — ส่งคำแนะนำกลับพร้อมบันทึกใน record",
+  },
+
+  /* ---------- กลุ่มที่ 4: General OPD (fully automated) ---------- */
+  {
+    referralId: "HEM-20260729-0012",
+    referralType: "GENERAL_OPD",
+    diseaseGroup: null,
+    submittedAt: "2026-07-29 08:20",
+    referrerOrg: "โรงพยาบาลนครนายก",
+    referrerPhone: "081-565-2323",
+    urgency: "Routine",
+    status: "Auto Replied",
+    assignedTo: null,
+    elapsedBusinessHours: 2,
+    followUpDate: null,
+    possibleDuplicateOf: null,
+    note: "ระบบส่ง QR code นัดหมายกลางให้ผู้ป่วยอัตโนมัติ",
+  },
+  {
+    referralId: "HEM-20260728-0013",
+    referralType: "GENERAL_OPD",
+    diseaseGroup: null,
+    submittedAt: "2026-07-28 16:05",
+    referrerOrg: "โรงพยาบาลปทุมธานี",
+    referrerPhone: "082-119-4545",
+    urgency: "Routine",
+    status: "Auto Replied",
+    assignedTo: null,
+    elapsedBusinessHours: 9,
+    followUpDate: null,
+    possibleDuplicateOf: null,
     note: "",
   },
   {
-    referralId: "HEM-20260725-0009",
-    submittedAt: "2026-07-25 16:10",
-    referrerOrg: "โรงพยาบาลชัยนาท",
+    referralId: "HEM-20260726-0014",
+    referralType: "GENERAL_OPD",
+    diseaseGroup: null,
+    submittedAt: "2026-07-26 10:32",
+    referrerOrg: "โรงพยาบาลลพบุรี",
+    referrerPhone: "089-654-3210",
     urgency: "Routine",
-    diseaseGroup: "Other Hematology",
-    status: "Rejected / Redirected",
-    assignedTo: "พญ. สุดา",
-    slaOverdue: false,
-    followUpDate: null,
-    note: "แนะนำส่งต่อคลินิกอายุรกรรมทั่วไป",
-  },
-  {
-    referralId: "HEM-20260726-0010",
-    submittedAt: "2026-07-26 07:45",
-    referrerOrg: "โรงพยาบาลกาญจนบุรี",
-    urgency: "Very Urgent",
-    diseaseGroup: "Lymphoma",
     status: "Closed",
-    assignedTo: "นพ. ธนกร",
-    slaOverdue: false,
+    assignedTo: null,
+    elapsedBusinessHours: 6,
     followUpDate: null,
-    note: "นัดหมายเรียบร้อย ปิดเคส",
+    possibleDuplicateOf: null,
+    note: "ผู้ป่วยได้รับใบนัดจากระบบนัดหมายกลางแล้ว",
   },
 ];
-
-export const STAFF_MEMBERS = [
-  "นพ. ธนกร",
-  "พญ. สุดา",
-  "พยาบาลกาญจนา",
-] as const;

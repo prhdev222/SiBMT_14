@@ -1,31 +1,9 @@
 import Link from "next/link";
-
-const DOCUMENT_CHECKLIST: { group: string; documents: string }[] = [
-  {
-    group: "มะเร็งเม็ดเลือดขาวเฉียบพลัน (Acute Leukemia / SiAML)",
-    documents:
-      "CBC, ผลตรวจไขกระดูก, flow cytometry, chromosome, molecular mutation, สรุปการรักษา",
-  },
-  {
-    group: "มะเร็งต่อมน้ำเหลือง (Lymphoma)",
-    documents:
-      "ผล pathology, สถานะ block/slide, ผลภาพถ่ายทางการแพทย์, staging, การรักษาเดิม",
-  },
-  {
-    group: "มัยอิโลมา (Multiple Myeloma)",
-    documents:
-      "SPEP, serum free light chain, immunofixation, beta-2 microglobulin, ผลไขกระดูก, ผลภาพถ่ายทางการแพทย์",
-  },
-  {
-    group: "ปลูกถ่ายไขกระดูก/สเต็มเซลล์ (Stem Cell Transplantation)",
-    documents:
-      "การวินิจฉัย, สถานะโรค, ข้อมูลผู้บริจาค/HLA, การรักษาเดิม, ข้อบ่งชี้การปลูกถ่าย",
-  },
-  {
-    group: "โลหิตวิทยาอื่น ๆ",
-    documents: "ใบส่งตัว, ผลตรวจทางห้องปฏิบัติการที่จำเป็น, สรุปคำถามทางคลินิก",
-  },
-];
+import {
+  REFERRAL_TYPES_ORDERED,
+  REFERRAL_TYPE_META,
+} from "@/lib/referral-types";
+import { CONTACT, LINE_OA } from "@/lib/config";
 
 export default function Home() {
   return (
@@ -42,82 +20,108 @@ export default function Home() {
       </header>
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-6 space-y-8">
-        {/* หมายเหตุฉุกเฉิน */}
         <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-sm px-4 py-3">
-          ระบบนี้ไม่ใช่ช่องทางฉุกเฉิน หากผู้ป่วยมีอาการวิกฤต โปรดติดต่อห้องฉุกเฉินของโรงพยาบาลต้นทางหรือโรงพยาบาลใกล้บ้านทันที
+          ระบบนี้ไม่ใช่ช่องทางฉุกเฉิน หากผู้ป่วยมีอาการวิกฤต
+          โปรดติดต่อห้องฉุกเฉินของโรงพยาบาลต้นทางหรือโรงพยาบาลใกล้บ้านทันที
         </div>
 
-        {/* ปุ่มหลัก */}
-        <section className="grid gap-3 sm:grid-cols-3">
-          <a
-            href="#refer-form"
-            className="flex flex-col items-center justify-center gap-1 rounded-xl bg-blue-600 text-white px-4 py-6 text-center font-semibold text-lg shadow-sm hover:bg-blue-700 transition-colors"
-          >
-            ส่ง Refer
-            <span className="text-xs font-normal text-blue-100">
-              กรอกข้อมูลผู้ป่วยเพื่อส่งต่อ
-            </span>
-          </a>
-          <a
-            href="#contact"
-            className="flex flex-col items-center justify-center gap-1 rounded-xl bg-white border border-zinc-300 text-zinc-800 px-4 py-6 text-center font-semibold text-lg shadow-sm hover:bg-zinc-100 transition-colors"
-          >
-            ตรวจสอบสถานะ
-            <span className="text-xs font-normal text-zinc-500">
-              สอบถามความคืบหน้า referral
-            </span>
-          </a>
-          <Link
-            href="/dashboard"
-            className="flex flex-col items-center justify-center gap-1 rounded-xl bg-white border border-zinc-300 text-zinc-800 px-4 py-6 text-center font-semibold text-lg shadow-sm hover:bg-zinc-100 transition-colors"
-          >
-            เข้าสู่ Dashboard
-            <span className="text-xs font-normal text-zinc-500">
-              สำหรับบุคลากรภายใน
-            </span>
-          </Link>
-        </section>
+        {/* จุดเข้าใช้งานเดียว — เลือกเรื่องที่ต้องการติดต่อ */}
+        <section className="space-y-3">
+          <div>
+            <h2 className="font-semibold text-zinc-900 text-lg">
+              ต้องการติดต่อเรื่องอะไร
+            </h2>
+            <p className="text-sm text-zinc-600 mt-0.5">
+              เลือก 1 หัวข้อ เพื่อดูเอกสารที่ต้องเตรียมและช่องทางส่งข้อมูลของเรื่องนั้น
+            </p>
+          </div>
 
-        {/* ปุ่มส่ง refer ยังไม่เปิดใช้งานจริง */}
-        <section
-          id="refer-form"
-          className="rounded-xl bg-white border border-zinc-200 p-5"
-        >
-          <h2 className="font-semibold text-zinc-900 mb-2">ส่งข้อมูล Referral</h2>
-          <p className="text-sm text-zinc-600">
-            ช่องทางส่ง refer ผ่าน Google Form อยู่ระหว่างเปิดใช้งาน กรุณาติดต่อเจ้าหน้าที่ตามช่องทางด้านล่างในระหว่างนี้
-          </p>
-        </section>
+          <div className="grid gap-3">
+            {REFERRAL_TYPES_ORDERED.map((type) => {
+              const meta = REFERRAL_TYPE_META[type];
+              return (
+                <Link
+                  key={type}
+                  href={meta.href}
+                  className="group rounded-xl bg-white border border-zinc-300 p-4 shadow-sm hover:border-blue-500 hover:bg-blue-50/40 transition-colors"
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl leading-none shrink-0 mt-0.5">
+                      {meta.emoji}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-blue-600">
+                        กลุ่มที่ {meta.groupNumber}
+                      </p>
+                      <p className="font-semibold text-zinc-900 group-hover:text-blue-700">
+                        {meta.titleTh}
+                      </p>
+                      <p className="text-sm text-zinc-600 mt-1">
+                        {meta.purposeTh}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
 
-        {/* เอกสารที่ต้องเตรียม */}
-        <section className="rounded-xl bg-white border border-zinc-200 p-5">
-          <h2 className="font-semibold text-zinc-900 mb-3">
-            เอกสารที่ต้องเตรียมตามกลุ่มโรค
-          </h2>
-          <div className="space-y-3">
-            {DOCUMENT_CHECKLIST.map((item) => (
-              <div key={item.group} className="text-sm">
-                <p className="font-medium text-zinc-800">{item.group}</p>
-                <p className="text-zinc-600">{item.documents}</p>
-              </div>
-            ))}
+            {/* ปุ่มที่ 5 — กันเคสเลือกกลุ่มผิดแล้วหลุดออกจากระบบติดตาม
+                และรองรับคำถามก่อนตัดสินใจ refer ตามที่อาจารย์เสนอ 29 ก.ค. 2569 */}
+            <a
+              href="#contact"
+              className="rounded-xl bg-white border border-dashed border-zinc-400 p-4 text-center hover:bg-zinc-100 transition-colors"
+            >
+              <p className="font-semibold text-zinc-800">
+                ไม่แน่ใจว่าเข้ากลุ่มไหน หรืออยากสอบถามก่อนส่งตัว
+              </p>
+              <p className="text-sm text-zinc-600 mt-0.5">
+                เช่น ไม่แน่ใจว่าควร refer หรือไม่
+                หรืออยากทราบว่าขณะนี้ศิริราชมีการศึกษาวิจัย (clinical trial)
+                ที่เหมาะกับผู้ป่วยหรือไม่
+              </p>
+            </a>
           </div>
         </section>
 
-        {/* Privacy notice */}
+        {/* LINE OA — ช่องทางคู่ขนานสำหรับแพทย์ที่ใช้มือถือเป็นหลัก */}
+        <section className="rounded-xl bg-white border border-zinc-200 p-5">
+          <h2 className="font-semibold text-zinc-900 mb-2">
+            ติดต่อผ่าน LINE (สะดวกบนมือถือ)
+          </h2>
+          <p className="text-sm text-zinc-600">
+            แพทย์ต้นทางสามารถแอด LINE Official Account ของระบบ
+            แล้วเลือกหัวข้อจากเมนูด้านล่างของแชทได้เลย
+            เมนูจะตรงกับ 4 กลุ่มด้านบนทุกประการ
+          </p>
+          <a
+            href={LINE_OA.addFriendUrl}
+            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-white text-sm font-semibold hover:bg-green-700 transition-colors"
+          >
+            แอด LINE {LINE_OA.displayName}
+          </a>
+        </section>
+
+        {/* PDPA */}
         <section className="rounded-xl bg-white border border-zinc-200 p-5 text-sm text-zinc-600 space-y-2">
           <h2 className="font-semibold text-zinc-900 mb-1">
             คำแจ้งเกี่ยวกับข้อมูลส่วนบุคคล (Privacy Notice)
           </h2>
           <p>
-            ข้อมูลผู้ป่วยที่ท่านส่งเข้าระบบเป็นข้อมูลสุขภาพตามกฎหมายคุ้มครองข้อมูลส่วนบุคคล (PDPA)
-            จะถูกใช้เพื่อการคัดกรองและประสานการส่งต่อผู้ป่วยเท่านั้น
+            ข้อมูลผู้ป่วยที่ท่านส่งเข้าระบบเป็นข้อมูลสุขภาพตามกฎหมายคุ้มครองข้อมูลส่วนบุคคล
+            (PDPA) จะถูกใช้เพื่อการคัดกรองและประสานการส่งต่อผู้ป่วยเท่านั้น
             เข้าถึงได้เฉพาะบุคลากรที่เกี่ยวข้องกับกระบวนการรับ refer
             และเก็บรักษาตามนโยบายของโรงพยาบาลศิริราช
           </p>
-          <p>
-            การส่งข้อมูลถือว่าท่านมีหน้าที่หรือได้รับอนุญาตให้ส่งข้อมูลเพื่อการรักษา และได้แจ้งผู้ป่วยหรือผู้แทนตามกระบวนการของหน่วยงานต้นทางแล้วหากจำเป็น
+          <p className="font-medium text-zinc-800">
+            ก่อนส่งข้อมูล กรุณาให้ผู้ป่วยลงนามหนังสือรับทราบ
+            และเก็บต้นฉบับไว้ที่โรงพยาบาลต้นทาง (ไม่ต้องส่งกลับมาศิริราช)
           </p>
+          <Link
+            href="/consent"
+            className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline"
+          >
+            ดูและพิมพ์แบบฟอร์มรับทราบสำหรับผู้ป่วย →
+          </Link>
         </section>
 
         {/* ติดต่อ */}
@@ -126,15 +130,34 @@ export default function Home() {
           className="rounded-xl bg-white border border-zinc-200 p-5 text-sm text-zinc-600"
         >
           <h2 className="font-semibold text-zinc-900 mb-2">ติดต่อเจ้าหน้าที่</h2>
-          <p>หากส่งข้อมูลไม่ได้ หรือต้องการสอบถามสถานะ referral กรุณาติดต่อ:</p>
-          <p className="mt-1 font-medium text-zinc-800">
-            ธุรการ OPD โลหิตวิทยา ศิริราช — ในเวลาราชการ
+          <p>
+            หากส่งข้อมูลไม่ได้ ไม่แน่ใจว่าเข้ากลุ่มไหน หรือต้องการสอบถามสถานะ
+            referral กรุณาติดต่อ:
           </p>
+          <p className="mt-2 font-medium text-zinc-800">{CONTACT.officeTh}</p>
+          <p className="text-zinc-700">
+            โทร.{" "}
+            <a href={`tel:${CONTACT.phone}`} className="text-blue-600 hover:underline">
+              {CONTACT.phoneDisplay}
+            </a>{" "}
+            ({CONTACT.hoursTh})
+          </p>
+        </section>
+
+        {/* ทางเข้าสำหรับบุคลากร */}
+        <section className="text-center">
+          <Link
+            href="/dashboard"
+            className="text-sm font-medium text-zinc-500 hover:text-blue-600 hover:underline"
+          >
+            เข้าสู่ Dashboard สำหรับบุคลากรภายใน →
+          </Link>
         </section>
       </main>
 
       <footer className="border-t border-zinc-200 py-4 text-center text-xs text-zinc-400">
-        MVP — ระบบสนับสนุน workflow การส่งต่อผู้ป่วย ไม่ใช่ระบบวินิจฉัยโรคหรือเวชระเบียนหลัก
+        MVP — ระบบสนับสนุน workflow การส่งต่อผู้ป่วย
+        ไม่ใช่ระบบวินิจฉัยโรคหรือเวชระเบียนหลัก
       </footer>
     </div>
   );
