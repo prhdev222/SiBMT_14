@@ -65,6 +65,45 @@ async function importPrivateKey(pem: string): Promise<CryptoKey> {
   );
 }
 
+/**
+ * access token ที่ขอไว้แล้ว ใช้ซ้ำจนกว่าจะใกล้หมดอายุ
+ *
+ * หน้า dashboard หนึ่งหน้าอ่านชีต 3 แท็บ (referrals, fellow_schedule, fellows)
+ * ถ้าไม่เก็บไว้ แต่ละแท็บจะเซ็น JWT แล้ววิ่งไปขอ token ที่ Google ใหม่ทุกครั้ง
+ * กลายเป็น 3 รอบเครือข่ายที่เสียเปล่า ทั้งตอนเปิดหน้าและทุกครั้งที่บันทึกแล้ว
+ * revalidate ใหม่ — เป็นสาเหตุหลักที่หน้ารู้สึกหน่วง
+ *
+ * เก็บเป็น Promise ไม่ใช่ค่าที่ได้แล้ว เพราะทั้งสามคำขอเกิดขึ้นพร้อมกัน
+ * ถ้าเก็บเฉพาะค่าที่ได้แล้ว ทั้งสามจะเห็น cache ว่าง แล้วยิงขอพร้อมกันอยู่ดี
+ */
+let tokenCache: {
+  key: string;
+  token: Promise<string>;
+  expiresAt: number;
+} | null = null;
+
+async function getAccessToken(
+  credentials: ServiceAccountCredentials,
+): Promise<string> {
+  const key = credentials.clientEmail;
+  const now = Date.now();
+
+  if (tokenCache && tokenCache.key === key && tokenCache.expiresAt > now) {
+    return tokenCache.token;
+  }
+
+  const token = requestAccessToken(credentials);
+  // Google ให้อายุ 1 ชั่วโมง กันชน 5 นาทีเผื่อคำขอที่กำลังวิ่งอยู่
+  tokenCache = { key, token, expiresAt: now + 55 * 60 * 1000 };
+
+  // ขอไม่สำเร็จแล้วปล่อยค้างไว้ จะพังยาวทั้งชั่วโมงแม้ปัญหาหายไปแล้ว
+  token.catch(() => {
+    if (tokenCache?.token === token) tokenCache = null;
+  });
+
+  return token;
+}
+
 /** ขอ access token ด้วย JWT bearer flow */
 async function requestAccessToken(
   credentials: ServiceAccountCredentials,
@@ -124,7 +163,7 @@ export async function readSheetRows(
   const credentials = readCredentials();
   if (!credentials) return [];
 
-  const token = await requestAccessToken(credentials);
+  const token = await getAccessToken(credentials);
   const range = encodeURIComponent(`${sheetName}!A:ZZ`);
 
   const response = await fetch(
