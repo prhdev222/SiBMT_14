@@ -67,15 +67,35 @@ function doPost(e) {
 /**
  * รับ webhook จาก LINE
  *
- * ยังไม่ได้ทำอะไรกับข้อความที่เข้ามา — แต่ต้องตอบ 200 ให้ได้
- * เพราะปุ่ม Verify ใน LINE Developers Console จะไม่ผ่านถ้าไม่ตอบ
- * และ LINE จะหยุดส่ง webhook ให้ถ้าปลายทางตอบไม่สำเร็จบ่อย ๆ
+ * ── ใช้หา group ID สำหรับตั้ง Script Properties ────────────────────
+ * Notify.gs ต้องรู้ group ID ของกลุ่มปลายทาง (LINE_TARGET_RESIDENT,
+ * LINE_TARGET_ADMIN, LINE_TARGET_FELLOW) แต่ LINE ไม่มีหน้าจอไหนบอกค่านี้เลย
+ * ทางเดียวที่ได้มาคือให้บอทเข้ากลุ่มแล้วอ่านจาก webhook ที่ LINE ยิงมา
  *
- * เมื่อถึงเวลาทำจริง ให้เขียนไฟล์ LineWebhook.gs แล้วย้ายเนื้อในมาไว้ที่นั่น
- * โดยไม่ต้องแตะ doPost อีก
+ * วิธีใช้
+ *   1. ตั้ง Webhook URL ใน LINE Developers Console เป็น Web app URL นี้
+ *      แล้วเปิด "Use webhook"
+ *   2. เชิญบอทเข้ากลุ่ม แล้วพิมพ์อะไรก็ได้ในกลุ่มนั้นสักข้อความ
+ *   3. กลับมาที่ Apps Script → Executions → เปิดรายการล่าสุด
+ *      จะเห็นบรรทัด "LINE source: group ..." — คัดลอกไปใส่ Script Properties
+ *   4. ทำครบทั้ง 3 กลุ่มแล้วปิด "Use webhook" ได้ ถ้ายังไม่ทำระบบตอบโต้
+ *
+ * ตอบ 200 เสมอ เพราะปุ่ม Verify ใน LINE Console จะไม่ผ่านถ้าไม่ตอบ
+ * และ LINE จะหยุดส่ง webhook ให้ถ้าปลายทางล้มเหลวบ่อย ๆ
+ *
+ * เมื่อถึงเวลาทำระบบตอบโต้จริง ให้เขียนไฟล์ LineWebhook.gs แล้วย้ายเนื้อใน
+ * มาไว้ที่นั่น โดยไม่ต้องแตะ doPost อีก
  */
 function handleLineWebhook_(body) {
-  console.log('LINE webhook: ' + (body.events || []).length + ' event(s)');
+  (body.events || []).forEach(function (event) {
+    const source = event.source || {};
+    // groupId/roomId/userId มาไม่พร้อมกัน ขึ้นกับว่าเป็นแชทกลุ่ม ห้อง หรือตัวต่อตัว
+    const id = source.groupId || source.roomId || source.userId || '(ไม่มี)';
+    console.log(
+      'LINE source: ' + (source.type || '?') + ' ' + id + ' | event: ' + event.type,
+    );
+  });
+
   return ContentService.createTextOutput('OK');
 }
 

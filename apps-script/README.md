@@ -78,6 +78,20 @@
 
 **ห้าม commit ค่าเหล่านี้ลง repo เด็ดขาด** (SRS NFR-003)
 
+#### หา group ID ได้จากไหน
+
+LINE ไม่มีหน้าจอไหนบอก group ID เลย ทางเดียวคืออ่านจาก webhook ที่ LINE ยิงมา
+`Api.gs` จัดการให้แล้ว:
+
+1. Deploy `Api.gs` เป็น Web app ตาม §7 (ถ้ายังไม่ได้ทำ)
+2. LINE Developers Console → Messaging API → **Webhook URL** = Web app URL นั้น
+   → กด **Verify** ให้ขึ้น Success → เปิด **Use webhook**
+3. เชิญบอทเข้ากลุ่มปลายทาง แล้วพิมพ์อะไรก็ได้ในกลุ่มสักข้อความ
+4. กลับมาที่ Apps Script → **Executions** → เปิดรายการล่าสุด
+   จะเห็นบรรทัด `LINE source: group Cxxxxxxxx...` — นั่นคือ group ID
+5. ทำครบทั้ง 3 กลุ่ม แล้วปิด **Use webhook** ได้
+   (ระบบยังไม่มีการตอบโต้ในแชท ใช้ auto-reply ของ LINE OA Manager แทน)
+
 > ยังไม่มี LINE OA ก็ทดสอบระบบได้ — ถ้ายังไม่ตั้งค่า ข้อความจะถูกเขียนลง
 > Execution log แทนการส่งจริง ทำให้ตรวจเนื้อหาข้อความได้ก่อน
 
