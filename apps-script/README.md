@@ -18,7 +18,6 @@
 | `Retention.gs` | ถอดชื่อย้ายเข้าคลังเมื่อครบกำหนด |
 | `Stats.gs` | สรุปสถิติรายเดือน |
 | `Setup.gs` | ติดตั้งครั้งแรกและตรวจความพร้อม |
-| `Menu.gs` + `Sidebar.html` | หน้าจอจัดตารางในตัวชีต — สำรองไว้ ปกติกรอกที่ dashboard |
 | `Api.gs` | รับ LINE webhook — ใช้หา group ID (ไม่บังคับ — ดู §7) |
 
 ---
@@ -60,7 +59,11 @@
 ### 3. สร้างชีตที่เหลือ
 
 รัน `setupSheets()` จากเมนู Run — จะสร้าง `advice_library`, `stats_monthly`,
-`status_log`, `holidays` และเพิ่มคอลัมน์ระบบใน `referrals` ให้อัตโนมัติ
+`status_log`, `holidays`, `config` และเพิ่มคอลัมน์ระบบใน `referrals` ให้อัตโนมัติ
+
+> **ตารางออกตรวจ fellow ไม่ได้อยู่ในไฟล์นี้** — อยู่ Google Sheet คนละไฟล์
+> ตั้งค่าด้วย `node scripts/setup-schedule-sheet.mjs` ดู
+> [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md) §ไฟล์ชีตตารางเวร fellow
 
 จากนั้น **กรอกวันหยุดนักขัตฤกษ์ลงชีต `holidays`** (คอลัมน์ A = วันที่)
 ถ้าไม่กรอก ระบบจะนับวันหยุดเป็นวันทำการและอาจเตือน Red Alert ผิดพลาด

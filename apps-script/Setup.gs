@@ -29,83 +29,13 @@ function setupSheets() {
   ]);
   createIfMissing_(ss, SHEETS.holidays, ['holiday_date', 'description']);
 
-  createIfMissing_(ss, SHEETS.fellows, ['fellow_name', 'active', 'note']);
-
-  // start_time/end_time ต่อท้าย ไม่ได้แทรกกลาง เพื่อให้ชีตที่มีข้อมูลอยู่แล้ว
-  // อัปเกรดได้โดยไม่ต้องเลื่อนคอลัมน์เดิม และได้หน้าตาเหมือนชีตที่สร้างใหม่
-  createIfMissing_(ss, SHEETS.fellowSchedule, FELLOW_SCHEDULE_COLUMNS);
-  ensureColumns_(ss.getSheetByName(SHEETS.fellowSchedule), FELLOW_SCHEDULE_COLUMNS);
-  applyScheduleValidation_(ss);
-
   createIfMissing_(ss, SHEETS.config, ['key', 'value', 'description']);
   seedConfigKeys_(ss);
 
   console.log('สร้างชีตและคอลัมน์เรียบร้อย');
   console.log('ต้องกรอกเพิ่ม:');
   console.log('  • ' + SHEETS.holidays + ' — วันหยุดนักขัตฤกษ์');
-  console.log('  • ' + SHEETS.fellowSchedule + ' — ตารางออกตรวจ fellow ทั้งปีการศึกษา');
   console.log('  • ' + SHEETS.config + ' — ชื่อผู้รับผิดชอบ');
-}
-
-/**
- * ตั้ง data validation ให้ชีต fellow_schedule กรอกง่ายและกันพิมพ์ผิด
- *
- * - clinic_date  → บังคับเป็นวันที่ กดแล้วมีปฏิทินให้เลือก
- * - fellow_name  → dropdown ดึงรายชื่อจากชีต fellows
- * - max_slots    → ตัวเลข 1–10
- *
- * ชื่อ fellow ต้องสะกดตรงกับคอลัมน์ fellow_assigned ในชีต referrals เป๊ะ ๆ
- * เพราะระบบจับคู่ด้วยชื่อ — dropdown จึงสำคัญกว่าความสะดวก มันกันเคสนับคิวผิด
- *
- * รันซ้ำได้ ปลอดภัย — ใช้เมื่อเพิ่มชื่อ fellow ใหม่แล้วอยากให้ dropdown อัปเดต
- */
-function applyScheduleValidation_(ss) {
-  const schedule = ss.getSheetByName(SHEETS.fellowSchedule);
-  const fellows = ss.getSheetByName(SHEETS.fellows);
-  if (!schedule || !fellows) return;
-
-  const lastRow = Math.max(schedule.getMaxRows(), 500);
-  if (schedule.getMaxRows() < lastRow) {
-    schedule.insertRowsAfter(schedule.getMaxRows(), lastRow - schedule.getMaxRows());
-  }
-
-  // วันที่
-  schedule.getRange(2, 1, lastRow - 1, 1)
-    .setDataValidation(
-      SpreadsheetApp.newDataValidation()
-        .requireDate()
-        .setHelpText('เลือกวันที่ออกตรวจจากปฏิทิน')
-        .build()
-    )
-    .setNumberFormat('yyyy-mm-dd');
-
-  // ชื่อ fellow — ดึงจากชีต fellows คอลัมน์ A
-  schedule.getRange(2, 2, lastRow - 1, 1).setDataValidation(
-    SpreadsheetApp.newDataValidation()
-      .requireValueInRange(fellows.getRange('A2:A200'), true)
-      .setAllowInvalid(false)
-      .setHelpText('เลือกชื่อจากรายการในชีต fellows — เพิ่มชื่อใหม่ที่ชีตนั้นก่อน')
-      .build()
-  );
-
-  // จำนวนคิวต่อวัน
-  schedule.getRange(2, 3, lastRow - 1, 1).setDataValidation(
-    SpreadsheetApp.newDataValidation()
-      .requireNumberBetween(1, 10)
-      .setHelpText('เว้นว่างได้ ระบบใช้ค่าเริ่มต้น ' + FELLOW_DEFAULT_SLOTS + ' คนต่อวัน')
-      .build()
-  );
-
-  schedule.setFrozenRows(1);
-}
-
-/**
- * เรียกใช้เองหลังเพิ่มหรือลบชื่อใน ชีต fellows เพื่อให้ dropdown อัปเดต
- * (ปกติ requireValueInRange อัปเดตตามอยู่แล้ว ฟังก์ชันนี้ไว้ซ่อมกรณี validation หาย)
- */
-function refreshFellowDropdown() {
-  applyScheduleValidation_(SpreadsheetApp.getActiveSpreadsheet());
-  console.log('อัปเดต dropdown ชื่อ fellow เรียบร้อย');
 }
 
 /**

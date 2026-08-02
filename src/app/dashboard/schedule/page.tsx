@@ -171,36 +171,21 @@ function EmptyState({ source }: { source: FellowScheduleSource }) {
           <code className="rounded bg-blue-100 px-1">node scripts/setup-schedule-sheet.mjs</code>
         </p>
 
-        <div className="mt-3 space-y-3">
-          <div>
-            <p className="font-medium text-blue-900">
-              ระหว่างนี้ — ใช้หน้าจอจัดตารางในชีต
-            </p>
-            <ol className="mt-1 ml-4 list-decimal space-y-0.5 text-blue-900/80">
-              <li>เปิด Google Sheet ของระบบ</li>
-              <li>
-                เมนูด้านบน → <strong>📅 ตารางออกตรวจ Fellow</strong> →{" "}
-                <strong>เปิดหน้าจอจัดตาราง</strong>
-              </li>
-              <li>เพิ่มชื่อ fellow แล้วเลือกวันที่จากปฏิทิน ใส่จำนวนสัปดาห์ที่ออกตรวจติดกัน</li>
-            </ol>
-            <p className="mt-1 text-blue-900/70 text-xs">
-              ถ้ายังไม่เห็นเมนูนี้ แปลว่ายังไม่ได้ติดตั้งไฟล์{" "}
-              <code className="rounded bg-blue-100 px-1">Menu.gs</code> และ{" "}
-              <code className="rounded bg-blue-100 px-1">Sidebar.html</code>{" "}
-              หรือยังไม่ได้ปิดชีตแล้วเปิดใหม่
-            </p>
-          </div>
-
-          <div>
-            <p className="font-medium text-blue-900">หรือพิมพ์ลงชีตโดยตรง</p>
-            <p className="mt-1 text-blue-900/80">
-              เปิดแท็บ <code className="rounded bg-blue-100 px-1">fellow_schedule</code>{" "}
-              แล้วพิมพ์ตามรูปแบบด้านล่าง — ช่องวันที่ดับเบิลคลิกจะมีปฏิทินให้เลือก
-              และช่องชื่อมี dropdown ให้กด
-            </p>
-          </div>
-        </div>
+        <ol className="mt-3 ml-4 list-decimal space-y-1 text-blue-900/80">
+          <li>สร้าง Google Sheet ไฟล์ใหม่ (อย่าใช้ไฟล์เดียวกับข้อมูลผู้ป่วย)</li>
+          <li>กด Share แชร์ไฟล์ให้อีเมล service account แบบ <strong>Editor</strong></li>
+          <li>
+            ใส่ ID ของไฟล์เป็น{" "}
+            <code className="rounded bg-blue-100 px-1">GOOGLE_SCHEDULE_SHEET_ID</code>
+          </li>
+          <li>
+            รัน{" "}
+            <code className="rounded bg-blue-100 px-1">
+              node scripts/setup-schedule-sheet.mjs
+            </code>{" "}
+            — สร้างแท็บและหัวตารางให้เอง แล้วตรวจว่าเขียนได้จริง
+          </li>
+        </ol>
       </div>
 
       <div className="rounded-lg bg-zinc-50 border border-zinc-200 p-3">

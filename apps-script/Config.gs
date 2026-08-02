@@ -14,27 +14,17 @@ const SHEETS = {
   statsMonthly: 'stats_monthly',   // ชุดที่ 3 — สถิติ เก็บถาวร
   statusLog: 'status_log',
   holidays: 'holidays',            // วันหยุด: คอลัมน์ A = วันที่
-  fellowSchedule: 'fellow_schedule', // ตารางออกตรวจ fellow ทั้งปีการศึกษา
-  fellows: 'fellows',              // รายชื่อ fellow ปีปัจจุบัน — เปลี่ยนทุกปีการศึกษา
   config: 'config',                // ชื่อผู้รับผิดชอบและข้อความ แก้ได้โดยไม่ต้องแตะโค้ด
 };
 
 /**
- * จำนวนผู้ป่วยสูงสุดที่นัดพบ fellow 1 ท่านได้ต่อวันออกตรวจ
- * ตามเอกสารข้อเสนอโครงการ — ปรับรายวันได้ที่คอลัมน์ max_slots ในชีต fellow_schedule
- */
-const FELLOW_DEFAULT_SLOTS = 2;
-
-/**
- * คอลัมน์ของชีต fellow_schedule
+ * ตารางออกตรวจ fellow ไม่ได้อยู่ในไฟล์นี้
  *
- * เก็บเวลาเป็นข้อความ HH:mm ไม่ใช่ชนิดเวลาของ Sheets โดยตั้งใจ
- * ถ้าปล่อยให้ Sheets ตีความเป็นเวลา มันจะเก็บเป็นเศษของวันแล้วส่งกลับมา
- * เป็น "9:00:00 AM" บ้าง เลขทศนิยมบ้าง ขึ้นกับรูปแบบที่ผู้ใช้ตั้งไว้
+ * ย้ายไปอยู่ Google Sheet คนละไฟล์ และเว็บเขียนลงไฟล์นั้นโดยตรง
+ * เพื่อให้ service account เป็น Editor เฉพาะไฟล์ตารางเวร
+ * ส่วนไฟล์นี้ซึ่งมีข้อมูลผู้ป่วยยังเป็น Viewer เหมือนเดิม
+ * ดู docs/DEPLOYMENT.md §ไฟล์ชีตตารางเวร fellow
  */
-const FELLOW_SCHEDULE_COLUMNS = [
-  'clinic_date', 'fellow_name', 'max_slots', 'note', 'start_time', 'end_time',
-];
 
 /** เวลาทำการที่ใช้นับ SLA (FR-013) */
 const BUSINESS = {

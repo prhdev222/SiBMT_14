@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * ตรวจว่าไฟล์ชีตตารางเวรพร้อมใช้งานหรือยัง
+ * เตรียมไฟล์ชีตตารางเวรให้พร้อมใช้งาน
  *
  * ใช้:  node scripts/setup-schedule-sheet.mjs
  *
- * อ่านค่าจาก .env.local แล้วรายงานว่าอะไรยังขาด พร้อมบอกวิธีแก้
- * ไม่แก้ไขอะไรในไฟล์ชีตเลย — ตรวจอย่างเดียว
+ * สร้างแท็บและหัวตารางที่ยังไม่มีให้เอง แล้วทดสอบว่าเขียนไฟล์ได้จริง
+ * ต่อเติมอย่างเดียว ไม่ลบไม่ทับข้อมูลเดิม รันซ้ำได้ปลอดภัย
  */
 
 import { readFileSync } from "node:fs";
@@ -118,15 +118,30 @@ console.log('✓ เปิดไฟล์ "' + meta.properties.title + '" ได
 const tabs = meta.sheets.map((s) => s.properties.title);
 let problems = 0;
 
-for (const [tab, columns] of Object.entries(REQUIRED)) {
-  if (!tabs.includes(tab)) {
-    console.error(`\n❌ ไม่มีแท็บชื่อ "${tab}"`);
-    console.error("   สร้างแท็บนี้ แล้วใส่หัวตารางแถวแรกตามนี้:");
-    console.error("   " + columns.join("\t"));
-    problems++;
-    continue;
-  }
+/** สร้างแท็บที่ยังไม่มี */
+const missingTabs = Object.keys(REQUIRED).filter((t) => !tabs.includes(t));
+if (missingTabs.length > 0) {
+  const res = await fetch(`${api}/${fileId}:batchUpdate`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${access_token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      requests: missingTabs.map((title) => ({ addSheet: { properties: { title } } })),
+    }),
+  });
 
+  if (!res.ok) {
+    console.error("❌ สร้างแท็บไม่สำเร็จ — สิทธิ์ที่แชร์ต้องเป็น Editor");
+    console.error("   แชร์ไฟล์ให้ " + clientEmail + " แบบ Editor");
+    process.exit(1);
+  }
+  console.log("✓ สร้างแท็บ: " + missingTabs.join(", "));
+}
+
+/** เติมหัวตารางที่ยังขาด — ต่อท้ายอย่างเดียว ไม่แตะคอลัมน์เดิม */
+for (const [tab, columns] of Object.entries(REQUIRED)) {
   const res = await fetch(
     `${api}/${fileId}/values/${encodeURIComponent(tab + "!1:1")}`,
     { headers: { Authorization: `Bearer ${access_token}` } },
@@ -136,13 +151,44 @@ for (const [tab, columns] of Object.entries(REQUIRED)) {
   );
   const missing = columns.filter((c) => !headers.includes(c));
 
-  if (missing.length > 0) {
-    console.error(`\n❌ แท็บ "${tab}" ขาดคอลัมน์: ${missing.join(", ")}`);
-    console.error("   เติมชื่อคอลัมน์เหล่านี้ต่อท้ายหัวตารางแถวแรก");
-    problems++;
-  } else {
+  if (missing.length === 0) {
     console.log(`✓ แท็บ "${tab}" มีคอลัมน์ครบ`);
+    continue;
   }
+
+  const startColumn = columnLetter(headers.length);
+  const endColumn = columnLetter(headers.length + missing.length - 1);
+  const write = await fetch(
+    `${api}/${fileId}/values/` +
+      encodeURIComponent(`${tab}!${startColumn}1:${endColumn}1`) +
+      "?valueInputOption=RAW",
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ values: [missing] }),
+    },
+  );
+
+  if (write.ok) {
+    console.log(`✓ แท็บ "${tab}" เติมคอลัมน์: ${missing.join(", ")}`);
+  } else {
+    console.error(`❌ เติมคอลัมน์ในแท็บ "${tab}" ไม่สำเร็จ`);
+    problems++;
+  }
+}
+
+/** 0 → A, 25 → Z, 26 → AA */
+function columnLetter(index) {
+  let letter = "";
+  let n = index;
+  while (n >= 0) {
+    letter = String.fromCharCode((n % 26) + 65) + letter;
+    n = Math.floor(n / 26) - 1;
+  }
+  return letter;
 }
 
 /* ---------- ตรวจว่าเขียนได้จริง ---------- */
