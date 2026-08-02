@@ -14,7 +14,15 @@ const SHEETS = {
   statsMonthly: 'stats_monthly',   // ชุดที่ 3 — สถิติ เก็บถาวร
   statusLog: 'status_log',
   holidays: 'holidays',            // วันหยุด: คอลัมน์ A = วันที่
+  fellowSchedule: 'fellow_schedule', // ตารางออกตรวจ fellow ทั้งปีการศึกษา
+  config: 'config',                // ชื่อผู้รับผิดชอบและข้อความ แก้ได้โดยไม่ต้องแตะโค้ด
 };
+
+/**
+ * จำนวนผู้ป่วยสูงสุดที่นัดพบ fellow 1 ท่านได้ต่อวันออกตรวจ
+ * ตามเอกสารข้อเสนอโครงการ — ปรับรายวันได้ที่คอลัมน์ max_slots ในชีต fellow_schedule
+ */
+const FELLOW_DEFAULT_SLOTS = 2;
 
 /** เวลาทำการที่ใช้นับ SLA (FR-013) */
 const BUSINESS = {

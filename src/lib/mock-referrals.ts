@@ -4,6 +4,7 @@
  */
 
 import type { Referral } from "./referral-types";
+import type { FellowClinicDay } from "./fellow-schedule";
 
 export const MOCK_REFERRALS: Referral[] = [
   /* ---------- กลุ่มที่ 1: Transplant appointment ---------- */
@@ -20,6 +21,8 @@ export const MOCK_REFERRALS: Referral[] = [
     elapsedBusinessHours: 50,
     followUpDate: "2026-07-30",
     possibleDuplicateOf: null,
+    appointmentDate: null,
+    fellowAssigned: null,
     note: "ขาดผล Chromosome และ Molecular mutation — แจ้งขอเอกสารเพิ่มแล้ว",
   },
   {
@@ -35,6 +38,8 @@ export const MOCK_REFERRALS: Referral[] = [
     elapsedBusinessHours: 14,
     followUpDate: "2026-08-05",
     possibleDuplicateOf: null,
+    appointmentDate: "2026-08-05",
+    fellowAssigned: "พญ. สุดา",
     note: "จองคิววันที่ 5 ส.ค. (คิวที่ 1 จาก 2)",
   },
   {
@@ -50,6 +55,8 @@ export const MOCK_REFERRALS: Referral[] = [
     elapsedBusinessHours: 2,
     followUpDate: "2026-07-30",
     possibleDuplicateOf: null,
+    appointmentDate: null,
+    fellowAssigned: null,
     note: "รอแอดมินกลางจัดคิว fellow",
   },
   {
@@ -65,6 +72,8 @@ export const MOCK_REFERRALS: Referral[] = [
     elapsedBusinessHours: 20,
     followUpDate: "2026-08-03",
     possibleDuplicateOf: null,
+    appointmentDate: "2026-08-03",
+    fellowAssigned: "พญ. สุดา",
     note: "นัด 3 ส.ค. 08:00 น. ที่ OPD 700 — พี่น้องมาตรวจ HLA ด้วย",
   },
   {
@@ -80,6 +89,8 @@ export const MOCK_REFERRALS: Referral[] = [
     elapsedBusinessHours: 6,
     followUpDate: "2026-08-03",
     possibleDuplicateOf: null,
+    appointmentDate: null,
+    fellowAssigned: null,
     note: "High-risk MDS (IPSS-R 5.5) — พิจารณา allogeneic SCT",
   },
 
@@ -97,6 +108,8 @@ export const MOCK_REFERRALS: Referral[] = [
     elapsedBusinessHours: 12,
     followUpDate: "2026-07-30",
     possibleDuplicateOf: null,
+    appointmentDate: null,
+    fellowAssigned: null,
     note: "เลือกสูตร R-CHOP จาก Template Library แล้ว รออาจารย์ตรวจทาน",
   },
   {
@@ -112,6 +125,8 @@ export const MOCK_REFERRALS: Referral[] = [
     elapsedBusinessHours: 18,
     followUpDate: null,
     possibleDuplicateOf: null,
+    appointmentDate: null,
+    fellowAssigned: null,
     note: "ส่งคำแนะนำสูตรยาและเบอร์ติดต่อกลับให้แพทย์ต้นทางแล้ว",
   },
   {
@@ -127,6 +142,8 @@ export const MOCK_REFERRALS: Referral[] = [
     elapsedBusinessHours: 26,
     followUpDate: "2026-07-30",
     possibleDuplicateOf: null,
+    appointmentDate: null,
+    fellowAssigned: null,
     note: "ไม่มีสูตรมาตรฐานตรงเคส — ต้องปรึกษาอาจารย์โดยตรง",
   },
   {
@@ -142,6 +159,8 @@ export const MOCK_REFERRALS: Referral[] = [
     elapsedBusinessHours: 4,
     followUpDate: "2026-08-03",
     possibleDuplicateOf: null,
+    appointmentDate: null,
+    fellowAssigned: null,
     note: "ดื้อ imatinib — ปรึกษาการเปลี่ยน TKI",
   },
 
@@ -159,6 +178,8 @@ export const MOCK_REFERRALS: Referral[] = [
     elapsedBusinessHours: 52,
     followUpDate: "2026-07-30",
     possibleDuplicateOf: null,
+    appointmentDate: null,
+    fellowAssigned: null,
     note: "รออาจารย์ตรวจทานก่อนตอบกลับ — ค้างเกิน 48 ชม.",
   },
   {
@@ -174,6 +195,8 @@ export const MOCK_REFERRALS: Referral[] = [
     elapsedBusinessHours: 16,
     followUpDate: "2026-07-31",
     possibleDuplicateOf: null,
+    appointmentDate: null,
+    fellowAssigned: null,
     note: "นัดประเมินร่างกายที่ OPD 700 วันที่ 31 ก.ค. — จนท. ทำนัดแล้ว",
   },
   {
@@ -189,6 +212,8 @@ export const MOCK_REFERRALS: Referral[] = [
     elapsedBusinessHours: 3,
     followUpDate: null,
     possibleDuplicateOf: "HEM-20260728-0002",
+    appointmentDate: null,
+    fellowAssigned: null,
     note: "ระบบพบชื่อ-นามสกุลใกล้เคียงกับเคสกลุ่ม 1 ที่ยื่นเมื่อวาน — ให้ตรวจสอบ",
   },
   {
@@ -204,6 +229,8 @@ export const MOCK_REFERRALS: Referral[] = [
     elapsedBusinessHours: 22,
     followUpDate: null,
     possibleDuplicateOf: null,
+    appointmentDate: null,
+    fellowAssigned: null,
     note: "ประเมินแล้วแพทย์ต้นทางดูแลต่อได้เอง — ส่งคำแนะนำกลับพร้อมบันทึกใน record",
   },
 
@@ -221,6 +248,8 @@ export const MOCK_REFERRALS: Referral[] = [
     elapsedBusinessHours: 2,
     followUpDate: null,
     possibleDuplicateOf: null,
+    appointmentDate: null,
+    fellowAssigned: null,
     note: "ระบบส่ง QR code นัดหมายกลางให้ผู้ป่วยอัตโนมัติ",
   },
   {
@@ -236,6 +265,8 @@ export const MOCK_REFERRALS: Referral[] = [
     elapsedBusinessHours: 9,
     followUpDate: null,
     possibleDuplicateOf: null,
+    appointmentDate: null,
+    fellowAssigned: null,
     note: "",
   },
   {
@@ -251,6 +282,24 @@ export const MOCK_REFERRALS: Referral[] = [
     elapsedBusinessHours: 6,
     followUpDate: null,
     possibleDuplicateOf: null,
+    appointmentDate: null,
+    fellowAssigned: null,
     note: "ผู้ป่วยได้รับใบนัดจากระบบนัดหมายกลางแล้ว",
   },
+];
+
+/**
+ * ตารางออกตรวจ fellow ตัวอย่าง — ใช้เฉพาะตอนยังไม่ได้ต่อ Google Sheet
+ * ของจริงมาจากชีต `fellow_schedule` ที่แพทย์แอดมินกรอกเอง
+ */
+export const MOCK_FELLOW_SCHEDULE: FellowClinicDay[] = [
+  { clinicDate: "2026-08-03", fellowName: "พญ. สุดา", maxSlots: 2, note: "" },
+  { clinicDate: "2026-08-05", fellowName: "พญ. สุดา", maxSlots: 2, note: "" },
+  { clinicDate: "2026-08-05", fellowName: "นพ. ธนกร", maxSlots: 2, note: "" },
+  { clinicDate: "2026-08-12", fellowName: "นพ. ธนกร", maxSlots: 2, note: "" },
+  { clinicDate: "2026-08-17", fellowName: "พญ. สุดา", maxSlots: 1, note: "ครึ่งวันเช้า" },
+  { clinicDate: "2026-08-19", fellowName: "นพ. ธนกร", maxSlots: 2, note: "" },
+  { clinicDate: "2026-08-26", fellowName: "พญ. สุดา", maxSlots: 2, note: "" },
+  { clinicDate: "2026-09-02", fellowName: "นพ. ธนกร", maxSlots: 2, note: "" },
+  { clinicDate: "2026-09-09", fellowName: "พญ. สุดา", maxSlots: 2, note: "" },
 ];

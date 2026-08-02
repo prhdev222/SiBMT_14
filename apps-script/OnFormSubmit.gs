@@ -28,6 +28,7 @@ const SYSTEM_COLUMNS = [
   'possible_duplicate_of',
   'advice_record',
   'incomplete_reason',
+  'appointment_date',
   'appointment_note',
   'fellow_assigned',
   'closed_at',

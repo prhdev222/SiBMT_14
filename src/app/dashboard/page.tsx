@@ -21,12 +21,20 @@ export default async function DashboardPage() {
               Dashboard — Referral Queue
             </h1>
           </div>
-          <Link
-            href="/"
-            className="text-sm font-medium text-blue-600 hover:underline"
-          >
-            กลับหน้าแรก
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/dashboard/schedule"
+              className="text-sm font-medium text-blue-600 hover:underline whitespace-nowrap"
+            >
+              ตารางออกตรวจ Fellow
+            </Link>
+            <Link
+              href="/"
+              className="text-sm font-medium text-zinc-500 hover:text-blue-600 hover:underline whitespace-nowrap"
+            >
+              กลับหน้าแรก
+            </Link>
+          </div>
         </div>
       </header>
 

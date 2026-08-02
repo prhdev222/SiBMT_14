@@ -29,8 +29,46 @@ function setupSheets() {
   ]);
   createIfMissing_(ss, SHEETS.holidays, ['holiday_date', 'description']);
 
+  createIfMissing_(ss, SHEETS.fellowSchedule, [
+    'clinic_date', 'fellow_name', 'max_slots', 'note',
+  ]);
+
+  createIfMissing_(ss, SHEETS.config, ['key', 'value', 'description']);
+  seedConfigKeys_(ss);
+
   console.log('สร้างชีตและคอลัมน์เรียบร้อย');
-  console.log('อย่าลืมกรอกวันหยุดนักขัตฤกษ์ลงในชีต "' + SHEETS.holidays + '"');
+  console.log('ต้องกรอกเพิ่ม:');
+  console.log('  • ' + SHEETS.holidays + ' — วันหยุดนักขัตฤกษ์');
+  console.log('  • ' + SHEETS.fellowSchedule + ' — ตารางออกตรวจ fellow ทั้งปีการศึกษา');
+  console.log('  • ' + SHEETS.config + ' — ชื่อผู้รับผิดชอบ');
+}
+
+/**
+ * ใส่ key ที่ระบบต้องใช้ลงชีต config พร้อมคำอธิบาย เว้นค่าให้ผู้ดูแลกรอกเอง
+ * ไม่เขียนทับค่าที่มีอยู่แล้ว
+ */
+function seedConfigKeys_(ss) {
+  const sheet = ss.getSheetByName(SHEETS.config);
+  const existing = {};
+  readRows_(sheet).forEach(function (r) {
+    if (r['key']) existing[String(r['key']).trim()] = true;
+  });
+
+  const defaults = [
+    ['central_admin_name', '', 'แพทย์แอดมินกลาง — ผู้รับ Red Alert เมื่อเคสค้างครบ 48 ชม.'],
+    ['central_admin_contact', '', 'เบอร์หรือ LINE ID ของแพทย์แอดมินกลาง'],
+    ['central_admin_backup_name', '', 'ผู้สำรองของแอดมินกลาง — ต้องมีก่อนเปิดใช้จริง'],
+    ['central_admin_backup_contact', '', 'ช่องทางติดต่อผู้สำรอง'],
+    ['system_owner', 'สาขาวิชาโลหิตวิทยา', 'เจ้าของระบบในนามหน่วยงาน'],
+    ['template_library_owner', '', 'ผู้ดูแลคลังสูตรยาเคมีบำบัด (ใช้ทั้งกลุ่ม 2 และ 3)'],
+    ['fellow_schedule_owner', '', 'ผู้กรอกตารางออกตรวจ fellow'],
+    ['opd_phone', '02-419-9903', 'เบอร์ธุรการ OPD 700'],
+  ];
+
+  const toAdd = defaults.filter(function (row) { return !existing[row[0]]; });
+  if (toAdd.length === 0) return;
+
+  sheet.getRange(sheet.getLastRow() + 1, 1, toAdd.length, 3).setValues(toAdd);
 }
 
 function createIfMissing_(ss, name, headers) {

@@ -315,6 +315,13 @@ export interface Referral {
   followUpDate: string | null;
   /** ระบบตรวจพบว่าอาจซ้ำกับเคสอื่นใน 30 วัน (FR-014) — ให้เจ้าหน้าที่ตรวจสอบเอง */
   possibleDuplicateOf: string | null;
+  /**
+   * วันนัด รูปแบบ yyyy-MM-dd — ใช้เฉพาะกลุ่มที่ 1 และ 3
+   * แยกจาก `note` เพราะต้องนำไปนับคิว fellow ได้ (ดู fellow-schedule.ts)
+   */
+  appointmentDate: string | null;
+  /** fellow ที่ผู้ป่วยถูกนัดให้พบ — เฉพาะกลุ่มที่ 1 */
+  fellowAssigned: string | null;
   note: string;
 }
 

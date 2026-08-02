@@ -8,7 +8,11 @@
  */
 
 import { readSheetRows, readCredentials } from "./google-sheets";
-import { MOCK_REFERRALS } from "./mock-referrals";
+import { MOCK_FELLOW_SCHEDULE, MOCK_REFERRALS } from "./mock-referrals";
+import {
+  DEFAULT_SLOTS_PER_FELLOW,
+  type FellowClinicDay,
+} from "./fellow-schedule";
 import {
   DISEASE_GROUPS,
   REFERRAL_TYPES,
@@ -20,8 +24,10 @@ import {
   type Urgency,
 } from "./referral-types";
 
-/** ชื่อชีตที่เก็บชุดข้อมูลที่ 1 — ต้องตรงกับ SHEETS.referrals ใน apps-script/Config.gs */
+/** ชื่อชีต — ต้องตรงกับ SHEETS ใน apps-script/Config.gs */
 const REFERRALS_SHEET = "referrals";
+const FELLOW_SCHEDULE_SHEET = "fellow_schedule";
+const CONFIG_SHEET = "config";
 
 export interface ReferralSource {
   referrals: Referral[];
@@ -55,6 +61,63 @@ export async function loadReferrals(): Promise<ReferralSource> {
 }
 
 /**
+ * อ่านตารางออกตรวจ fellow จากชีต `fellow_schedule`
+ *
+ * แพทย์แอดมินกรอกตารางนี้เอง ไม่ต้องแก้โค้ด (SRS NFR-005)
+ * คืน array ว่างถ้ายังไม่ได้ตั้งค่าหรืออ่านไม่ได้ — หน้าปฏิทินจะบอกเองว่ายังไม่มีตาราง
+ */
+export async function loadFellowSchedule(): Promise<FellowClinicDay[]> {
+  // โหมดสาธิต — ยังไม่ได้ต่อ Sheet จึงใช้ตารางตัวอย่างให้เห็นหน้าตาปฏิทิน
+  if (!readCredentials()) return MOCK_FELLOW_SCHEDULE;
+
+  try {
+    const rows = await readSheetRows(FELLOW_SCHEDULE_SHEET);
+    return rows
+      .map((row) => {
+        const clinicDate = toIsoDate(row["clinic_date"]);
+        const fellowName = text(row["fellow_name"]);
+        if (!clinicDate || !fellowName) return null;
+
+        const slots = Number(text(row["max_slots"]));
+        return {
+          clinicDate,
+          fellowName,
+          maxSlots:
+            Number.isFinite(slots) && slots > 0
+              ? slots
+              : DEFAULT_SLOTS_PER_FELLOW,
+          note: text(row["note"]),
+        };
+      })
+      .filter((d): d is FellowClinicDay => d !== null);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * อ่านชื่อผู้รับผิดชอบและค่าตั้งอื่นจากชีต `config`
+ *
+ * ชื่อคนเปลี่ยนบ่อย (แพทย์แอดมิน ผู้สำรอง fellow) จึงต้องแก้ในชีตได้
+ * ไม่ใช่ฝังใน config.ts ที่ต้องให้โปรแกรมเมอร์แก้แล้ว deploy ใหม่
+ */
+export async function loadConfigValues(): Promise<Record<string, string>> {
+  if (!readCredentials()) return {};
+
+  try {
+    const rows = await readSheetRows(CONFIG_SHEET);
+    const out: Record<string, string> = {};
+    for (const row of rows) {
+      const key = text(row["key"]);
+      if (key) out[key] = text(row["value"]);
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/**
  * แปลงหนึ่งแถวในชีตเป็น Referral
  * คืน null ถ้าแถวนั้นข้อมูลไม่พอใช้ เพื่อไม่ให้ทั้งหน้าพัง
  */
@@ -78,8 +141,23 @@ function toReferral(row: Record<string, string>): Referral | null {
     elapsedBusinessHours: number(row["elapsed_business_hours"]),
     followUpDate: text(row["follow_up_date"]) || null,
     possibleDuplicateOf: text(row["possible_duplicate_of"]) || null,
+    appointmentDate: toIsoDate(row["appointment_date"]),
+    fellowAssigned: text(row["fellow_assigned"]) || null,
     note: pickNote(row),
   };
+}
+
+/** รับได้ทั้งค่าที่ Google ส่งมาเป็น 8/5/2026 และที่พิมพ์เป็น 2026-08-05 */
+function toIsoDate(value: string | undefined): string | null {
+  const raw = text(value);
+  if (!raw) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return null;
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 function text(value: string | undefined): string {
