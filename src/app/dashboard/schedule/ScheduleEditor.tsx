@@ -48,13 +48,25 @@ export function ScheduleEditor({
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<ActionResult | null>(null);
 
-  const [fellowName, setFellowName] = useState(fellows[0] ?? "");
+  const [pickedFellow, setPickedFellow] = useState("");
   const [weeks, setWeeks] = useState(1);
   const [slots, setSlots] = useState(2);
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("12:00");
   const [note, setNote] = useState("");
   const [newFellow, setNewFellow] = useState("");
+
+  /**
+   * ชื่อที่เลือกอยู่จริง — คำนวณตอน render ไม่เก็บเป็น state ตั้งต้น
+   *
+   * ตอนเปิดแผงครั้งแรกอาจยังไม่มีรายชื่อสักคน ถ้าเก็บ fellows[0] ไว้เป็นค่าเริ่มต้น
+   * ของ state ค่านั้นจะค้างเป็นสตริงว่างตลอด เพราะ useState ตั้งค่าแค่ตอน mount
+   * พอเพิ่มชื่อคนแรกเสร็จ dropdown จะแสดงชื่อให้เห็น (เบราว์เซอร์เลือก option แรกเอง)
+   * แต่ state ยังว่างอยู่ ปุ่มบันทึกเลยกดไม่ได้ทั้งที่หน้าจอดูเหมือนพร้อมแล้ว
+   */
+  const fellowName = fellows.includes(pickedFellow)
+    ? pickedFellow
+    : (fellows[0] ?? "");
 
   // ปล่อยให้กดบันทึกแล้วค่อยรู้ว่าเวลากลับหัวเป็นการเสียเที่ยว บอกตั้งแต่พิมพ์
   const timeError =
@@ -154,7 +166,7 @@ export function ScheduleEditor({
                 <span className="block text-xs text-zinc-500 mb-1">Fellow</span>
                 <select
                   value={fellowName}
-                  onChange={(e) => setFellowName(e.target.value)}
+                  onChange={(e) => setPickedFellow(e.target.value)}
                   className="w-full rounded-md border border-zinc-300 px-2 py-1.5"
                 >
                   {fellows.map((f) => (
