@@ -5,7 +5,7 @@ import {
   loadReferrals,
   type FellowScheduleSource,
 } from "@/lib/referral-repository";
-import { isScheduleApiConfigured } from "@/lib/schedule-api";
+import { canWriteSchedule } from "@/lib/google-sheets";
 import { requireSession } from "@/lib/session";
 import { SessionBar } from "@/components/SessionBar";
 import {
@@ -57,7 +57,7 @@ export default async function SchedulePage({
     loadFellows(),
   ]);
 
-  const canEdit = isScheduleApiConfigured();
+  const canEdit = canWriteSchedule();
   const schedule = buildSchedule(source.days, referrals);
   const months = monthOptions(monthsAvailable(schedule), canEdit);
   const selected =
@@ -164,11 +164,11 @@ function EmptyState({ source }: { source: FellowScheduleSource }) {
         <p className="font-semibold text-blue-900">กรอกตารางได้ที่ไหน</p>
         <p className="text-blue-900/80 mt-1">
           ตอนนี้หน้านี้ยัง<strong>แสดงผลอย่างเดียว</strong> เพราะยังไม่ได้ตั้งค่า{" "}
-          <code className="rounded bg-blue-100 px-1">SCHEDULE_API_URL</code> และ{" "}
-          <code className="rounded bg-blue-100 px-1">SCHEDULE_API_TOKEN</code>{" "}
-          — ดูวิธีตั้งค่าในหัวไฟล์{" "}
-          <code className="rounded bg-blue-100 px-1">apps-script/Api.gs</code>{" "}
-          เมื่อตั้งค่าแล้วจะคลิกวันที่บนปฏิทินเพื่อกรอกได้จากหน้านี้เลย
+          <code className="rounded bg-blue-100 px-1">GOOGLE_SCHEDULE_SHEET_ID</code>{" "}
+          — ตารางเวรต้องอยู่ในไฟล์ Google Sheet คนละไฟล์กับข้อมูลผู้ป่วย
+          เพื่อให้เว็บเขียนตารางเวรได้โดยไม่ต้องมีสิทธิ์แตะข้อมูลผู้ป่วย
+          ดูขั้นตอนใน docs/DEPLOYMENT.md แล้วตรวจด้วย{" "}
+          <code className="rounded bg-blue-100 px-1">node scripts/setup-schedule-sheet.mjs</code>
         </p>
 
         <div className="mt-3 space-y-3">

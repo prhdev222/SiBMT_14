@@ -7,7 +7,11 @@
  * ⚠️ server-only — เรียกจาก server component เท่านั้น
  */
 
-import { readSheetRows, readCredentials } from "./google-sheets";
+import {
+  readCredentials,
+  readSheetRows,
+  scheduleSpreadsheetId,
+} from "./google-sheets";
 import { MOCK_FELLOW_SCHEDULE, MOCK_REFERRALS } from "./mock-referrals";
 import {
   DEFAULT_SLOTS_PER_FELLOW,
@@ -24,7 +28,12 @@ import {
   type Urgency,
 } from "./referral-types";
 
-/** ชื่อชีต — ต้องตรงกับ SHEETS ใน apps-script/Config.gs */
+/**
+ * ชื่อชีต — ต้องตรงกับ SHEETS ใน apps-script/Config.gs
+ *
+ * fellow_schedule กับ fellows อยู่คนละไฟล์กับ referrals เมื่อตั้งค่า
+ * GOOGLE_SCHEDULE_SHEET_ID แล้ว — ดูเหตุผลใน google-sheets.ts
+ */
 const REFERRALS_SHEET = "referrals";
 const FELLOW_SCHEDULE_SHEET = "fellow_schedule";
 const FELLOWS_SHEET = "fellows";
@@ -90,7 +99,10 @@ export async function loadFellowSchedule(): Promise<FellowScheduleSource> {
   }
 
   try {
-    const rows = await readSheetRows(FELLOW_SCHEDULE_SHEET);
+    const rows = await readSheetRows(
+      FELLOW_SCHEDULE_SHEET,
+      scheduleSpreadsheetId() ?? undefined,
+    );
     let skipped = 0;
 
     const days = rows
@@ -153,7 +165,10 @@ export async function loadFellows(): Promise<string[]> {
   }
 
   try {
-    const rows = await readSheetRows(FELLOWS_SHEET);
+    const rows = await readSheetRows(
+      FELLOWS_SHEET,
+      scheduleSpreadsheetId() ?? undefined,
+    );
     return rows
       .filter((row) => {
         if (!text(row["fellow_name"])) return false;

@@ -18,8 +18,8 @@
 | `Retention.gs` | ถอดชื่อย้ายเข้าคลังเมื่อครบกำหนด |
 | `Stats.gs` | สรุปสถิติรายเดือน |
 | `Setup.gs` | ติดตั้งครั้งแรกและตรวจความพร้อม |
-| `Menu.gs` + `Sidebar.html` | เมนูและหน้าจอจัดตารางออกตรวจ fellow ในตัวชีตเอง |
-| `Api.gs` | รับคำสั่งจัดตารางจาก dashboard (ไม่บังคับ — ดู §7) |
+| `Menu.gs` + `Sidebar.html` | หน้าจอจัดตารางในตัวชีต — สำรองไว้ ปกติกรอกที่ dashboard |
+| `Api.gs` | รับ LINE webhook — ใช้หา group ID (ไม่บังคับ — ดู §7) |
 
 ---
 
@@ -124,34 +124,24 @@ LINE ไม่มีหน้าจอไหนบอก group ID เลย ท�
 รัน `verifyLibraryHasNoIdentifiers()` เพิ่มอีกหนึ่งครั้ง เพื่อยืนยันว่า
 คลังคำตอบไม่มีคอลัมน์ที่โยงกลับหาผู้ป่วยได้
 
-### 7. เปิดให้จัดตารางออกตรวจจาก dashboard (ไม่บังคับ)
+### 7. Deploy Web app สำหรับ LINE webhook (ไม่บังคับ)
 
-ข้ามข้อนี้ได้ — ถ้าไม่ทำ ก็ยังจัดตารางได้จากเมนู **📅 ตารางออกตรวจ Fellow**
-ในตัวชีต และหน้าปฏิทินบน dashboard จะแสดงผลอย่างเดียว
-
-ทำข้อนี้เมื่ออยากให้แพทย์แอดมินคลิกวันที่บนปฏิทินใน dashboard แล้วกรอกได้เลย
-โดยไม่ต้องเปิด Google Sheet
+ทำข้อนี้เมื่อจะตั้ง LINE OA — ใช้หา **group ID** ของกลุ่มปลายทาง
+ซึ่ง LINE ไม่มีหน้าจอไหนบอกค่านี้เลย
 
 1. Deploy → New deployment → **Web app**
-   — Execute as: **Me** / Who has access: **Anyone**
-2. รัน `generateApiToken()` แล้วคัดลอกค่าที่ได้จาก Execution log
-3. Project Settings → Script Properties → เพิ่ม `SCHEDULE_API_TOKEN` = ค่านั้น
-4. ใส่ลง environment ของเว็บ (`.env.local` หรือ Cloudflare Pages → Variables):
-   `SCHEDULE_API_URL` = Web app URL (ลงท้าย `/exec`) และ `SCHEDULE_API_TOKEN` = ค่าเดียวกัน
+   — Execute as: **Me** / Who has access: **Anyone** (LINE ต้องเรียกได้โดยไม่ล็อกอิน)
+2. คัดลอก Web app URL (ลงท้าย `/exec`) ไปใส่ที่
+   LINE Developers Console → Messaging API → **Webhook URL**
+3. ทำตามขั้นตอนหา group ID ใน §Script Properties ด้านบน
 
-**ทำไมต้องอ้อมผ่าน Apps Script** — service account ที่เว็บใช้อ่านชีตมีสิทธิ์
-Viewer เท่านั้น และต้องเป็นแบบนั้นต่อไป เพราะสิทธิ์เขียนใน Google Sheets ให้
-ทั้งไฟล์ จำกัดเฉพาะบางแท็บไม่ได้ ถ้ายกเป็น Editor เพื่อแก้ตารางเวร
-credential ที่หลุดจะแก้หรือลบข้อมูลผู้ป่วยได้ด้วย
+> `Anyone` หมายถึงใครก็ตามที่รู้ URL — แต่ endpoint นี้**ไม่มีคำสั่งเขียนอะไรเลย**
+> มีแค่รับ webhook แล้ว log ว่ามาจากกลุ่มไหน ต่อให้ URL หลุดก็ทำอะไรกับข้อมูลไม่ได้
 
-ทางนี้ Apps Script เป็นผู้เขียนด้วยสิทธิ์เจ้าของชีตเอง และรับเฉพาะ 5 คำสั่ง
-ที่เกี่ยวกับตารางเวร — สั่งอะไรกับชีต `referrals` ไม่ได้เลย
-
-> ⚠️ `Anyone` หมายถึงใครก็ตามที่รู้ URL — token จึงเป็นตัวกั้นจริง
-> และ **ต้องตั้ง Cloudflare Access กั้น `/dashboard` ก่อน deploy ขึ้นอินเทอร์เน็ต**
-> เพราะ Server Action ถูกยิงตรงได้โดยไม่ผ่านหน้าจอ
-
----
+**ตารางออกตรวจ fellow ไม่ผ่านทางนี้แล้ว** — เว็บเขียนลงไฟล์ชีตตารางเวร
+ของตัวเองโดยตรง เพราะ Apps Script Web App ใช้เวลา 1–10 วินาทีต่อคำสั่ง
+เทียบกับ Sheets API ที่ราว 400 มิลลิวินาที ดูวิธีตั้งไฟล์ใน
+[docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md) §ไฟล์ชีตตารางเวร fellow
 
 ## จุดที่ออกแบบไว้เป็นพิเศษ
 

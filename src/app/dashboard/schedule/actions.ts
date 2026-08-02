@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import * as api from "@/lib/schedule-api";
+import * as store from "@/lib/schedule-store";
 import { requireSession } from "@/lib/session";
 
 /**
@@ -13,7 +13,7 @@ import { requireSession } from "@/lib/session";
  * ระบุชัดว่า proxy เป็นแค่ด่านคัดกรองหยาบ ๆ ไม่ใช่ระบบ authorization
  *
  * ข้อมูลที่แก้ได้ผ่านทางนี้เป็นตารางเวรของบุคลากรเท่านั้น
- * ไม่มีคำสั่งใดที่แตะข้อมูลผู้ป่วยได้ (ดู apps-script/Api.gs)
+ * เขียนลงไฟล์ชีตตารางเวรซึ่งแยกคนละไฟล์กับข้อมูลผู้ป่วย — ดู schedule-store.ts
  */
 
 export interface ActionResult {
@@ -42,7 +42,7 @@ export async function addClinicDaysAction(input: {
   await requireSession();
 
   try {
-    const { added, skipped } = await api.addClinicDays(input);
+    const { added, skipped } = await store.addClinicDays(input);
     revalidatePath("/dashboard/schedule");
 
     if (added === 0 && skipped > 0) {
@@ -68,7 +68,7 @@ export async function removeClinicDayAction(input: {
   await requireSession();
 
   try {
-    await api.removeClinicDay(input);
+    await store.removeClinicDay(input);
     revalidatePath("/dashboard/schedule");
     return { ok: true, message: "ลบวันออกตรวจแล้ว" };
   } catch (error) {
@@ -82,7 +82,7 @@ export async function addFellowAction(name: string): Promise<ActionResult> {
   await requireSession();
 
   try {
-    await api.addFellow(name);
+    await store.addFellow(name);
     revalidatePath("/dashboard/schedule");
     return { ok: true, message: `เพิ่ม ${name} แล้ว` };
   } catch (error) {
@@ -96,7 +96,7 @@ export async function deactivateFellowAction(name: string): Promise<ActionResult
   await requireSession();
 
   try {
-    await api.deactivateFellow(name);
+    await store.deactivateFellow(name);
     revalidatePath("/dashboard/schedule");
     return { ok: true, message: `ปิดการใช้งาน ${name} แล้ว` };
   } catch (error) {

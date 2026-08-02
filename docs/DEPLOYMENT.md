@@ -126,10 +126,49 @@ DELETE FROM referrals WHERE closed_at < date('now', '-3 years');
 | `LINE_CHANNEL_ACCESS_TOKEN` | token สำหรับส่งข้อความผ่าน LINE Messaging API |
 | `AUTH_SECRET` | กุญแจเซ็น session cookie ของ dashboard |
 | `DASHBOARD_USERS` | ชื่อผู้ใช้และ hash รหัสผ่านของผู้มีสิทธิ์เข้า dashboard |
-| `SCHEDULE_API_URL` | (ไม่บังคับ) Web app URL ของ Apps Script สำหรับแก้ตารางเวรจาก dashboard |
-| `SCHEDULE_API_TOKEN` | (ไม่บังคับ) token ของ Web app ข้างต้น |
+| `GOOGLE_SCHEDULE_SHEET_ID` | ID ของไฟล์ชีตตารางเวร fellow (คนละไฟล์กับข้อมูลผู้ป่วย) |
 
 > service account ต้องได้รับสิทธิ์ **Viewer** บน Google Sheet เท่านั้นเท่าที่จำเป็น และต้องแยก sheet ของ production ออกจาก test ตาม NFR-003
+
+## ไฟล์ชีตตารางเวร fellow (แยกคนละไฟล์)
+
+ตารางเวร fellow อยู่ใน Google Sheet **คนละไฟล์**กับข้อมูลผู้ป่วย โดยตั้งใจ
+
+สิทธิ์ของ Google Sheets ให้เป็น**รายไฟล์** จำกัดเฉพาะบางแท็บไม่ได้
+ถ้าตารางเวรอยู่ไฟล์เดียวกับข้อมูลผู้ป่วย การให้เว็บเขียนตารางเวรได้
+ก็เท่ากับให้เว็บแก้หรือลบข้อมูลผู้ป่วยได้ด้วย พอแยกไฟล์แล้ว service account
+เป็น **Editor เฉพาะไฟล์ตารางเวร** ส่วนไฟล์ข้อมูลผู้ป่วยยังเป็น **Viewer** เหมือนเดิม
+
+> เดิมแก้ปัญหานี้ด้วยการส่งคำสั่งผ่าน Apps Script Web App แต่วัดแล้วพบว่า
+> ใช้เวลา **1–10 วินาที** ต่อครั้ง (cold start) เทียบกับเขียน Sheets API ตรง ๆ
+> ที่ราว **400 มิลลิวินาที** การแยกไฟล์จึงได้ทั้งความเร็วและความปลอดภัยเท่าเดิม
+
+### ขั้นตอน
+
+1. สร้าง Google Sheet **ไฟล์ใหม่** ตั้งชื่อเช่น `SiBMT ตารางเวร fellow`
+2. สร้าง 2 แท็บ พร้อมหัวตารางแถวแรก
+
+   | แท็บ | หัวตาราง |
+   | --- | --- |
+   | `fellows` | `fellow_name` `active` `note` |
+   | `fellow_schedule` | `clinic_date` `fellow_name` `max_slots` `note` `start_time` `end_time` |
+
+3. กด **Share** → วางอีเมลของ service account → เลือก **Editor** → Send
+4. คัดลอก ID จาก URL (ส่วนระหว่าง `/d/` กับ `/edit`) ใส่เป็น `GOOGLE_SCHEDULE_SHEET_ID`
+5. ตรวจความพร้อม
+
+```bash
+node scripts/setup-schedule-sheet.mjs
+```
+
+   สคริปต์จะบอกทีละข้อว่าอะไรยังขาด และทดสอบว่าเขียนไฟล์ได้จริงหรือไม่
+   (เขียนลงเซลล์ที่ไกลจากข้อมูลแล้วล้างทิ้งทันที)
+
+### ข้อควรระวัง
+
+- **ห้ามเอาข้อมูลผู้ป่วยมาไว้ในไฟล์นี้** ไม่ว่ากรณีใด — ไฟล์นี้เว็บเขียนได้
+- ไฟล์ข้อมูลผู้ป่วยต้องเป็น **Viewer เท่านั้น** ตลอดไป ห้ามยกระดับเป็น Editor
+- ไม่ตั้ง `GOOGLE_SCHEDULE_SHEET_ID` = หน้าปฏิทินแสดงผลอย่างเดียว กรอกไม่ได้ (ไม่พัง)
 
 ## Access Control สำหรับ /dashboard
 

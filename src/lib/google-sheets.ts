@@ -10,12 +10,41 @@
 
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets";
-const SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
+
+/**
+ * ขอบเขตสิทธิ์ของ token — แยกสองชุดโดยตั้งใจ
+ *
+ * ไฟล์ข้อมูลผู้ป่วยอ่านด้วย token ที่ขอสิทธิ์อ่านอย่างเดียวเสมอ
+ * ต่อให้วันหนึ่งมีคนเผลอตั้งสิทธิ์ไฟล์นั้นเป็น Editor ให้ service account
+ * token ที่ใช้อ่านก็ยังเขียนไม่ได้อยู่ดี เป็นการกันซ้ำอีกชั้นนอกเหนือจาก
+ * สิทธิ์ระดับไฟล์ของ Google เอง
+ */
+const SCOPE_READ = "https://www.googleapis.com/auth/spreadsheets.readonly";
+const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
 
 interface ServiceAccountCredentials {
   clientEmail: string;
   privateKey: string;
   spreadsheetId: string;
+}
+
+/**
+ * ไฟล์ชีตตารางเวร fellow — แยกคนละไฟล์กับข้อมูลผู้ป่วย
+ *
+ * เหตุผลที่ต้องแยก: สิทธิ์ของ Google Sheets ให้เป็นรายไฟล์ จำกัดเป็นรายแท็บไม่ได้
+ * ถ้าตารางเวรอยู่ไฟล์เดียวกับข้อมูลผู้ป่วย การให้เว็บเขียนตารางเวรได้
+ * แปลว่าเว็บแก้หรือลบข้อมูลผู้ป่วยได้ด้วย พอแยกไฟล์แล้วให้ Editor
+ * เฉพาะไฟล์นี้ ข้อมูลผู้ป่วยจึงยังอ่านได้อย่างเดียวเหมือนเดิม
+ *
+ * ยังไม่ได้ตั้งค่า = ใช้ไฟล์เดียวกับข้อมูลผู้ป่วย และเขียนไม่ได้
+ */
+export function scheduleSpreadsheetId(): string | null {
+  return process.env.GOOGLE_SCHEDULE_SHEET_ID || null;
+}
+
+/** เขียนตารางเวรจากเว็บได้หรือยัง */
+export function canWriteSchedule(): boolean {
+  return Boolean(readCredentials() && scheduleSpreadsheetId());
 }
 
 /**
@@ -76,29 +105,30 @@ async function importPrivateKey(pem: string): Promise<CryptoKey> {
  * เก็บเป็น Promise ไม่ใช่ค่าที่ได้แล้ว เพราะทั้งสามคำขอเกิดขึ้นพร้อมกัน
  * ถ้าเก็บเฉพาะค่าที่ได้แล้ว ทั้งสามจะเห็น cache ว่าง แล้วยิงขอพร้อมกันอยู่ดี
  */
-let tokenCache: {
-  key: string;
-  token: Promise<string>;
-  expiresAt: number;
-} | null = null;
+const tokenCache = new Map<
+  string,
+  { token: Promise<string>; expiresAt: number }
+>();
 
 async function getAccessToken(
   credentials: ServiceAccountCredentials,
+  scope: string,
 ): Promise<string> {
-  const key = credentials.clientEmail;
+  // แยก cache ตาม scope ด้วย ไม่ใช่แค่ตามบัญชี
+  // ไม่งั้น token สิทธิ์เขียนจะถูกหยิบไปใช้อ่านไฟล์ข้อมูลผู้ป่วย
+  const key = `${credentials.clientEmail}|${scope}`;
   const now = Date.now();
 
-  if (tokenCache && tokenCache.key === key && tokenCache.expiresAt > now) {
-    return tokenCache.token;
-  }
+  const cached = tokenCache.get(key);
+  if (cached && cached.expiresAt > now) return cached.token;
 
-  const token = requestAccessToken(credentials);
+  const token = requestAccessToken(credentials, scope);
   // Google ให้อายุ 1 ชั่วโมง กันชน 5 นาทีเผื่อคำขอที่กำลังวิ่งอยู่
-  tokenCache = { key, token, expiresAt: now + 55 * 60 * 1000 };
+  tokenCache.set(key, { token, expiresAt: now + 55 * 60 * 1000 });
 
   // ขอไม่สำเร็จแล้วปล่อยค้างไว้ จะพังยาวทั้งชั่วโมงแม้ปัญหาหายไปแล้ว
   token.catch(() => {
-    if (tokenCache?.token === token) tokenCache = null;
+    if (tokenCache.get(key)?.token === token) tokenCache.delete(key);
   });
 
   return token;
@@ -107,12 +137,13 @@ async function getAccessToken(
 /** ขอ access token ด้วย JWT bearer flow */
 async function requestAccessToken(
   credentials: ServiceAccountCredentials,
+  scope: string,
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
 
   const claims = {
     iss: credentials.clientEmail,
-    scope: SCOPE,
+    scope,
     aud: TOKEN_ENDPOINT,
     iat: now,
     exp: now + 3600,
@@ -159,15 +190,18 @@ async function requestAccessToken(
  */
 export async function readSheetRows(
   sheetName: string,
+  spreadsheetId?: string,
 ): Promise<Record<string, string>[]> {
   const credentials = readCredentials();
   if (!credentials) return [];
 
-  const token = await getAccessToken(credentials);
+  // อ่านด้วยสิทธิ์อ่านอย่างเดียวเสมอ แม้เป็นไฟล์ที่เขียนได้
+  const token = await getAccessToken(credentials, SCOPE_READ);
   const range = encodeURIComponent(`${sheetName}!A:ZZ`);
+  const fileId = spreadsheetId ?? credentials.spreadsheetId;
 
   const response = await fetch(
-    `${SHEETS_API}/${credentials.spreadsheetId}/values/${range}?majorDimension=ROWS`,
+    `${SHEETS_API}/${fileId}/values/${range}?majorDimension=ROWS`,
     {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
@@ -193,4 +227,157 @@ export async function readSheetRows(
     });
     return record;
   });
+}
+
+/* ------------------------------------------------------------------ */
+/* เขียนลงไฟล์ตารางเวร                                                  */
+/*                                                                     */
+/* ทุกฟังก์ชันด้านล่างบังคับให้ระบุ spreadsheetId เอง และเรียกใช้ได้จาก    */
+/* schedule-store.ts ซึ่งส่ง scheduleSpreadsheetId() เข้ามาเท่านั้น       */
+/* ไม่มีเส้นทางไหนที่เขียนลงไฟล์ข้อมูลผู้ป่วยได้                          */
+/* ------------------------------------------------------------------ */
+
+async function writeToken(): Promise<{
+  token: string;
+  credentials: ServiceAccountCredentials;
+}> {
+  const credentials = readCredentials();
+  if (!credentials) throw new Error("ยังไม่ได้ตั้งค่า credential ของ Google");
+
+  return { token: await getAccessToken(credentials, SCOPE_WRITE), credentials };
+}
+
+async function expectOk(response: Response, action: string): Promise<void> {
+  if (response.ok) return;
+
+  const detail = await response.text();
+  if (response.status === 403) {
+    throw new Error(
+      `${action}ไม่สำเร็จ — service account ยังไม่มีสิทธิ์ Editor บนไฟล์ตารางเวร ` +
+        "(แชร์ไฟล์ให้อีเมลของ service account แบบ Editor ก่อน)",
+    );
+  }
+  throw new Error(`${action}ไม่สำเร็จ (${response.status}): ${detail}`);
+}
+
+/** ต่อแถวใหม่ท้ายชีต — ค่าทุกตัวเขียนเป็นข้อความดิบ ไม่ให้ Sheets ตีความเอง */
+export async function appendRows(
+  spreadsheetId: string,
+  sheetName: string,
+  rows: string[][],
+): Promise<void> {
+  if (rows.length === 0) return;
+  const { token } = await writeToken();
+
+  const range = encodeURIComponent(`${sheetName}!A:ZZ`);
+  const response = await fetch(
+    `${SHEETS_API}/${spreadsheetId}/values/${range}:append` +
+      "?valueInputOption=RAW&insertDataOption=INSERT_ROWS",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ values: rows }),
+      cache: "no-store",
+    },
+  );
+
+  await expectOk(response, "เพิ่มแถว");
+}
+
+/** เขียนทับช่วงเซลล์ที่ระบุ เช่น "fellows!B5" */
+export async function updateValues(
+  spreadsheetId: string,
+  a1Range: string,
+  values: string[][],
+): Promise<void> {
+  const { token } = await writeToken();
+
+  const response = await fetch(
+    `${SHEETS_API}/${spreadsheetId}/values/${encodeURIComponent(a1Range)}` +
+      "?valueInputOption=RAW",
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ values }),
+      cache: "no-store",
+    },
+  );
+
+  await expectOk(response, "แก้ไขข้อมูล");
+}
+
+/**
+ * หา sheetId (gid) ของแท็บ — จำเป็นสำหรับการลบแถว
+ * เพราะ batchUpdate อ้างแท็บด้วยตัวเลข ไม่ใช่ชื่อ
+ */
+const gidCache = new Map<string, number>();
+
+async function getSheetGid(
+  spreadsheetId: string,
+  sheetName: string,
+): Promise<number> {
+  const key = `${spreadsheetId}|${sheetName}`;
+  const cached = gidCache.get(key);
+  if (cached !== undefined) return cached;
+
+  const { token } = await writeToken();
+  const response = await fetch(
+    `${SHEETS_API}/${spreadsheetId}?fields=sheets.properties(sheetId,title)`,
+    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
+  );
+  await expectOk(response, "อ่านโครงสร้างไฟล์");
+
+  const data = (await response.json()) as {
+    sheets?: { properties?: { sheetId?: number; title?: string } }[];
+  };
+  const found = data.sheets?.find((s) => s.properties?.title === sheetName);
+
+  if (found?.properties?.sheetId === undefined) {
+    throw new Error(`ไม่พบแท็บชื่อ "${sheetName}" ในไฟล์ตารางเวร`);
+  }
+
+  gidCache.set(key, found.properties.sheetId);
+  return found.properties.sheetId;
+}
+
+/** ลบหนึ่งแถว (rowNumber นับแบบเดียวกับที่เห็นในชีต แถวแรกคือหัวตาราง = 1) */
+export async function deleteRow(
+  spreadsheetId: string,
+  sheetName: string,
+  rowNumber: number,
+): Promise<void> {
+  const { token } = await writeToken();
+  const gid = await getSheetGid(spreadsheetId, sheetName);
+
+  const response = await fetch(`${SHEETS_API}/${spreadsheetId}:batchUpdate`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      requests: [
+        {
+          deleteDimension: {
+            range: {
+              sheetId: gid,
+              dimension: "ROWS",
+              // API นับแถวเริ่มที่ 0 และไม่รวมปลายทาง
+              startIndex: rowNumber - 1,
+              endIndex: rowNumber,
+            },
+          },
+        },
+      ],
+    }),
+    cache: "no-store",
+  });
+
+  await expectOk(response, "ลบแถว");
 }
