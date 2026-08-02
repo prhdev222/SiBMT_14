@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { DashboardClient } from "@/components/DashboardClient";
-import { loadReferrals } from "@/lib/referral-repository";
+import { SessionBar } from "@/components/SessionBar";
+import { loadConfigValues, loadReferrals } from "@/lib/referral-repository";
+import { requireSession } from "@/lib/session";
 
 /**
  * ข้อมูลต้องสดเสมอ ไม่ cache — เจ้าหน้าที่ต้องเห็นสถานะปัจจุบัน
@@ -9,10 +11,18 @@ import { loadReferrals } from "@/lib/referral-repository";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const { referrals, isSampleData, error } = await loadReferrals();
+  // ตรวจก่อนโหลดข้อมูล — proxy.ts เป็นแค่ด่านหยาบ ไม่ใช่ตัวกั้นจริง
+  const session = await requireSession();
+
+  const [{ referrals, isSampleData, error }, config] = await Promise.all([
+    loadReferrals(),
+    loadConfigValues(),
+  ]);
 
   return (
     <div className="flex flex-col flex-1 bg-zinc-50">
+      <SessionBar username={session.username} />
+
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div>
@@ -61,7 +71,75 @@ export default async function DashboardPage() {
         )}
 
         <DashboardClient referrals={referrals} />
+
+        <ResponsibleContacts config={config} />
       </main>
     </div>
+  );
+}
+
+/**
+ * ผู้รับผิดชอบระบบ — อ่านจากชีต `config` ไม่ได้ฝังในโค้ด
+ *
+ * แสดงไว้ให้เจ้าหน้าที่รู้ว่าเคสค้างต้องแจ้งใคร และเพื่อให้เห็นชัดว่า
+ * ช่องไหนยังไม่ได้กรอก โดยเฉพาะผู้สำรองของแอดมินกลางซึ่งเป็น
+ * จุดเสี่ยงเดียวที่เหลืออยู่ของ escalation matrix
+ */
+function ResponsibleContacts({ config }: { config: Record<string, string> }) {
+  const rows = [
+    { label: "แพทย์แอดมินกลาง", name: config["central_admin_name"], contact: config["central_admin_contact"], critical: true },
+    { label: "ผู้สำรองแอดมินกลาง", name: config["central_admin_backup_name"], contact: config["central_admin_backup_contact"], critical: true },
+    { label: "ผู้ดูแลคลังสูตรยา", name: config["template_library_owner"], contact: "" },
+    { label: "ผู้กรอกตารางออกตรวจ fellow", name: config["fellow_schedule_owner"], contact: "" },
+  ];
+
+  const missingCritical = rows.filter((r) => r.critical && !r.name);
+  const hasSheet = Object.keys(config).length > 0;
+
+  return (
+    <section className="rounded-xl bg-white border border-zinc-200 p-5">
+      <h2 className="font-semibold text-zinc-900 text-sm">ผู้รับผิดชอบระบบ</h2>
+      <p className="text-xs text-zinc-500 mt-0.5">
+        แก้ไขได้ที่ชีต <code className="rounded bg-zinc-100 px-1">config</code>{" "}
+        โดยไม่ต้องแก้โค้ด
+      </p>
+
+      {!hasSheet ? (
+        <p className="mt-3 text-sm text-zinc-500">
+          ยังไม่ได้เชื่อมชีต <code className="rounded bg-zinc-100 px-1">config</code>{" "}
+          — รัน <code className="rounded bg-zinc-100 px-1">setupSheets()</code> ใน Apps Script
+        </p>
+      ) : (
+        <>
+          {missingCritical.length > 0 && (
+            <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900">
+              ยังไม่ได้ระบุ{" "}
+              <span className="font-medium">
+                {missingCritical.map((r) => r.label).join(" และ ")}
+              </span>{" "}
+              — ต้องมีก่อนเปิดใช้จริง มิฉะนั้นเคสที่ค้างครบ 48 ชั่วโมงจะไม่มีผู้รับแจ้ง
+            </div>
+          )}
+
+          <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+            {rows.map((r) => (
+              <div key={r.label} className="text-sm">
+                <dt className="text-zinc-500 text-xs">{r.label}</dt>
+                <dd
+                  className={
+                    r.name ? "text-zinc-800 font-medium" : "text-amber-700"
+                  }
+                >
+                  {r.name || "— ยังไม่ได้ระบุ —"}
+                  {r.contact && (
+                    <span className="font-normal text-zinc-500"> · {r.contact}</span>
+                  )}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </>
+      )}
+    </section>
   );
 }

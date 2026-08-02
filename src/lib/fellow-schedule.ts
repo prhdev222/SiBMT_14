@@ -19,6 +19,11 @@ export interface FellowClinicDay {
   fellowName: string;
   maxSlots: number;
   note: string;
+  /**
+   * เลขแถวจริงในชีต (แถวแรกคือหัวตาราง = 1)
+   * ต้องมีเพื่อสั่งลบแถวนั้นได้ และส่งไปให้ Apps Script ตรวจซ้ำก่อนลบ
+   */
+  rowNumber: number;
 }
 
 export interface FellowDayAvailability extends FellowClinicDay {

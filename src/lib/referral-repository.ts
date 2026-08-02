@@ -27,6 +27,7 @@ import {
 /** ชื่อชีต — ต้องตรงกับ SHEETS ใน apps-script/Config.gs */
 const REFERRALS_SHEET = "referrals";
 const FELLOW_SCHEDULE_SHEET = "fellow_schedule";
+const FELLOWS_SHEET = "fellows";
 const CONFIG_SHEET = "config";
 
 export interface ReferralSource {
@@ -66,17 +67,44 @@ export async function loadReferrals(): Promise<ReferralSource> {
  * แพทย์แอดมินกรอกตารางนี้เอง ไม่ต้องแก้โค้ด (SRS NFR-005)
  * คืน array ว่างถ้ายังไม่ได้ตั้งค่าหรืออ่านไม่ได้ — หน้าปฏิทินจะบอกเองว่ายังไม่มีตาราง
  */
-export async function loadFellowSchedule(): Promise<FellowClinicDay[]> {
+export interface FellowScheduleSource {
+  days: FellowClinicDay[];
+  /** จำนวนแถวที่อ่านได้จากชีต ก่อนคัดแถวที่ใช้ไม่ได้ออก */
+  rawRowCount: number;
+  /** แถวที่มีข้อมูลแต่ใช้ไม่ได้ เช่น วันที่ผิดรูปแบบ — แยกจาก "ยังไม่ได้กรอก" */
+  skippedRows: number;
+  isSampleData: boolean;
+  error: string | null;
+}
+
+export async function loadFellowSchedule(): Promise<FellowScheduleSource> {
   // โหมดสาธิต — ยังไม่ได้ต่อ Sheet จึงใช้ตารางตัวอย่างให้เห็นหน้าตาปฏิทิน
-  if (!readCredentials()) return MOCK_FELLOW_SCHEDULE;
+  if (!readCredentials()) {
+    return {
+      days: MOCK_FELLOW_SCHEDULE,
+      rawRowCount: MOCK_FELLOW_SCHEDULE.length,
+      skippedRows: 0,
+      isSampleData: true,
+      error: null,
+    };
+  }
 
   try {
     const rows = await readSheetRows(FELLOW_SCHEDULE_SHEET);
-    return rows
-      .map((row) => {
+    let skipped = 0;
+
+    const days = rows
+      .map((row, index) => {
         const clinicDate = toIsoDate(row["clinic_date"]);
         const fellowName = text(row["fellow_name"]);
-        if (!clinicDate || !fellowName) return null;
+
+        // แถวว่างทั้งแถวไม่นับว่าผิด — แต่แถวที่กรอกมาแล้วใช้ไม่ได้ต้องบอกให้รู้
+        if (!clinicDate || !fellowName) {
+          const hasAnything =
+            text(row["clinic_date"]) || fellowName || text(row["max_slots"]);
+          if (hasAnything) skipped++;
+          return null;
+        }
 
         const slots = Number(text(row["max_slots"]));
         return {
@@ -87,10 +115,53 @@ export async function loadFellowSchedule(): Promise<FellowClinicDay[]> {
               ? slots
               : DEFAULT_SLOTS_PER_FELLOW,
           note: text(row["note"]),
+          // แถวแรกของชีตเป็นหัวตาราง ข้อมูลแถวแรกจึงเป็นแถวที่ 2
+          rowNumber: index + 2,
         };
       })
       .filter((d): d is FellowClinicDay => d !== null);
+
+    return {
+      days,
+      rawRowCount: rows.length,
+      skippedRows: skipped,
+      isSampleData: false,
+      error: null,
+    };
+  } catch (error) {
+    return {
+      days: [],
+      rawRowCount: 0,
+      skippedRows: 0,
+      isSampleData: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * รายชื่อ fellow ที่ยังออกตรวจอยู่ จากชีต `fellows`
+ *
+ * ต้องตรงกับ listFellows() ใน apps-script/Menu.gs — ชื่อที่ปิดไปแล้ว
+ * (active = no) ไม่ควรโผล่ใน dropdown แต่ตารางเก่ายังอ้างถึงชื่อนั้นได้
+ */
+export async function loadFellows(): Promise<string[]> {
+  if (!readCredentials()) {
+    return [...new Set(MOCK_FELLOW_SCHEDULE.map((d) => d.fellowName))].sort();
+  }
+
+  try {
+    const rows = await readSheetRows(FELLOWS_SHEET);
+    return rows
+      .filter((row) => {
+        if (!text(row["fellow_name"])) return false;
+        const active = text(row["active"]).toLowerCase();
+        // เว้นว่างถือว่ายังใช้งาน — ต้องพิมพ์ no ถึงจะปิด
+        return active !== "no" && active !== "ไม่" && active !== "false";
+      })
+      .map((row) => text(row["fellow_name"]));
   } catch {
+    // ไม่มีชีต fellows ไม่ใช่เรื่องคอขาดบาดตาย — ปฏิทินยังแสดงได้
     return [];
   }
 }

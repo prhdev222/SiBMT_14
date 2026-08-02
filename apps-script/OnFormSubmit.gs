@@ -54,8 +54,25 @@ function onFormSubmit(e) {
 
     // 3. referral_type — แปลงข้อความตัวเลือกในฟอร์มเป็นค่าที่ระบบใช้
     const typeLabel = String(readCell_(sheet, map, row, 'referral_type') || '').trim();
-    const referralType = TYPE_FROM_FORM_LABEL[typeLabel] || typeLabel;
-    setCell_(sheet, map, row, 'referral_type', referralType);
+    const referralType = TYPE_FROM_FORM_LABEL[typeLabel];
+
+    if (!referralType) {
+      // ข้อความตัวเลือกในฟอร์มถูกแก้จนไม่ตรงกับ TYPE_FROM_FORM_LABEL แล้ว
+      // ถ้าปล่อยผ่าน เคสนี้จะไม่ขึ้นบน dashboard เลยเพราะแปลงค่าไม่ได้
+      // จึงต้องส่งเสียงดังทันที ไม่ใช่เก็บค่าดิบไว้เงียบ ๆ
+      const msg =
+        'แปลง referral_type ไม่สำเร็จ — ข้อความตัวเลือกในฟอร์มไม่ตรงกับที่ระบบรู้จัก\n' +
+        'ได้รับ: "' + typeLabel + '"\n' +
+        'ที่รู้จัก: ' + Object.keys(TYPE_FROM_FORM_LABEL).join(' | ') + '\n' +
+        'แก้โดยปรับข้อความตัวเลือกในฟอร์มให้ตรงกับเดิม หรือแก้ TYPE_FROM_FORM_LABEL ใน Config.gs ' +
+        'แล้วสร้างลิงก์ prefilled ใหม่ทั้ง 4 กลุ่ม';
+
+      console.error(msg);
+      setCell_(sheet, map, row, 'incomplete_reason', '⚠️ ' + msg.split('\n')[0]);
+      notifyConfigProblem_(msg);
+    }
+
+    setCell_(sheet, map, row, 'referral_type', referralType || typeLabel);
 
     // 3.1 รวมคำถามที่ถามซ้ำหลายกลุ่มลงคอลัมน์กลาง
     mergeGroupColumns_(sheet, map, row);

@@ -18,6 +18,8 @@
 | `Retention.gs` | ถอดชื่อย้ายเข้าคลังเมื่อครบกำหนด |
 | `Stats.gs` | สรุปสถิติรายเดือน |
 | `Setup.gs` | ติดตั้งครั้งแรกและตรวจความพร้อม |
+| `Menu.gs` + `Sidebar.html` | เมนูและหน้าจอจัดตารางออกตรวจ fellow ในตัวชีตเอง |
+| `Api.gs` | รับคำสั่งจัดตารางจาก dashboard (ไม่บังคับ — ดู §7) |
 
 ---
 
@@ -107,6 +109,33 @@
 
 รัน `verifyLibraryHasNoIdentifiers()` เพิ่มอีกหนึ่งครั้ง เพื่อยืนยันว่า
 คลังคำตอบไม่มีคอลัมน์ที่โยงกลับหาผู้ป่วยได้
+
+### 7. เปิดให้จัดตารางออกตรวจจาก dashboard (ไม่บังคับ)
+
+ข้ามข้อนี้ได้ — ถ้าไม่ทำ ก็ยังจัดตารางได้จากเมนู **📅 ตารางออกตรวจ Fellow**
+ในตัวชีต และหน้าปฏิทินบน dashboard จะแสดงผลอย่างเดียว
+
+ทำข้อนี้เมื่ออยากให้แพทย์แอดมินคลิกวันที่บนปฏิทินใน dashboard แล้วกรอกได้เลย
+โดยไม่ต้องเปิด Google Sheet
+
+1. Deploy → New deployment → **Web app**
+   — Execute as: **Me** / Who has access: **Anyone**
+2. รัน `generateApiToken()` แล้วคัดลอกค่าที่ได้จาก Execution log
+3. Project Settings → Script Properties → เพิ่ม `SCHEDULE_API_TOKEN` = ค่านั้น
+4. ใส่ลง environment ของเว็บ (`.env.local` หรือ Cloudflare Pages → Variables):
+   `SCHEDULE_API_URL` = Web app URL (ลงท้าย `/exec`) และ `SCHEDULE_API_TOKEN` = ค่าเดียวกัน
+
+**ทำไมต้องอ้อมผ่าน Apps Script** — service account ที่เว็บใช้อ่านชีตมีสิทธิ์
+Viewer เท่านั้น และต้องเป็นแบบนั้นต่อไป เพราะสิทธิ์เขียนใน Google Sheets ให้
+ทั้งไฟล์ จำกัดเฉพาะบางแท็บไม่ได้ ถ้ายกเป็น Editor เพื่อแก้ตารางเวร
+credential ที่หลุดจะแก้หรือลบข้อมูลผู้ป่วยได้ด้วย
+
+ทางนี้ Apps Script เป็นผู้เขียนด้วยสิทธิ์เจ้าของชีตเอง และรับเฉพาะ 5 คำสั่ง
+ที่เกี่ยวกับตารางเวร — สั่งอะไรกับชีต `referrals` ไม่ได้เลย
+
+> ⚠️ `Anyone` หมายถึงใครก็ตามที่รู้ URL — token จึงเป็นตัวกั้นจริง
+> และ **ต้องตั้ง Cloudflare Access กั้น `/dashboard` ก่อน deploy ขึ้นอินเทอร์เน็ต**
+> เพราะ Server Action ถูกยิงตรงได้โดยไม่ผ่านหน้าจอ
 
 ---
 

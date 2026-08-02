@@ -141,6 +141,21 @@ function notifyFellow_(referral) {
   pushLineMessage_(message, 'fellow');
 }
 
+/**
+ * แจ้งผู้ดูแลระบบเมื่อพบว่าการตั้งค่าฟอร์มกับโค้ดไม่ตรงกัน
+ *
+ * ปัญหาแบบนี้ทำให้เคสหายจาก dashboard โดยไม่มีใครรู้ จึงต้องแจ้งทันที
+ * ไม่รอรอบ 10:00 น. เพราะเป็นความผิดพลาดของระบบ ไม่ใช่ภาระงานปกติ
+ */
+function notifyConfigProblem_(detail) {
+  pushLineMessage_(
+    '🛠️ ระบบตั้งค่าไม่ตรงกัน\n' +
+      detail.split('\n').slice(0, 2).join('\n') +
+      '\nดูรายละเอียดใน Apps Script → Executions',
+    'red'
+  );
+}
+
 function formatThaiDate_(date) {
   const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
                   'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];

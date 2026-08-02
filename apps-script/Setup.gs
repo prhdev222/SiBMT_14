@@ -29,9 +29,12 @@ function setupSheets() {
   ]);
   createIfMissing_(ss, SHEETS.holidays, ['holiday_date', 'description']);
 
+  createIfMissing_(ss, SHEETS.fellows, ['fellow_name', 'active', 'note']);
+
   createIfMissing_(ss, SHEETS.fellowSchedule, [
     'clinic_date', 'fellow_name', 'max_slots', 'note',
   ]);
+  applyScheduleValidation_(ss);
 
   createIfMissing_(ss, SHEETS.config, ['key', 'value', 'description']);
   seedConfigKeys_(ss);
@@ -41,6 +44,67 @@ function setupSheets() {
   console.log('  • ' + SHEETS.holidays + ' — วันหยุดนักขัตฤกษ์');
   console.log('  • ' + SHEETS.fellowSchedule + ' — ตารางออกตรวจ fellow ทั้งปีการศึกษา');
   console.log('  • ' + SHEETS.config + ' — ชื่อผู้รับผิดชอบ');
+}
+
+/**
+ * ตั้ง data validation ให้ชีต fellow_schedule กรอกง่ายและกันพิมพ์ผิด
+ *
+ * - clinic_date  → บังคับเป็นวันที่ กดแล้วมีปฏิทินให้เลือก
+ * - fellow_name  → dropdown ดึงรายชื่อจากชีต fellows
+ * - max_slots    → ตัวเลข 1–10
+ *
+ * ชื่อ fellow ต้องสะกดตรงกับคอลัมน์ fellow_assigned ในชีต referrals เป๊ะ ๆ
+ * เพราะระบบจับคู่ด้วยชื่อ — dropdown จึงสำคัญกว่าความสะดวก มันกันเคสนับคิวผิด
+ *
+ * รันซ้ำได้ ปลอดภัย — ใช้เมื่อเพิ่มชื่อ fellow ใหม่แล้วอยากให้ dropdown อัปเดต
+ */
+function applyScheduleValidation_(ss) {
+  const schedule = ss.getSheetByName(SHEETS.fellowSchedule);
+  const fellows = ss.getSheetByName(SHEETS.fellows);
+  if (!schedule || !fellows) return;
+
+  const lastRow = Math.max(schedule.getMaxRows(), 500);
+  if (schedule.getMaxRows() < lastRow) {
+    schedule.insertRowsAfter(schedule.getMaxRows(), lastRow - schedule.getMaxRows());
+  }
+
+  // วันที่
+  schedule.getRange(2, 1, lastRow - 1, 1)
+    .setDataValidation(
+      SpreadsheetApp.newDataValidation()
+        .requireDate()
+        .setHelpText('เลือกวันที่ออกตรวจจากปฏิทิน')
+        .build()
+    )
+    .setNumberFormat('yyyy-mm-dd');
+
+  // ชื่อ fellow — ดึงจากชีต fellows คอลัมน์ A
+  schedule.getRange(2, 2, lastRow - 1, 1).setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireValueInRange(fellows.getRange('A2:A200'), true)
+      .setAllowInvalid(false)
+      .setHelpText('เลือกชื่อจากรายการในชีต fellows — เพิ่มชื่อใหม่ที่ชีตนั้นก่อน')
+      .build()
+  );
+
+  // จำนวนคิวต่อวัน
+  schedule.getRange(2, 3, lastRow - 1, 1).setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireNumberBetween(1, 10)
+      .setHelpText('เว้นว่างได้ ระบบใช้ค่าเริ่มต้น ' + FELLOW_DEFAULT_SLOTS + ' คนต่อวัน')
+      .build()
+  );
+
+  schedule.setFrozenRows(1);
+}
+
+/**
+ * เรียกใช้เองหลังเพิ่มหรือลบชื่อใน ชีต fellows เพื่อให้ dropdown อัปเดต
+ * (ปกติ requireValueInRange อัปเดตตามอยู่แล้ว ฟังก์ชันนี้ไว้ซ่อมกรณี validation หาย)
+ */
+function refreshFellowDropdown() {
+  applyScheduleValidation_(SpreadsheetApp.getActiveSpreadsheet());
+  console.log('อัปเดต dropdown ชื่อ fellow เรียบร้อย');
 }
 
 /**
@@ -177,6 +241,23 @@ function runSelfTest() {
                        'ชื่อผู้ป่วย', 'ชื่อ-สกุลผู้ป่วย', 'HN', 'เลขบัตรประชาชน'];
     forbidden.forEach(function (c) {
       if (c in map) problems.push('⚠️ พบคอลัมน์ที่ห้ามมี: ' + c);
+    });
+
+    // referral_type ของทุกแถวต้องแปลงเป็นค่าอังกฤษได้
+    // ถ้าเจอข้อความไทยค้างอยู่ แปลว่าตัวเลือกในฟอร์มถูกแก้จนไม่ตรงกับ Config.gs
+    // เคสเหล่านั้นจะไม่ขึ้นบน dashboard เลย
+    const validTypes = Object.keys(GROUP_NUMBER);
+    const badTypes = {};
+    readRows_(referrals).forEach(function (r) {
+      const t = String(r['referral_type'] || '').trim();
+      if (t && validTypes.indexOf(t) === -1) badTypes[t] = (badTypes[t] || 0) + 1;
+    });
+    Object.keys(badTypes).forEach(function (t) {
+      problems.push(
+        '⚠️ พบ referral_type ที่แปลงค่าไม่ได้ ' + badTypes[t] + ' เคส: "' + t + '" — ' +
+        'เคสเหล่านี้จะไม่แสดงบน dashboard ให้ตรวจว่าข้อความตัวเลือกในฟอร์ม ' +
+        'ยังตรงกับ TYPE_FROM_FORM_LABEL ใน Config.gs หรือไม่'
+      );
     });
 
     // เตือนถ้ายังมีหัวคอลัมน์ภาษาไทยหลงเหลือ (แปลว่ายังเปลี่ยนชื่อไม่ครบ)

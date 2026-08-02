@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<style>
+  body { font-family: -apple-system, "Segoe UI", "Noto Sans Thai", Tahoma, sans-serif;
+         font-size: 13px; color: #1f2937; margin: 0; padding: 12px; }
+  h3 { font-size: 13px; margin: 0 0 8px; color: #111827; }
+  section { border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin-bottom: 12px; }
+  label { display: block; font-size: 11px; color: #6b7280; margin: 8px 0 3px; }
+  input, select { width: 100%; box-sizing: border-box; padding: 6px 8px;
+                  border: 1px solid #d1d5db; border-radius: 5px; font-size: 13px;
+                  color: #1f2937; background: #fff; }
+  button { background: #2563eb; color: #fff; border: 0; border-radius: 5px;
+           padding: 7px 12px; font-size: 13px; cursor: pointer; margin-top: 10px; }
+  button:hover { background: #1d4ed8; }
+  button:disabled { background: #9ca3af; cursor: default; }
+  button.link { background: none; color: #dc2626; padding: 0 4px; font-size: 11px; margin: 0; }
+  button.secondary { background: #fff; color: #374151; border: 1px solid #d1d5db; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  .msg { margin-top: 8px; padding: 7px 9px; border-radius: 5px; font-size: 12px; display: none; }
+  .msg.ok { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; display: block; }
+  .msg.err { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; display: block; }
+  .hint { font-size: 11px; color: #6b7280; margin-top: 6px; line-height: 1.5; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  td { padding: 3px 0; border-bottom: 1px solid #f3f4f6; }
+  td.date { font-family: ui-monospace, Menlo, monospace; white-space: nowrap; }
+  .empty { color: #9ca3af; font-size: 12px; padding: 8px 0; }
+</style>
+</head>
+<body>
+
+<section>
+  <h3>1. รายชื่อ Fellow</h3>
+  <div class="row">
+    <input id="newFellow" placeholder="เช่น พญ. สุดา">
+    <button style="flex:0 0 auto" onclick="doAddFellow()">เพิ่ม</button>
+  </div>
+  <div id="fellowList" class="empty">กำลังโหลด…</div>
+  <p class="hint">เปลี่ยนปีการศึกษาแล้ว ให้กด "ปิด" ชื่อเดิมแทนการลบ — ตารางเก่ายังอ้างถึงชื่อนั้นอยู่</p>
+</section>
+
+<section>
+  <h3>2. เพิ่มวันออกตรวจ</h3>
+
+  <label>Fellow</label>
+  <select id="fellowSelect"></select>
+
+  <label>วันที่ออกตรวจ (วันแรก)</label>
+  <input type="date" id="startDate" onchange="preview()">
+
+  <div class="row">
+    <div>
+      <label>ออกตรวจกี่สัปดาห์ติดกัน</label>
+      <input type="number" id="repeatWeeks" value="1" min="1" max="52" oninput="preview()">
+    </div>
+    <div>
+      <label>คิวต่อวัน</label>
+      <input type="number" id="maxSlots" value="2" min="1" max="10">
+    </div>
+  </div>
+
+  <div id="preview" class="hint"></div>
+
+  <label>หมายเหตุ (ไม่บังคับ)</label>
+  <input id="note" placeholder="เช่น ครึ่งวันเช้า">
+
+  <button id="addBtn" onclick="doAddDays()">เพิ่มลงตาราง</button>
+  <div id="msg" class="msg"></div>
+  <p class="hint">
+    ใส่ <b>1</b> = เฉพาะวันที่เลือก · ใส่ <b>16</b> = วันเดียวกันของสัปดาห์ ต่อเนื่อง 16 สัปดาห์
+    <br>วันที่ซ้ำกับที่มีอยู่แล้วจะถูกข้าม กดซ้ำได้ไม่เกิดแถวซ้ำ
+  </p>
+</section>
+
+<section>
+  <h3>3. ตารางที่กรอกไว้</h3>
+  <label>เดือน</label>
+  <input type="month" id="monthFilter" onchange="loadDays()">
+  <div id="dayList" class="empty">—</div>
+</section>
+
+<script>
+  function show(text, ok) {
+    var el = document.getElementById('msg');
+    el.className = 'msg ' + (ok ? 'ok' : 'err');
+    el.textContent = text;
+  }
+
+  function renderFellows(names) {
+    var sel = document.getElementById('fellowSelect');
+    sel.innerHTML = names.map(function (n) {
+      return '<option>' + n.replace(/</g, '&lt;') + '</option>';
+    }).join('');
+
+    var list = document.getElementById('fellowList');
+    if (names.length === 0) {
+      list.className = 'empty';
+      list.textContent = 'ยังไม่มีชื่อ — เพิ่มชื่อก่อนจึงจะจัดตารางได้';
+      return;
+    }
+    list.className = '';
+    list.innerHTML = '<table>' + names.map(function (n) {
+      var safe = n.replace(/</g, '&lt;');
+      return '<tr><td>' + safe + '</td><td style="text-align:right">' +
+        '<button class="link" onclick="doDeactivate(\'' + safe.replace(/'/g, "\\'") + '\')">ปิด</button>' +
+        '</td></tr>';
+    }).join('') + '</table>';
+  }
+
+  function loadFellows() {
+    google.script.run.withSuccessHandler(renderFellows)
+      .withFailureHandler(function (e) { show(e.message, false); })
+      .listFellows();
+  }
+
+  function doAddFellow() {
+    var input = document.getElementById('newFellow');
+    if (!input.value.trim()) return;
+    google.script.run
+      .withSuccessHandler(function (names) { input.value = ''; renderFellows(names); show('เพิ่มชื่อแล้ว', true); })
+      .withFailureHandler(function (e) { show(e.message, false); })
+      .addFellow(input.value);
+  }
+
+  function doDeactivate(name) {
+    google.script.run
+      .withSuccessHandler(function (names) { renderFellows(names); show('ปิดการใช้งาน ' + name + ' แล้ว', true); })
+      .withFailureHandler(function (e) { show(e.message, false); })
+      .deactivateFellow(name);
+  }
+
+  function doAddDays() {
+    var btn = document.getElementById('addBtn');
+    btn.disabled = true;
+    google.script.run
+      .withSuccessHandler(function (r) {
+        btn.disabled = false;
+        show('เพิ่ม ' + r.added + ' วัน' + (r.skipped ? ' (ข้ามที่ซ้ำ ' + r.skipped + ')' : ''), true);
+        loadDays();
+      })
+      .withFailureHandler(function (e) { btn.disabled = false; show(e.message, false); })
+      .addClinicDays({
+        fellowName: document.getElementById('fellowSelect').value,
+        startDate: document.getElementById('startDate').value,
+        repeatWeeks: document.getElementById('repeatWeeks').value,
+        maxSlots: document.getElementById('maxSlots').value,
+        note: document.getElementById('note').value
+      });
+  }
+
+  function loadDays() {
+    google.script.run.withSuccessHandler(function (days) {
+      var el = document.getElementById('dayList');
+      if (!days.length) { el.className = 'empty'; el.textContent = 'ยังไม่มีวันออกตรวจในเดือนนี้'; return; }
+      el.className = '';
+      el.innerHTML = '<table>' + days.map(function (d) {
+        return '<tr><td class="date">' + d.date + '</td><td>' +
+          d.fellow.replace(/</g, '&lt;') + '</td><td style="text-align:right">' + d.slots +
+          ' <button class="link" onclick="doRemove(' + d.row + ')">ลบ</button></td></tr>';
+      }).join('') + '</table>';
+    }).listClinicDays(document.getElementById('monthFilter').value);
+  }
+
+  function doRemove(row) {
+    google.script.run.withSuccessHandler(loadDays).removeClinicDay(row);
+  }
+
+  var TH_MONTH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.',
+                  'ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var TH_DAY = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+
+  /** แสดงให้เห็นก่อนกดว่าจะได้วันอะไรบ้าง — กันเข้าใจผิดเรื่องจำนวนสัปดาห์ */
+  function preview() {
+    var el = document.getElementById('preview');
+    var start = document.getElementById('startDate').value;
+    var n = Number(document.getElementById('repeatWeeks').value) || 0;
+
+    if (!start || n < 1) { el.textContent = ''; return; }
+
+    var p = start.split('-').map(Number);
+    var dates = [];
+    for (var w = 0; w < Math.min(n, 52); w++) {
+      var d = new Date(p[0], p[1] - 1, p[2] + w * 7);
+      dates.push(d.getDate() + ' ' + TH_MONTH[d.getMonth()]);
+    }
+
+    var weekday = TH_DAY[new Date(p[0], p[1] - 1, p[2]).getDay()];
+    var shown = dates.length > 6
+      ? dates.slice(0, 4).join(', ') + ' … ' + dates[dates.length - 1]
+      : dates.join(', ');
+
+    el.innerHTML = '<b>จะสร้าง ' + dates.length + ' วัน</b> (ทุกวัน' + weekday + '): ' + shown;
+  }
+
+  // ตั้งค่าเริ่มต้นเป็นเดือนปัจจุบัน
+  var now = new Date();
+  document.getElementById('monthFilter').value =
+    now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+
+  loadFellows();
+  loadDays();
+</script>
+</body>
+</html>

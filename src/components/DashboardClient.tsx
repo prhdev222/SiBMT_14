@@ -9,7 +9,6 @@ import {
   DISEASE_GROUP_LABEL_TH,
   REFERRAL_TYPES_ORDERED,
   REFERRAL_TYPE_META,
-  STAFF_MEMBERS,
   STATUSES,
   STATUS_COLOR,
   STATUS_LABEL_TH,
@@ -136,6 +135,20 @@ export function DashboardClient({ referrals }: { referrals: Referral[] }) {
       (r) => r.possibleDuplicateOf !== null,
     ).length;
     return { total: referrals.length, red, yellow, incomplete, duplicates };
+  }, [referrals]);
+
+  /**
+   * รายชื่อผู้รับผิดชอบสำหรับ dropdown — ดึงจากเคสจริงที่มีอยู่
+   *
+   * ไม่ใช้รายชื่อตายตัวในโค้ด เพราะ resident และ fellow หมุนเวียนทุกปี
+   * รายชื่อที่ล้าสมัยจะทำให้กรองไม่เจอคนที่มีเคสอยู่จริง
+   */
+  const assignees = useMemo(() => {
+    const names = new Set<string>();
+    for (const r of referrals) {
+      if (r.assignedTo) names.add(r.assignedTo);
+    }
+    return [...names].sort((a, b) => a.localeCompare(b, "th"));
   }, [referrals]);
 
   /** จำนวนเคสที่ยังไม่จบ แยกตามกลุ่มงาน — ใช้ดูภาระงานแต่ละทีม */
@@ -265,7 +278,7 @@ export function DashboardClient({ referrals }: { referrals: Referral[] }) {
         >
           <option value="all">ผู้รับผิดชอบทั้งหมด</option>
           <option value="unassigned">ยังไม่มอบหมาย</option>
-          {STAFF_MEMBERS.map((s) => (
+          {assignees.map((s) => (
             <option key={s} value={s}>
               {s}
             </option>

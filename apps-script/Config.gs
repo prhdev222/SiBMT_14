@@ -15,6 +15,7 @@ const SHEETS = {
   statusLog: 'status_log',
   holidays: 'holidays',            // วันหยุด: คอลัมน์ A = วันที่
   fellowSchedule: 'fellow_schedule', // ตารางออกตรวจ fellow ทั้งปีการศึกษา
+  fellows: 'fellows',              // รายชื่อ fellow ปีปัจจุบัน — เปลี่ยนทุกปีการศึกษา
   config: 'config',                // ชื่อผู้รับผิดชอบและข้อความ แก้ได้โดยไม่ต้องแตะโค้ด
 };
 

@@ -1,0 +1,278 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import {
+  addClinicDaysAction,
+  addFellowAction,
+  deactivateFellowAction,
+  removeClinicDayAction,
+  type ActionResult,
+} from "./actions";
+import type { FellowDayAvailability } from "@/lib/fellow-schedule";
+
+const TH_MONTH = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+                  "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+const TH_DAY = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+
+function formatDateTh(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const weekday = TH_DAY[new Date(y, m - 1, d).getDay()];
+  return `วัน${weekday}ที่ ${d} ${TH_MONTH[m - 1]} ${y + 543}`;
+}
+
+/** วันที่จะถูกสร้างเมื่อกดเพิ่ม — แสดงให้เห็นก่อนกด */
+function previewDates(startIso: string, weeks: number): string[] {
+  const [y, m, d] = startIso.split("-").map(Number);
+  const out: string[] = [];
+  for (let w = 0; w < Math.min(Math.max(weeks, 1), 52); w++) {
+    const date = new Date(y, m - 1, d + w * 7);
+    out.push(`${date.getDate()} ${TH_MONTH[date.getMonth()]}`);
+  }
+  return out;
+}
+
+export function ScheduleEditor({
+  selectedDate,
+  fellows,
+  existing,
+  onClose,
+}: {
+  selectedDate: string;
+  fellows: string[];
+  existing: FellowDayAvailability[];
+  onClose: () => void;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [result, setResult] = useState<ActionResult | null>(null);
+
+  const [fellowName, setFellowName] = useState(fellows[0] ?? "");
+  const [weeks, setWeeks] = useState(1);
+  const [slots, setSlots] = useState(2);
+  const [note, setNote] = useState("");
+  const [newFellow, setNewFellow] = useState("");
+
+  function run(fn: () => Promise<ActionResult>) {
+    setResult(null);
+    startTransition(async () => setResult(await fn()));
+  }
+
+  const dates = selectedDate ? previewDates(selectedDate, weeks) : [];
+  const weekday = selectedDate
+    ? TH_DAY[
+        new Date(
+          Number(selectedDate.slice(0, 4)),
+          Number(selectedDate.slice(5, 7)) - 1,
+          Number(selectedDate.slice(8, 10)),
+        ).getDay()
+      ]
+    : "";
+
+  return (
+    <div className="rounded-xl bg-white border-2 border-blue-500 p-5 space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <h2 className="font-semibold text-zinc-900">
+          {formatDateTh(selectedDate)}
+        </h2>
+        <button
+          onClick={onClose}
+          className="text-sm text-zinc-400 hover:text-zinc-700"
+        >
+          ปิด
+        </button>
+      </div>
+
+      {existing.length > 0 && (
+        <div>
+          <p className="text-xs text-zinc-500 mb-1.5">มีอยู่แล้วในวันนี้</p>
+          <ul className="space-y-1">
+            {existing.map((f) => (
+              <li
+                key={f.rowNumber}
+                className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 px-3 py-2 text-sm"
+              >
+                <span>
+                  <span className="font-medium text-zinc-800">{f.fellowName}</span>
+                  <span className="text-zinc-500 tabular-nums">
+                    {" "}
+                    — นัดแล้ว {f.booked}/{f.maxSlots}
+                  </span>
+                </span>
+                <button
+                  disabled={pending || f.booked > 0}
+                  onClick={() =>
+                    run(() =>
+                      removeClinicDayAction({
+                        rowNumber: f.rowNumber,
+                        clinicDate: f.clinicDate,
+                        fellowName: f.fellowName,
+                      }),
+                    )
+                  }
+                  title={
+                    f.booked > 0
+                      ? "ลบไม่ได้ เพราะมีผู้ป่วยนัดไว้แล้ว — ต้องย้ายนัดก่อน"
+                      : undefined
+                  }
+                  className="text-xs text-red-600 hover:underline disabled:text-zinc-300 disabled:no-underline whitespace-nowrap"
+                >
+                  ลบ
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="border-t border-zinc-200 pt-4 space-y-3">
+        <p className="text-sm font-medium text-zinc-800">เพิ่มวันออกตรวจ</p>
+
+        {fellows.length === 0 ? (
+          <p className="text-sm text-amber-700">
+            ยังไม่มีรายชื่อ fellow — เพิ่มชื่อด้านล่างก่อน
+          </p>
+        ) : (
+          <>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="text-sm">
+                <span className="block text-xs text-zinc-500 mb-1">Fellow</span>
+                <select
+                  value={fellowName}
+                  onChange={(e) => setFellowName(e.target.value)}
+                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5"
+                >
+                  {fellows.map((f) => (
+                    <option key={f}>{f}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="text-sm">
+                <span className="block text-xs text-zinc-500 mb-1">
+                  ออกตรวจกี่สัปดาห์ติดกัน
+                </span>
+                <input
+                  type="number"
+                  min={1}
+                  max={52}
+                  value={weeks}
+                  onChange={(e) => setWeeks(Number(e.target.value))}
+                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 tabular-nums"
+                />
+              </label>
+
+              <label className="text-sm">
+                <span className="block text-xs text-zinc-500 mb-1">คิวต่อวัน</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={slots}
+                  onChange={(e) => setSlots(Number(e.target.value))}
+                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5 tabular-nums"
+                />
+              </label>
+            </div>
+
+            <label className="block text-sm">
+              <span className="block text-xs text-zinc-500 mb-1">
+                หมายเหตุ (ไม่บังคับ)
+              </span>
+              <input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="เช่น ครึ่งวันเช้า"
+                className="w-full rounded-md border border-zinc-300 px-2 py-1.5"
+              />
+            </label>
+
+            <p className="text-xs text-zinc-600">
+              <span className="font-medium">จะสร้าง {dates.length} วัน</span> (ทุกวัน
+              {weekday}):{" "}
+              {dates.length > 6
+                ? `${dates.slice(0, 4).join(", ")} … ${dates[dates.length - 1]}`
+                : dates.join(", ")}
+            </p>
+
+            <button
+              disabled={pending || !fellowName}
+              onClick={() =>
+                run(() =>
+                  addClinicDaysAction({
+                    fellowName,
+                    startDate: selectedDate,
+                    repeatWeeks: weeks,
+                    maxSlots: slots,
+                    note,
+                  }),
+                )
+              }
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-zinc-300"
+            >
+              {pending ? "กำลังบันทึก…" : "เพิ่มลงตาราง"}
+            </button>
+          </>
+        )}
+      </div>
+
+      <div className="border-t border-zinc-200 pt-4">
+        <p className="text-sm font-medium text-zinc-800 mb-2">รายชื่อ Fellow</p>
+
+        <div className="flex flex-wrap gap-2 mb-3">
+          {fellows.map((f) => (
+            <span
+              key={f}
+              className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-2.5 py-1 text-xs text-zinc-700"
+            >
+              {f}
+              <button
+                disabled={pending}
+                onClick={() => run(() => deactivateFellowAction(f))}
+                title="ปิดการใช้งาน — ตารางเก่ายังอยู่"
+                className="text-zinc-400 hover:text-red-600"
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+          {fellows.length === 0 && (
+            <span className="text-xs text-zinc-400">ยังไม่มีรายชื่อ</span>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <input
+            value={newFellow}
+            onChange={(e) => setNewFellow(e.target.value)}
+            placeholder="เช่น พญ. สุดา"
+            className="flex-1 rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+          />
+          <button
+            disabled={pending || !newFellow.trim()}
+            onClick={() => {
+              run(() => addFellowAction(newFellow));
+              setNewFellow("");
+            }}
+            className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:text-zinc-300"
+          >
+            เพิ่มชื่อ
+          </button>
+        </div>
+        <p className="text-xs text-zinc-500 mt-1.5">
+          เปลี่ยนรอบปีการศึกษาให้กด ✕ ปิดชื่อเดิม แทนการลบ — ตารางเก่ายังอ้างถึงชื่อนั้นอยู่
+        </p>
+      </div>
+
+      {result && (
+        <p
+          className={`rounded-lg px-3 py-2 text-sm ${
+            result.ok
+              ? "bg-green-50 border border-green-200 text-green-900"
+              : "bg-red-50 border border-red-200 text-red-900"
+          }`}
+        >
+          {result.message}
+        </p>
+      )}
+    </div>
+  );
+}

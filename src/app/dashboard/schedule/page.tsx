@@ -1,39 +1,77 @@
 import Link from "next/link";
 import {
   loadFellowSchedule,
+  loadFellows,
   loadReferrals,
+  type FellowScheduleSource,
 } from "@/lib/referral-repository";
+import { isScheduleApiConfigured } from "@/lib/schedule-api";
+import { requireSession } from "@/lib/session";
+import { SessionBar } from "@/components/SessionBar";
 import {
   buildSchedule,
-  dayOfMonth,
   filterMonth,
   formatMonthTh,
   monthsAvailable,
   type ScheduleDay,
 } from "@/lib/fellow-schedule";
+import { ScheduleCalendar } from "./ScheduleCalendar";
 
 export const dynamic = "force-dynamic";
 
-const WEEKDAY_LABELS = ["จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส.", "อา."];
+/**
+ * เดือนที่ให้เลือกได้
+ *
+ * โหมดอ่านอย่างเดียวแสดงเฉพาะเดือนที่มีตารางอยู่แล้ว
+ * แต่ถ้ากรอกได้ ต้องเดินไปข้างหน้าได้ล่วงหน้าทั้งปีการศึกษา
+ * ไม่งั้นเดือนที่ยังว่างจะกดเข้าไปไม่ได้เลย
+ */
+function monthOptions(scheduleMonths: string[], canEdit: boolean): string[] {
+  if (!canEdit) return scheduleMonths;
+
+  const now = new Date();
+  const ahead: string[] = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    ahead.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+  return [...new Set([...scheduleMonths, ...ahead])].sort();
+}
+
+function currentMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
 
 export default async function SchedulePage({
   searchParams,
 }: {
   searchParams: Promise<{ month?: string }>;
 }) {
+  const session = await requireSession();
+
   const { month } = await searchParams;
-  const [{ referrals }, clinicDays] = await Promise.all([
+  const [{ referrals }, source, fellows] = await Promise.all([
     loadReferrals(),
     loadFellowSchedule(),
+    loadFellows(),
   ]);
 
-  const schedule = buildSchedule(clinicDays, referrals);
-  const months = monthsAvailable(schedule);
-  const selected = month && months.includes(month) ? month : months[0];
+  const canEdit = isScheduleApiConfigured();
+  const schedule = buildSchedule(source.days, referrals);
+  const months = monthOptions(monthsAvailable(schedule), canEdit);
+  const selected =
+    month && months.includes(month)
+      ? month
+      : months.includes(currentMonth())
+        ? currentMonth()
+        : months[0];
   const daysThisMonth = selected ? filterMonth(schedule, selected) : [];
 
   return (
     <div className="flex flex-col flex-1 bg-zinc-50">
+      <SessionBar username={session.username} />
+
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <div>
@@ -52,13 +90,38 @@ export default async function SchedulePage({
       </header>
 
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-6 space-y-5">
-        {clinicDays.length === 0 ? (
-          <EmptyState />
+        {source.skippedRows > 0 && (
+          <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-900">
+            <p className="font-semibold">
+              มี {source.skippedRows} แถวในชีตที่ระบบใช้ไม่ได้
+            </p>
+            <p className="mt-1">
+              มักเกิดจาก <code className="rounded bg-amber-100 px-1">clinic_date</code>{" "}
+              ไม่ใช่รูปแบบวันที่ หรือ{" "}
+              <code className="rounded bg-amber-100 px-1">fellow_name</code> ว่าง
+              — แถวเหล่านี้จะไม่ขึ้นบนปฏิทิน
+            </p>
+          </div>
+        )}
+
+        {!canEdit && source.days.length === 0 ? (
+          <EmptyState source={source} />
         ) : (
           <>
+            {source.days.length === 0 && (
+              <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-900">
+                ยังไม่มีตารางออกตรวจ — คลิกวันที่ในปฏิทินด้านล่างเพื่อเริ่มกรอกได้เลย
+              </div>
+            )}
             <MonthPicker months={months} selected={selected!} />
-            <Legend />
-            <MonthGrid yearMonth={selected!} days={daysThisMonth} />
+            <Legend canEdit={canEdit} />
+            <ScheduleCalendar
+              key={selected}
+              yearMonth={selected!}
+              days={daysThisMonth}
+              fellows={fellows}
+              canEdit={canEdit}
+            />
             <Summary days={daysThisMonth} />
           </>
         )}
@@ -67,17 +130,83 @@ export default async function SchedulePage({
   );
 }
 
-function EmptyState() {
+function EmptyState({ source }: { source: FellowScheduleSource }) {
+  // แยกให้ชัดว่าติดตรงไหน — ทั้งสามกรณีหน้าตาเหมือนกันหมดถ้าไม่บอก
+  const diagnosis = source.error
+    ? {
+        title: "อ่านชีตไม่สำเร็จ",
+        body: `ระบบเปิดชีต fellow_schedule ไม่ได้ — มักเป็นเพราะยังไม่ได้รัน setupSheets() ใน Apps Script จึงยังไม่มีชีตนี้`,
+        detail: source.error,
+      }
+    : source.rawRowCount === 0
+      ? {
+          title: "มีชีตแล้ว แต่ยังไม่ได้กรอกข้อมูล",
+          body: "ชีต fellow_schedule ถูกสร้างเรียบร้อยแล้ว เหลือเพียงกรอกตารางออกตรวจ",
+          detail: null,
+        }
+      : {
+          title: "กรอกข้อมูลแล้ว แต่ระบบใช้ไม่ได้สักแถว",
+          body: `อ่านได้ ${source.rawRowCount} แถว แต่ไม่มีแถวใดที่มีทั้งวันที่ที่ถูกต้องและชื่อ fellow`,
+          detail: null,
+        };
+
   return (
     <div className="rounded-xl bg-white border border-zinc-200 p-6 text-sm text-zinc-600 space-y-3">
-      <h2 className="font-semibold text-zinc-900 text-base">ยังไม่มีตารางออกตรวจ</h2>
-      <p>
-        แพทย์แอดมินกลางต้องกรอกตารางออกตรวจของ fellow ลงในชีต{" "}
-        <code className="rounded bg-zinc-100 px-1.5 py-0.5">fellow_schedule</code>{" "}
-        ล่วงหน้าทั้งปีการศึกษา
-      </p>
+      <h2 className="font-semibold text-zinc-900 text-base">{diagnosis.title}</h2>
+      <p>{diagnosis.body}</p>
+      {diagnosis.detail && (
+        <p className="font-mono text-xs text-red-700 break-all bg-red-50 border border-red-200 rounded p-2">
+          {diagnosis.detail}
+        </p>
+      )}
+
+      <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
+        <p className="font-semibold text-blue-900">กรอกตารางได้ที่ไหน</p>
+        <p className="text-blue-900/80 mt-1">
+          ตอนนี้หน้านี้ยัง<strong>แสดงผลอย่างเดียว</strong> เพราะยังไม่ได้ตั้งค่า{" "}
+          <code className="rounded bg-blue-100 px-1">SCHEDULE_API_URL</code> และ{" "}
+          <code className="rounded bg-blue-100 px-1">SCHEDULE_API_TOKEN</code>{" "}
+          — ดูวิธีตั้งค่าในหัวไฟล์{" "}
+          <code className="rounded bg-blue-100 px-1">apps-script/Api.gs</code>{" "}
+          เมื่อตั้งค่าแล้วจะคลิกวันที่บนปฏิทินเพื่อกรอกได้จากหน้านี้เลย
+        </p>
+
+        <div className="mt-3 space-y-3">
+          <div>
+            <p className="font-medium text-blue-900">
+              ระหว่างนี้ — ใช้หน้าจอจัดตารางในชีต
+            </p>
+            <ol className="mt-1 ml-4 list-decimal space-y-0.5 text-blue-900/80">
+              <li>เปิด Google Sheet ของระบบ</li>
+              <li>
+                เมนูด้านบน → <strong>📅 ตารางออกตรวจ Fellow</strong> →{" "}
+                <strong>เปิดหน้าจอจัดตาราง</strong>
+              </li>
+              <li>เพิ่มชื่อ fellow แล้วเลือกวันที่จากปฏิทิน ใส่จำนวนสัปดาห์ที่ออกตรวจติดกัน</li>
+            </ol>
+            <p className="mt-1 text-blue-900/70 text-xs">
+              ถ้ายังไม่เห็นเมนูนี้ แปลว่ายังไม่ได้ติดตั้งไฟล์{" "}
+              <code className="rounded bg-blue-100 px-1">Menu.gs</code> และ{" "}
+              <code className="rounded bg-blue-100 px-1">Sidebar.html</code>{" "}
+              หรือยังไม่ได้ปิดชีตแล้วเปิดใหม่
+            </p>
+          </div>
+
+          <div>
+            <p className="font-medium text-blue-900">หรือพิมพ์ลงชีตโดยตรง</p>
+            <p className="mt-1 text-blue-900/80">
+              เปิดแท็บ <code className="rounded bg-blue-100 px-1">fellow_schedule</code>{" "}
+              แล้วพิมพ์ตามรูปแบบด้านล่าง — ช่องวันที่ดับเบิลคลิกจะมีปฏิทินให้เลือก
+              และช่องชื่อมี dropdown ให้กด
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="rounded-lg bg-zinc-50 border border-zinc-200 p-3">
-        <p className="font-medium text-zinc-800 mb-1.5">รูปแบบข้อมูล — หนึ่งแถวต่อ fellow หนึ่งท่านต่อวันออกตรวจ</p>
+        <p className="font-medium text-zinc-800 mb-1.5">
+          รูปแบบข้อมูล — หนึ่งแถวต่อ fellow หนึ่งท่านต่อวันออกตรวจ
+        </p>
         <div className="overflow-x-auto">
           <table className="text-xs">
             <thead className="text-zinc-500">
@@ -113,13 +242,7 @@ function EmptyState() {
   );
 }
 
-function MonthPicker({
-  months,
-  selected,
-}: {
-  months: string[];
-  selected: string;
-}) {
+function MonthPicker({ months, selected }: { months: string[]; selected: string }) {
   return (
     <div className="flex flex-wrap gap-2">
       {months.map((m) => (
@@ -139,7 +262,7 @@ function MonthPicker({
   );
 }
 
-function Legend() {
+function Legend({ canEdit }: { canEdit: boolean }) {
   return (
     <div className="flex flex-wrap gap-4 text-xs text-zinc-600">
       <span className="inline-flex items-center gap-1.5">
@@ -154,102 +277,9 @@ function Legend() {
         <span className="h-3 w-3 rounded border border-zinc-200 bg-white" />
         ไม่มีคลินิก
       </span>
-    </div>
-  );
-}
-
-/** สร้างช่องปฏิทินทั้งเดือน โดยเริ่มสัปดาห์ที่วันจันทร์ */
-function buildCells(yearMonth: string, days: ScheduleDay[]) {
-  const [year, month] = yearMonth.split("-").map(Number);
-  const first = new Date(year, month - 1, 1);
-  const daysInMonth = new Date(year, month, 0).getDate();
-
-  // getDay(): 0 = อาทิตย์ → แปลงให้จันทร์ = 0
-  const leading = (first.getDay() + 6) % 7;
-
-  const byDate = new Map(days.map((d) => [d.date, d]));
-  const pad = (n: number) => String(n).padStart(2, "0");
-
-  const cells: ({ date: string; day: ScheduleDay | undefined } | null)[] = [];
-  for (let i = 0; i < leading; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) {
-    const date = `${year}-${pad(month)}-${pad(d)}`;
-    cells.push({ date, day: byDate.get(date) });
-  }
-  while (cells.length % 7 !== 0) cells.push(null);
-
-  return cells;
-}
-
-function MonthGrid({
-  yearMonth,
-  days,
-}: {
-  yearMonth: string;
-  days: ScheduleDay[];
-}) {
-  const cells = buildCells(yearMonth, days);
-
-  return (
-    <div className="rounded-xl bg-white border border-zinc-200 overflow-hidden">
-      <div className="grid grid-cols-7 border-b border-zinc-200 bg-zinc-50">
-        {WEEKDAY_LABELS.map((label) => (
-          <div
-            key={label}
-            className="px-2 py-2 text-center text-xs font-medium text-zinc-500"
-          >
-            {label}
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-7">
-        {cells.map((cell, i) => {
-          if (!cell) {
-            return <div key={i} className="min-h-24 border-b border-r border-zinc-100 bg-zinc-50/50" />;
-          }
-
-          const { date, day } = cell;
-          const isWeekend = i % 7 >= 5;
-
-          return (
-            <div
-              key={date}
-              className={`min-h-24 border-b border-r border-zinc-100 p-1.5 ${
-                day?.allFull ? "bg-zinc-100" : isWeekend ? "bg-zinc-50/50" : "bg-white"
-              }`}
-            >
-              <p
-                className={`text-xs font-medium mb-1 ${
-                  day?.allFull ? "text-zinc-400" : "text-zinc-500"
-                }`}
-              >
-                {dayOfMonth(date)}
-              </p>
-
-              <div className="space-y-1">
-                {day?.fellows.map((f) => (
-                  <div
-                    key={f.fellowName}
-                    title={f.note || undefined}
-                    className={`rounded px-1.5 py-1 text-[11px] leading-tight border ${
-                      f.isFull
-                        ? "border-zinc-300 bg-zinc-200 text-zinc-500"
-                        : "border-green-300 bg-green-50 text-green-900"
-                    }`}
-                  >
-                    <p className="font-medium truncate">{f.fellowName}</p>
-                    <p className="tabular-nums">
-                      {f.isFull ? "เต็ม" : `ว่าง ${f.remaining}`} ({f.booked}/
-                      {f.maxSlots})
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {canEdit && (
+        <span className="text-blue-700 font-medium">คลิกวันที่เพื่อแก้ตาราง</span>
+      )}
     </div>
   );
 }
@@ -271,7 +301,11 @@ function Summary({ days }: { days: ScheduleDay[] }) {
       <Stat label="วันที่มีคลินิก" value={clinicDays} />
       <Stat label="วันที่ยังนัดได้" value={openDays} />
       <Stat label="คิวทั้งหมด" value={totalSlots} />
-      <Stat label="นัดไปแล้ว" value={booked} tone={booked >= totalSlots ? "full" : undefined} />
+      <Stat
+        label="นัดไปแล้ว"
+        value={booked}
+        tone={booked >= totalSlots ? "full" : undefined}
+      />
     </div>
   );
 }
