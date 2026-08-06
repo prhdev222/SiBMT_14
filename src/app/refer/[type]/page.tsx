@@ -7,7 +7,13 @@ import {
   REFERRAL_TYPE_META,
 } from "@/lib/referral-types";
 import { CHECKLIST_BY_TYPE, type ChecklistItem } from "@/lib/document-checklist";
-import { BATCH_NOTIFICATION, CONTACT, FORM_URL, LINE_OA } from "@/lib/config";
+import {
+  BATCH_NOTIFICATION,
+  CONTACT,
+  FORM_URL,
+  HOSPITAL_APPOINTMENT,
+  LINE_OA,
+} from "@/lib/config";
 
 export function generateStaticParams() {
   return REFERRAL_TYPES.map((type) => ({
@@ -39,6 +45,10 @@ export default async function ReferTypePage({
   const checklist = CHECKLIST_BY_TYPE[type];
   const formUrl = FORM_URL[type];
 
+  // กลุ่มที่ 4 ไม่ส่งข้อมูลเข้าระบบนี้เลย (มติอาจารย์ 2 ส.ค. 2569)
+  // กรอบเวลาตอบกลับและหนังสือรับทราบของเราจึงไม่เกี่ยวข้อง
+  const usesOurSystem = type !== "GENERAL_OPD";
+
   return (
     <div className="flex flex-col flex-1 bg-zinc-50">
       <header className="bg-white border-b border-zinc-200">
@@ -66,6 +76,7 @@ export default async function ReferTypePage({
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-6 space-y-6">
         {/* กรอบเวลาตอบกลับ */}
+        {usesOurSystem && (
         <section className="rounded-xl bg-white border border-zinc-200 p-5 text-sm">
           <h2 className="font-semibold text-zinc-900 mb-2">
             กรอบเวลาตอบกลับและผู้รับผิดชอบ
@@ -99,6 +110,7 @@ export default async function ReferTypePage({
             </p>
           )}
         </section>
+        )}
 
         {/* Checklist สำหรับแพทย์ต้นทาง */}
         {checklist.forReferrer.length > 0 && (
@@ -118,6 +130,7 @@ export default async function ReferTypePage({
         )}
 
         {/* แบบฟอร์มรับทราบ PDPA */}
+        {usesOurSystem && (
         <section className="rounded-xl bg-blue-50 border border-blue-200 p-5 text-sm">
           <h2 className="font-semibold text-blue-900 mb-1">
             ก่อนส่งข้อมูล: หนังสือรับทราบสำหรับผู้ป่วย
@@ -133,8 +146,13 @@ export default async function ReferTypePage({
             เปิดแบบฟอร์มเพื่อพิมพ์
           </Link>
         </section>
+        )}
 
-        {/* ปุ่มส่งฟอร์ม */}
+        {/* กลุ่มที่ 4 ไม่ใช้ฟอร์มของเรา — ชี้ไประบบนัดหมายของโรงพยาบาล */}
+        {type === "GENERAL_OPD" ? (
+          <HospitalAppointmentCard />
+        ) : (
+        /* ปุ่มส่งฟอร์ม */
         <section className="rounded-xl bg-white border border-zinc-200 p-5">
           <h2 className="font-semibold text-zinc-900 mb-2">ส่งข้อมูล</h2>
           {formUrl ? (
@@ -175,6 +193,7 @@ export default async function ReferTypePage({
             </p>
           )}
         </section>
+        )}
 
         <section className="rounded-xl bg-white border border-zinc-200 p-5 text-sm text-zinc-600">
           <h2 className="font-semibold text-zinc-900 mb-2">ติดต่อเจ้าหน้าที่</h2>
@@ -192,6 +211,68 @@ export default async function ReferTypePage({
         </section>
       </main>
     </div>
+  );
+}
+
+/**
+ * กลุ่มที่ 4 — ไม่รับข้อมูลผู้ป่วยเข้าระบบนี้เลย
+ *
+ * มติอาจารย์ 2 ส.ค. 2569: ให้ผู้ป่วยนัด OPD เองผ่านระบบนัดหมายที่โรงพยาบาล
+ * มีอยู่แล้ว เพื่อลดภาระแอดมินและไม่ทำงานซ้ำซ้อน หน้านี้จึงมีหน้าที่เดียว
+ * คือบอกแพทย์ต้นทางว่าต้องแนะนำผู้ป่วยอย่างไร
+ */
+function HospitalAppointmentCard() {
+  return (
+    <section className="rounded-xl bg-white border-2 border-green-600 p-5">
+      <h2 className="font-semibold text-zinc-900">
+        กลุ่มนี้ไม่ต้องกรอกแบบฟอร์ม
+      </h2>
+      <p className="text-sm text-zinc-600 mt-1">
+        ให้ผู้ป่วยทำนัดผู้ป่วยนอกเองผ่านระบบนัดหมายของโรงพยาบาล
+        ซึ่งเปิดใช้งานอยู่แล้ว — แพทย์ต้นทางเพียงแจ้งผู้ป่วยให้ทำตามขั้นตอนนี้
+      </p>
+
+      <div className="mt-4 rounded-lg bg-green-50 border border-green-200 p-4">
+        <p className="text-sm font-semibold text-green-900">
+          แจ้งผู้ป่วยว่า &ldquo;ให้เพิ่มเพื่อน LINE{" "}
+          {HOSPITAL_APPOINTMENT.lineOaNameTh} แล้วทำนัดเองได้เลย&rdquo;
+        </p>
+        {HOSPITAL_APPOINTMENT.lineOaUrl && (
+          <a
+            href={HOSPITAL_APPOINTMENT.lineOaUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex rounded-lg bg-green-700 px-4 py-2 text-white text-sm font-semibold hover:bg-green-800 transition-colors"
+          >
+            เปิด LINE {HOSPITAL_APPOINTMENT.lineOaNameTh}
+          </a>
+        )}
+      </div>
+
+      <ol className="mt-4 space-y-2 text-sm text-zinc-700">
+        {HOSPITAL_APPOINTMENT.stepsTh.map((step, index) => (
+          <li key={step} className="flex gap-3">
+            <span className="shrink-0 grid h-6 w-6 place-items-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-600 tabular-nums">
+              {index + 1}
+            </span>
+            <span className="pt-0.5">{step}</span>
+          </li>
+        ))}
+      </ol>
+
+      <p className="mt-4 text-sm text-zinc-600">
+        ผู้ป่วยจะได้รับใบนัดหมายภายใน {HOSPITAL_APPOINTMENT.waitingDaysTh}{" "}
+        หากไม่ได้รับ ติดต่อสอบถามได้ทางแชท LINE นั้น หรือโทร{" "}
+        <a href={`tel:${CONTACT.phone}`} className="text-blue-600 hover:underline">
+          {CONTACT.phoneDisplay}
+        </a>
+      </p>
+
+      <p className="mt-3 text-xs text-zinc-500">
+        ระบบนัดหมายของโรงพยาบาลจะขอชื่อ-สกุลและเลข HN ของผู้ป่วยโดยตรง
+        ซึ่งเป็นการเก็บข้อมูลของโรงพยาบาล ไม่ผ่านระบบส่งต่อนี้
+      </p>
+    </section>
   );
 }
 
