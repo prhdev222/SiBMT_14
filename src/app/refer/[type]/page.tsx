@@ -45,9 +45,14 @@ export default async function ReferTypePage({
   const checklist = CHECKLIST_BY_TYPE[type];
   const formUrl = FORM_URL[type];
 
-  // กลุ่มที่ 4 ไม่ส่งข้อมูลเข้าระบบนี้เลย (มติอาจารย์ 2 ส.ค. 2569)
-  // กรอบเวลาตอบกลับและหนังสือรับทราบของเราจึงไม่เกี่ยวข้อง
-  const usesOurSystem = type !== "GENERAL_OPD";
+  // กลุ่มที่ 4 ไม่ส่งข้อมูลเข้าระบบนี้เลย หนังสือรับทราบจึงไม่เกี่ยวข้อง
+  const sendsDataToUs = type !== "GENERAL_OPD";
+
+  // มีแค่กลุ่ม 2 และ 3 ที่ต้องรอทีมอ่านแล้วตอบกลับ
+  // กลุ่ม 1 จองคิวเองได้ทันที กลุ่ม 4 ไปใช้ระบบนัดหมายของโรงพยาบาล
+  // การแสดงกรอบเวลาตอบกลับกับสองกลุ่มนั้นจะสัญญาสิ่งที่ไม่มีอยู่จริง
+  const waitsForTeam =
+    type === "REGIMEN_CONSULT" || type === "CHEMO_ADMISSION";
 
   return (
     <div className="flex flex-col flex-1 bg-zinc-50">
@@ -76,7 +81,7 @@ export default async function ReferTypePage({
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-6 space-y-6">
         {/* กรอบเวลาตอบกลับ */}
-        {usesOurSystem && (
+        {waitsForTeam && (
         <section className="rounded-xl bg-white border border-zinc-200 p-5 text-sm">
           <h2 className="font-semibold text-zinc-900 mb-2">
             กรอบเวลาตอบกลับและผู้รับผิดชอบ
@@ -130,7 +135,7 @@ export default async function ReferTypePage({
         )}
 
         {/* แบบฟอร์มรับทราบ PDPA */}
-        {usesOurSystem && (
+        {sendsDataToUs && (
         <section className="rounded-xl bg-blue-50 border border-blue-200 p-5 text-sm">
           <h2 className="font-semibold text-blue-900 mb-1">
             ก่อนส่งข้อมูล: หนังสือรับทราบสำหรับผู้ป่วย

@@ -39,9 +39,11 @@ export const REFERRAL_TYPE_META: Record<ReferralType, ReferralTypeMeta> = {
     titleTh: "ขอนัดหมายพบแพทย์ปลูกถ่ายเซลล์ต้นกำเนิด",
     purposeTh:
       "ต้องการนัดผู้ป่วยมาพบ fellow transplant ที่ OPD 700 เพื่อประเมินการปลูกถ่ายไขกระดูก/สเต็มเซลล์",
-    handlerTh: "แพทย์แอดมิน (จัดคิว fellow)",
-    automation: "SEMI_AUTOMATED",
-    slaBusinessHours: 48,
+    // แพทย์ต้นทางจองคิวเองจากปฏิทิน ไม่มีขั้นรอแอดมินแล้ว (มติอาจารย์ 2 ส.ค. 2569)
+    // slaBusinessHours ไม่มีความหมายกับกลุ่มนี้ หน้าเว็บจึงไม่แสดงกรอบเวลาตอบกลับ
+    handlerTh: "จองคิวเองผ่านระบบ ไม่ต้องรอเจ้าหน้าที่",
+    automation: "FULLY_AUTOMATED",
+    slaBusinessHours: 0,
     href: "/refer/transplant",
   },
   REGIMEN_CONSULT: {
