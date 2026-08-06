@@ -148,9 +148,11 @@ export default async function ReferTypePage({
         </section>
         )}
 
-        {/* กลุ่มที่ 4 ไม่ใช้ฟอร์มของเรา — ชี้ไประบบนัดหมายของโรงพยาบาล */}
+        {/* กลุ่มที่ 1 จองคิวเองได้ กลุ่มที่ 4 ไปใช้ระบบนัดหมายของโรงพยาบาล */}
         {type === "GENERAL_OPD" ? (
           <HospitalAppointmentCard />
+        ) : type === "TRANSPLANT_APPOINTMENT" ? (
+          <BookSlotCard />
         ) : (
         /* ปุ่มส่งฟอร์ม */
         <section className="rounded-xl bg-white border border-zinc-200 p-5">
@@ -178,20 +180,6 @@ export default async function ReferTypePage({
             </p>
           )}
 
-          {type === "TRANSPLANT_APPOINTMENT" && (
-            <p className="text-sm text-zinc-600 mt-3">
-              สำหรับโรงพยาบาลเครือข่าย SiAML: ติดต่อเรื่องส่งต่อปลูกถ่ายฯ (ทุกโรค)
-              ผ่าน{" "}
-              <a
-                href={LINE_OA.siamlUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                ลิงก์เครือข่าย SiAML
-              </a>
-            </p>
-          )}
         </section>
         )}
 
@@ -211,6 +199,44 @@ export default async function ReferTypePage({
         </section>
       </main>
     </div>
+  );
+}
+
+/**
+ * กลุ่มที่ 1 — เลือกวันนัดเองจากปฏิทิน ไม่ต้องรอแอดมิน
+ *
+ * มติอาจารย์ 2 ส.ค. 2569: ให้แพทย์ต้นทางเลือกวันจากคิวที่ว่างได้เลย
+ * และไม่ต้องให้ระบบตรวจว่าเอกสารครบก่อน เพราะวันนัดอยู่ห่างออกไปหลายสัปดาห์
+ * เอกสารทำทันอยู่แล้ว การกั้นตั้งแต่ตอนจองมีแต่ทำให้ผู้ป่วยต้องกลับไปกลับมา
+ */
+function BookSlotCard() {
+  return (
+    <section className="rounded-xl bg-white border-2 border-blue-600 p-5">
+      <h2 className="font-semibold text-zinc-900">เลือกวันนัดได้เลย</h2>
+      <p className="text-sm text-zinc-600 mt-1">
+        ดูวันที่ fellow ยังมีคิวว่าง แล้วเลือกวันที่สะดวกได้ทันที
+        ไม่ต้องรอเจ้าหน้าที่ติดต่อกลับ — ใช้เวลาไม่เกิน 2 นาที
+      </p>
+
+      <Link
+        href="/book/transplant"
+        className="mt-4 inline-flex rounded-lg bg-blue-600 px-5 py-3 text-white font-semibold hover:bg-blue-700 transition-colors"
+      >
+        ดูคิวว่างและเลือกวันนัด
+      </Link>
+
+      <p className="text-sm text-zinc-600 mt-4">
+        สำหรับโรงพยาบาลเครือข่าย SiAML: ติดต่อเรื่องส่งต่อปลูกถ่ายฯ (ทุกโรค) ผ่าน{" "}
+        <a
+          href={LINE_OA.siamlUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:underline"
+        >
+          ลิงก์เครือข่าย SiAML
+        </a>
+      </p>
+    </section>
   );
 }
 

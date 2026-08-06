@@ -154,11 +154,10 @@ export const STATUS_COLOR: Record<Status, string> = {
  * — ไม่มีขั้นตอนยืนยันเตียง เพราะ resident เป็นผู้นัดและให้คิวเอง
  */
 export const STATUSES_BY_TYPE: Record<ReferralType, Status[]> = {
+  // กลุ่มที่ 1 จองคิวเองได้ทันที ไม่มีขั้นรอแอดมินตรวจแล้ว (มติอาจารย์ 2 ส.ค. 2569)
+  // Pending Review / Incomplete / Slot Reserved จึงไม่มีความหมายกับกลุ่มนี้อีก
+  // ความรับผิดชอบเรื่องความครบถ้วนของเอกสารเป็นของแพทย์ต้นทาง
   TRANSPLANT_APPOINTMENT: [
-    "Submitted",
-    "Pending Review",
-    "Incomplete",
-    "Slot Reserved",
     "Appointment Confirmed",
     "Rejected / Redirected",
     "Closed",

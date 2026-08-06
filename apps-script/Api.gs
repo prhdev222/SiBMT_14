@@ -48,14 +48,162 @@ function doPost(e) {
       return handleLineWebhook_(body);
     }
 
-    // ไม่มีคำสั่งอื่นให้เรียกแล้ว — ตารางเวรย้ายไปให้เว็บเขียนลงชีตของตัวเองตรง ๆ
-    // (ดู src/lib/schedule-store.ts) endpoint นี้จึงเหลือหน้าที่รับ LINE webhook
-    // อย่างเดียว ซึ่งแปลว่า URL ที่เปิดให้ "Anyone" นี้เขียนอะไรไม่ได้เลย
-    return jsonResponse_({ ok: false, error: 'ไม่รองรับคำสั่งนี้แล้ว' });
+    if (!isAuthorized_(body.token)) {
+      return jsonResponse_({ ok: false, error: 'token ไม่ถูกต้อง' });
+    }
+
+    if (body.action === 'bookTransplantSlot') {
+      return jsonResponse_({ ok: true, data: bookTransplantSlot_(body.payload || {}) });
+    }
+
+    return jsonResponse_({ ok: false, error: 'ไม่รู้จักคำสั่ง: ' + body.action });
   } catch (err) {
     console.error('doPost error: ' + err);
     return jsonResponse_({ ok: false, error: String(err && err.message ? err.message : err) });
   }
+}
+
+/**
+ * เทียบ token แบบไม่ให้เวลาที่ใช้เทียบบอกใบ้ว่าถูกกี่ตัว (timing-safe)
+ */
+function isAuthorized_(token) {
+  const expected = PropertiesService.getScriptProperties()
+    .getProperty('BOOKING_API_TOKEN');
+
+  if (!expected) {
+    console.error('ยังไม่ได้ตั้ง BOOKING_API_TOKEN ใน Script Properties');
+    return false;
+  }
+  const given = String(token || '');
+  if (given.length !== expected.length) return false;
+
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) {
+    diff |= given.charCodeAt(i) ^ expected.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+/**
+ * จองคิว fellow ให้เคสกลุ่มที่ 1 — สร้างแถวใหม่ในชีต referrals พร้อมวันนัด
+ *
+ * ⚠️ ทำไมต้องผ่าน Apps Script ไม่ให้เว็บเขียนเอง
+ * สองอย่าง — หนึ่ง ชีต referrals อยู่ในไฟล์ข้อมูลผู้ป่วยซึ่งเว็บมีสิทธิ์อ่านอย่างเดียว
+ * สอง และสำคัญกว่า คือ LockService ที่นี่ทำให้ "ตรวจว่าคิวยังว่าง" กับ "เขียนแถว"
+ * เกิดในจังหวะเดียวกัน สองคนกดจองคิวสุดท้ายพร้อมกันจึงไม่ได้ทั้งคู่
+ * Sheets API เปล่า ๆ ทำแบบนี้ไม่ได้ จะเกิดการจองเกินโควตาเงียบ ๆ
+ */
+function bookTransplantSlot_(payload) {
+  const lock = LockService.getScriptLock();
+  // รอได้ถึง 30 วินาที — คนกดจองยอมรอได้ ดีกว่าได้คิวที่เกินโควตา
+  if (!lock.tryLock(30000)) {
+    throw new Error('ระบบกำลังมีผู้จองพร้อมกัน กรุณาลองใหม่อีกครั้ง');
+  }
+
+  try {
+    const clinicDate = String(payload.clinicDate || '').trim();
+    const fellowName = String(payload.fellowName || '').trim();
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(clinicDate)) {
+      throw new Error('รูปแบบวันที่ไม่ถูกต้อง');
+    }
+    if (!fellowName) throw new Error('ไม่ได้ระบุชื่อ fellow');
+
+    const remaining = remainingSlots_(clinicDate, fellowName);
+    if (remaining <= 0) {
+      throw new Error(
+        'คิวของ ' + fellowName + ' วันที่ ' + clinicDate + ' เต็มแล้ว ' +
+        'กรุณาเลือกวันอื่นหรือแพทย์ท่านอื่น'
+      );
+    }
+
+    const sheet = getSheet_(SHEETS.referrals);
+    const map = headerMap_(sheet);
+    const now = new Date();
+    const referralId = generateReferralId_(sheet, map, now);
+
+    const values = {
+      referral_id: referralId,
+      referral_type: TYPES.transplant,
+      status: 'Appointment Confirmed',
+      submitted_at: now,
+      consent_acknowledged_at: now,
+      appointment_date: clinicDate,
+      fellow_assigned: fellowName,
+      referrer_org: String(payload.referrerOrg || '').trim(),
+      referrer_name: String(payload.referrerName || '').trim(),
+      referrer_phone: String(payload.referrerPhone || '').trim(),
+      referrer_email: String(payload.referrerEmail || '').trim(),
+      disease_group: String(payload.diseaseGroup || '').trim(),
+      diagnosis: String(payload.diagnosis || '').trim(),
+      patient_age: String(payload.patientAge || '').trim(),
+      patient_sex: String(payload.patientSex || '').trim(),
+      urgency: 'Routine',
+      note: String(payload.note || '').trim(),
+    };
+
+    const width = sheet.getLastColumn();
+    const row = new Array(width).fill('');
+    Object.keys(values).forEach(function (column) {
+      if (column in map) row[map[column]] = values[column];
+    });
+
+    sheet.appendRow(row);
+
+    return {
+      referralId: referralId,
+      clinicDate: clinicDate,
+      fellowName: fellowName,
+      remainingAfter: remaining - 1,
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * คิวที่เหลือของ fellow ท่านนั้นในวันนั้น
+ *
+ * โควตามาจากไฟล์ตารางเวรซึ่งอยู่คนละไฟล์ จึงต้องเปิดด้วย ID
+ * ส่วนจำนวนที่นัดไปแล้วนับจากชีต referrals ในไฟล์นี้
+ */
+function remainingSlots_(clinicDate, fellowName) {
+  const scheduleId = PropertiesService.getScriptProperties()
+    .getProperty('SCHEDULE_SHEET_ID');
+  if (!scheduleId) {
+    throw new Error('ยังไม่ได้ตั้ง SCHEDULE_SHEET_ID ใน Script Properties');
+  }
+
+  const scheduleSheet = SpreadsheetApp.openById(scheduleId)
+    .getSheetByName('fellow_schedule');
+  if (!scheduleSheet) throw new Error('ไม่พบแท็บ fellow_schedule ในไฟล์ตารางเวร');
+
+  let quota = 0;
+  readRows_(scheduleSheet).forEach(function (r) {
+    const d = r['clinic_date'];
+    const iso = d instanceof Date
+      ? Utilities.formatDate(d, TIMEZONE, 'yyyy-MM-dd')
+      : String(d || '').trim();
+    if (iso === clinicDate && String(r['fellow_name'] || '').trim() === fellowName) {
+      quota += Number(r['max_slots']) || FELLOW_DEFAULT_SLOTS;
+    }
+  });
+
+  if (quota === 0) return 0; // ไม่มีคลินิกวันนั้น
+
+  let booked = 0;
+  readRows_(getSheet_(SHEETS.referrals)).forEach(function (r) {
+    if (String(r['status'] || '').trim() === 'Rejected / Redirected') return;
+    const d = r['appointment_date'];
+    const iso = d instanceof Date
+      ? Utilities.formatDate(d, TIMEZONE, 'yyyy-MM-dd')
+      : String(d || '').trim();
+    if (iso === clinicDate && String(r['fellow_assigned'] || '').trim() === fellowName) {
+      booked++;
+    }
+  });
+
+  return quota - booked;
 }
 
 /**
