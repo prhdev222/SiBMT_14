@@ -93,6 +93,13 @@ function isAuthorized_(token) {
  * เกิดในจังหวะเดียวกัน สองคนกดจองคิวสุดท้ายพร้อมกันจึงไม่ได้ทั้งคู่
  * Sheets API เปล่า ๆ ทำแบบนี้ไม่ได้ จะเกิดการจองเกินโควตาเงียบ ๆ
  */
+const BOOKING_COLUMNS = [
+  'referral_id', 'referral_type', 'status', 'consent_acknowledged_at',
+  'appointment_date', 'fellow_assigned', 'referrer_org', 'referrer_name',
+  'referrer_phone', 'referrer_email', 'disease_group', 'diagnosis',
+  'patient_age', 'patient_sex', 'urgency', 'note',
+];
+
 function bookTransplantSlot_(payload) {
   const lock = LockService.getScriptLock();
   // รอได้ถึง 30 วินาที — คนกดจองยอมรอได้ ดีกว่าได้คิวที่เกินโควตา
@@ -118,6 +125,12 @@ function bookTransplantSlot_(payload) {
     }
 
     const sheet = getSheet_(SHEETS.referrals);
+
+    // สร้างคอลัมน์ที่การจองต้องใช้ให้ครบก่อน
+    // ชีตนี้เกิดจาก Google Form ซึ่งสร้างคอลัมน์เฉพาะที่มีคำถามในฟอร์ม
+    // พอกลุ่มที่ 1 ไม่ใช้ฟอร์มแล้ว บางคอลัมน์จึงไม่มี และการเขียนจะหายเงียบ ๆ
+    ensureColumns_(sheet, BOOKING_COLUMNS);
+
     const map = headerMap_(sheet);
     const now = new Date();
     const referralId = generateReferralId_(sheet, map, now);
@@ -126,7 +139,6 @@ function bookTransplantSlot_(payload) {
       referral_id: referralId,
       referral_type: TYPES.transplant,
       status: 'Appointment Confirmed',
-      submitted_at: now,
       consent_acknowledged_at: now,
       appointment_date: clinicDate,
       fellow_assigned: fellowName,
@@ -142,11 +154,25 @@ function bookTransplantSlot_(payload) {
       note: String(payload.note || '').trim(),
     };
 
+    // ชีตที่ Google Form สร้างตั้งชื่อคอลัมน์เวลาว่า Timestamp
+    // ถ้ามีคอลัมน์นั้นอยู่ให้ใช้ของเดิม อย่าสร้าง submitted_at ซ้อนขึ้นมาอีกคอลัมน์
+    values[('submitted_at' in map) ? 'submitted_at' : 'Timestamp'] = now;
+
     const width = sheet.getLastColumn();
     const row = new Array(width).fill('');
+    const missing = [];
     Object.keys(values).forEach(function (column) {
       if (column in map) row[map[column]] = values[column];
+      else if (values[column] !== '') missing.push(column);
     });
+
+    // เงียบไว้แล้วข้อมูลหายเป็นสิ่งที่หาสาเหตุยากที่สุด — บันทึกไว้เสมอ
+    if (missing.length > 0) {
+      console.error(
+        'ชีต referrals ไม่มีคอลัมน์เหล่านี้ ข้อมูลที่จองมาจึงไม่ถูกบันทึก: ' +
+        missing.join(', ')
+      );
+    }
 
     sheet.appendRow(row);
 
