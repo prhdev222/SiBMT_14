@@ -60,11 +60,11 @@ const TYPES = {
 };
 
 /** แปลงข้อความตัวเลือกในฟอร์ม → ค่าที่เก็บในชีต */
+// เหลือแค่สองกลุ่มที่ยังใช้ฟอร์ม — กลุ่ม 1 จองคิวเองผ่านเว็บ
+// กลุ่ม 4 ไปใช้ระบบนัดหมายของโรงพยาบาล
 const TYPE_FROM_FORM_LABEL = {
-  'กลุ่มที่ 1 — ขอนัดพบแพทย์ปลูกถ่ายเซลล์ต้นกำเนิด': TYPES.transplant,
   'กลุ่มที่ 2 — ขอความเห็นสูตรยาเคมีบำบัด': TYPES.regimen,
   'กลุ่มที่ 3 — ขอส่งตัวมาให้ยาเคมีบำบัด/ยากดภูมิ': TYPES.admission,
-  'กลุ่มที่ 4 — Refer ผู้ป่วยนอกด้วยเหตุผลอื่น': TYPES.general,
 };
 
 const GROUP_NUMBER = {
@@ -141,10 +141,6 @@ const FORM_COLUMNS_REQUIRED = [
 const FORM_COLUMNS_OPTIONAL = [
   'referrer_email',
   'consent_raw',
-  // กลุ่ม 1
-  'diagnosis_g1', 'disease_group_g1', 'treatment_summary_g1',
-  'diagnosis_date_ym', 'disease_status', 'transplant_type',
-  'sibling_available', 'documents_ready', 'preferred_period', 'additional_note',
   // กลุ่ม 2
   'diagnosis_g2', 'disease_group_g2', 'stage_g2', 'treatment_summary_g2',
   'key_labs', 'clinical_question_g2', 'comorbidity_g2',
@@ -152,8 +148,6 @@ const FORM_COLUMNS_OPTIONAL = [
   'diagnosis_g3', 'disease_group_g3', 'stage_g3', 'comorbidity_g3',
   'treatment_summary_g3', 'performance_status', 'admission_reason',
   'clinical_question_g3',
-  // กลุ่ม 4
-  'referral_reason', 'diagnosis_g4', 'refer_letter_ready',
 ];
 
 /**
@@ -166,12 +160,12 @@ const FORM_COLUMNS_OPTIONAL = [
  * จะไม่ติดไปกับแถวใหม่ที่ Google Form สร้างขึ้น ทำให้ข้อมูลหายเงียบ ๆ
  */
 const MERGED_COLUMNS = {
-  diagnosis: ['diagnosis_g1', 'diagnosis_g2', 'diagnosis_g3', 'diagnosis_g4'],
-  disease_group: ['disease_group_g1', 'disease_group_g2', 'disease_group_g3'],
+  // กลุ่ม 1 และ 4 ไม่ใช้ฟอร์มแล้ว (มติอาจารย์ 2 ส.ค. 2569) คอลัมน์ _g1 และ _g4
+  // จึงถูกลบออกจากชีต — กลุ่ม 1 เขียนลงคอลัมน์กลางโดยตรงตอนจองคิว
+  diagnosis: ['diagnosis_g2', 'diagnosis_g3'],
+  disease_group: ['disease_group_g2', 'disease_group_g3'],
   stage: ['stage_g2', 'stage_g3'],
-  treatment_summary: [
-    'treatment_summary_g1', 'treatment_summary_g2', 'treatment_summary_g3',
-  ],
+  treatment_summary: ['treatment_summary_g2', 'treatment_summary_g3'],
   comorbidity: ['comorbidity_g2', 'comorbidity_g3'],
   clinical_question: ['clinical_question_g2', 'clinical_question_g3'],
 };
