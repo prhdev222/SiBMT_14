@@ -66,7 +66,17 @@ export async function bookTransplantSlot(
       redirect: "follow",
       cache: "no-store",
     });
-  } catch {
+  } catch (error) {
+    // แพทย์ต้นทางไม่ควรเห็น error ดิบ แต่ถ้าไม่บันทึกไว้เลยก็หาสาเหตุไม่ได้
+    // — ครั้งแรกที่หน้านี้พังจริง ข้อความที่แสดงบอกแค่ว่า "ติดต่อไม่สำเร็จ"
+    // ทั้งที่สาเหตุจริงอยู่ในตัว error ที่ถูกโยนทิ้งไป
+    const cause = (error as { cause?: { errors?: unknown[] } }).cause;
+    const detail = (cause?.errors ?? [cause]).map((e) => {
+      const x = e as { code?: string; address?: string; port?: number };
+      return `${x?.code ?? "?"} ${x?.address ?? ""}:${x?.port ?? ""}`;
+    });
+    console.error("[booking] เรียก Apps Script ไม่สำเร็จ:", detail.join(" | "));
+
     throw new Error(
       "ติดต่อระบบจองคิวไม่สำเร็จ กรุณาลองใหม่อีกครั้ง หรือโทรติดต่อเจ้าหน้าที่",
     );
