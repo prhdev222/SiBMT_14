@@ -286,59 +286,41 @@ const OBSOLETE_FORM_COLUMNS = [
 ];
 
 /**
- * ลบคอลัมน์ที่เลิกใช้ออกจากชีต referrals ให้อ่านง่ายขึ้น
+ * ซ่อนคอลัมน์ที่เลิกใช้ ให้ชีตอ่านง่ายขึ้น
  *
- * ปลอดภัยโดยการออกแบบ — ลบเฉพาะคอลัมน์ที่อยู่ในรายการข้างบน **และไม่มีข้อมูลเลย**
- * คอลัมน์ที่ยังมีข้อมูลค้างอยู่จะถูกข้ามและรายงานให้ทราบ ไม่ลบให้เงียบ ๆ
- * เพราะการลบคอลัมน์ใน Sheets กู้คืนไม่ได้ด้วยโค้ด
+ * ⚠️ ซ่อน ไม่ใช่ลบ — และนั่นเป็นข้อจำกัดของ Google ไม่ใช่ทางเลือกของเรา
+ * ชีตที่เคยเชื่อมกับ Google Form จะล็อกคอลัมน์คำตอบไว้ ลบไม่ได้แม้ลบฟอร์มทิ้งแล้ว
+ * ("Cannot delete column with form data")
  *
- * ลบจากขวาไปซ้ายเสมอ — ลบจากซ้ายก่อนจะทำให้ตำแหน่งคอลัมน์ที่เหลือเลื่อน
- * แล้วลบผิดคอลัมน์ไปเรื่อย ๆ
+ * กลายเป็นผลดี — การซ่อนย้อนกลับได้ทันทีด้วย showAllColumns()
+ * ต่างจากการลบที่กู้คืนด้วยโค้ดไม่ได้ และเป้าหมายจริงคือให้อ่านง่าย ไม่ใช่ให้หายไป
  *
- * รันซ้ำได้ ครั้งที่สองจะบอกว่าไม่มีอะไรให้ลบแล้ว
+ * รันซ้ำได้ ไม่มีผลข้างเคียง
  */
 function cleanupUnusedColumns() {
   const sheet = getSheet_(SHEETS.referrals);
   const map = headerMap_(sheet);
-  const lastRow = sheet.getLastRow();
 
-  const empty = [];
-  const hasData = [];
-
+  const hidden = [];
   OBSOLETE_FORM_COLUMNS.forEach(function (name) {
     if (!(name in map)) return;
-
-    const column = map[name] + 1;
-    let used = false;
-
-    if (lastRow >= 2) {
-      const values = sheet.getRange(2, column, lastRow - 1, 1).getValues();
-      used = values.some(function (r) { return String(r[0] || '').trim() !== ''; });
-    }
-
-    (used ? hasData : empty).push({ name: name, index: map[name] });
+    sheet.hideColumns(map[name] + 1);
+    hidden.push(name);
   });
 
-  if (hasData.length > 0) {
-    console.warn(
-      'ข้ามคอลัมน์ที่ยังมีข้อมูลอยู่ ' + hasData.length + ' คอลัมน์ — ' +
-      'ตรวจสอบก่อนแล้วลบเองหากแน่ใจ:\n  ' +
-      hasData.map(function (c) { return c.name; }).join(', ')
-    );
-  }
-
-  if (empty.length === 0) {
-    console.log('ไม่มีคอลัมน์ว่างที่ต้องลบ — ชีตสะอาดแล้ว');
+  if (hidden.length === 0) {
+    console.log('ไม่พบคอลัมน์ที่เลิกใช้ — ชีตสะอาดอยู่แล้ว');
     return;
   }
 
-  // เรียงจากขวาไปซ้ายก่อนลบ
-  empty.sort(function (a, b) { return b.index - a.index; });
-  empty.forEach(function (c) { sheet.deleteColumn(c.index + 1); });
+  console.log('ซ่อนคอลัมน์ที่เลิกใช้แล้ว ' + hidden.length + ' คอลัมน์:\n  ' +
+    hidden.join(', '));
+  console.log('ข้อมูลยังอยู่ครบ ไม่ได้ลบ — เรียกกลับมาดูได้ด้วย showAllColumns()');
+}
 
-  console.log(
-    'ลบคอลัมน์ที่เลิกใช้แล้ว ' + empty.length + ' คอลัมน์:\n  ' +
-    empty.map(function (c) { return c.name; }).reverse().join(', ')
-  );
-  console.log('เหลือคอลัมน์ทั้งหมด ' + sheet.getLastColumn() + ' คอลัมน์');
+/** ยกเลิกการซ่อนทั้งหมด — ใช้เมื่ออยากเห็นทุกคอลัมน์อีกครั้ง */
+function showAllColumns() {
+  const sheet = getSheet_(SHEETS.referrals);
+  sheet.showColumns(1, sheet.getMaxColumns());
+  console.log('แสดงทุกคอลัมน์ในชีต ' + SHEETS.referrals + ' แล้ว');
 }
