@@ -324,3 +324,49 @@ function showAllColumns() {
   sheet.showColumns(1, sheet.getMaxColumns());
   console.log('แสดงทุกคอลัมน์ในชีต ' + SHEETS.referrals + ' แล้ว');
 }
+
+/**
+ * ตรวจว่าการจองคิวพร้อมทำงานหรือยัง
+ *
+ * จุดที่พลาดบ่อยที่สุดคือสิทธิ์ในไฟล์ตารางเวร — Apps Script รันด้วยบัญชี Google
+ * ของคนที่เป็นเจ้าของสคริปต์ ไม่ใช่ service account ของเว็บ
+ * การแชร์ไฟล์ตารางเวรให้ service account อย่างเดียวจึงไม่พอ
+ * บัญชีที่รันสคริปต์ต้องเปิดไฟล์นั้นได้ด้วย
+ */
+function diagnoseBooking() {
+  const props = PropertiesService.getScriptProperties();
+
+  console.log('บัญชีที่รันสคริปต์นี้: ' + Session.getEffectiveUser().getEmail());
+  console.log('— ต้องเป็นบัญชีที่เปิดไฟล์ตารางเวรได้ ไม่ใช่ service account —');
+  console.log('');
+
+  const token = props.getProperty('BOOKING_API_TOKEN');
+  console.log('BOOKING_API_TOKEN: ' + (token ? 'ตั้งแล้ว (' + token.length + ' ตัวอักษร)' : '❌ ยังไม่ได้ตั้ง'));
+
+  const scheduleId = props.getProperty('SCHEDULE_SHEET_ID');
+  if (!scheduleId) {
+    console.log('SCHEDULE_SHEET_ID: ❌ ยังไม่ได้ตั้ง');
+    return;
+  }
+  console.log('SCHEDULE_SHEET_ID: ตั้งแล้ว (ลงท้าย ...' + scheduleId.slice(-6) + ')');
+
+  try {
+    const file = SpreadsheetApp.openById(scheduleId);
+    console.log('✓ เปิดไฟล์ตารางเวรได้: "' + file.getName() + '"');
+
+    const tab = file.getSheetByName('fellow_schedule');
+    if (!tab) {
+      console.log('❌ ไม่พบแท็บ fellow_schedule ในไฟล์นี้ — อาจใส่ ID ผิดไฟล์');
+      return;
+    }
+    console.log('✓ พบแท็บ fellow_schedule — มีข้อมูล ' + Math.max(0, tab.getLastRow() - 1) + ' แถว');
+    console.log('');
+    console.log('พร้อมจองคิวแล้ว');
+  } catch (err) {
+    console.log('❌ เปิดไฟล์ตารางเวรไม่ได้: ' + err.message);
+    console.log('');
+    console.log('วิธีแก้ — เปิดไฟล์ตารางเวรใน Google Sheets แล้วกด Share');
+    console.log('แชร์ให้บัญชีนี้: ' + Session.getEffectiveUser().getEmail());
+    console.log('สิทธิ์ Viewer พอ (สคริปต์แค่อ่านโควตา ไม่ได้เขียน)');
+  }
+}
