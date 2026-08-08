@@ -262,3 +262,83 @@ function runSelfTest() {
   }
   return problems;
 }
+
+/* ------------------------------------------------------------------ */
+/* ทำความสะอาดคอลัมน์ที่เลิกใช้                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * คอลัมน์จากฟอร์มที่ไม่มีอะไรเขียนลงไปอีกแล้ว
+ *
+ * กลุ่มที่ 1 เลิกใช้ฟอร์ม เปลี่ยนเป็นจองคิวผ่านหน้าเว็บโดยตรง
+ * กลุ่มที่ 4 ไม่รับข้อมูลเข้าระบบนี้เลย ให้ผู้ป่วยนัดเองที่ระบบของโรงพยาบาล
+ * (มติอาจารย์ 2 ส.ค. 2569)
+ *
+ * ไม่รวมคอลัมน์ของกลุ่ม 2 และ 3 ซึ่งยังใช้ฟอร์มอยู่
+ */
+const OBSOLETE_FORM_COLUMNS = [
+  // กลุ่มที่ 1
+  'diagnosis_g1', 'disease_group_g1', 'diagnosis_date_ym', 'disease_status',
+  'treatment_summary_g1', 'transplant_type', 'sibling_available',
+  'documents_ready', 'preferred_period', 'additional_note',
+  // กลุ่มที่ 4
+  'referral_reason', 'diagnosis_g4', 'refer_letter_ready',
+];
+
+/**
+ * ลบคอลัมน์ที่เลิกใช้ออกจากชีต referrals ให้อ่านง่ายขึ้น
+ *
+ * ปลอดภัยโดยการออกแบบ — ลบเฉพาะคอลัมน์ที่อยู่ในรายการข้างบน **และไม่มีข้อมูลเลย**
+ * คอลัมน์ที่ยังมีข้อมูลค้างอยู่จะถูกข้ามและรายงานให้ทราบ ไม่ลบให้เงียบ ๆ
+ * เพราะการลบคอลัมน์ใน Sheets กู้คืนไม่ได้ด้วยโค้ด
+ *
+ * ลบจากขวาไปซ้ายเสมอ — ลบจากซ้ายก่อนจะทำให้ตำแหน่งคอลัมน์ที่เหลือเลื่อน
+ * แล้วลบผิดคอลัมน์ไปเรื่อย ๆ
+ *
+ * รันซ้ำได้ ครั้งที่สองจะบอกว่าไม่มีอะไรให้ลบแล้ว
+ */
+function cleanupUnusedColumns() {
+  const sheet = getSheet_(SHEETS.referrals);
+  const map = headerMap_(sheet);
+  const lastRow = sheet.getLastRow();
+
+  const empty = [];
+  const hasData = [];
+
+  OBSOLETE_FORM_COLUMNS.forEach(function (name) {
+    if (!(name in map)) return;
+
+    const column = map[name] + 1;
+    let used = false;
+
+    if (lastRow >= 2) {
+      const values = sheet.getRange(2, column, lastRow - 1, 1).getValues();
+      used = values.some(function (r) { return String(r[0] || '').trim() !== ''; });
+    }
+
+    (used ? hasData : empty).push({ name: name, index: map[name] });
+  });
+
+  if (hasData.length > 0) {
+    console.warn(
+      'ข้ามคอลัมน์ที่ยังมีข้อมูลอยู่ ' + hasData.length + ' คอลัมน์ — ' +
+      'ตรวจสอบก่อนแล้วลบเองหากแน่ใจ:\n  ' +
+      hasData.map(function (c) { return c.name; }).join(', ')
+    );
+  }
+
+  if (empty.length === 0) {
+    console.log('ไม่มีคอลัมน์ว่างที่ต้องลบ — ชีตสะอาดแล้ว');
+    return;
+  }
+
+  // เรียงจากขวาไปซ้ายก่อนลบ
+  empty.sort(function (a, b) { return b.index - a.index; });
+  empty.forEach(function (c) { sheet.deleteColumn(c.index + 1); });
+
+  console.log(
+    'ลบคอลัมน์ที่เลิกใช้แล้ว ' + empty.length + ' คอลัมน์:\n  ' +
+    empty.map(function (c) { return c.name; }).reverse().join(', ')
+  );
+  console.log('เหลือคอลัมน์ทั้งหมด ' + sheet.getLastColumn() + ' คอลัมน์');
+}
