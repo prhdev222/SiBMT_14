@@ -22,6 +22,17 @@
  */
 
 /**
+ * ป้ายบอกเวอร์ชันของโค้ดที่ deploy อยู่จริง
+ *
+ * มีไว้เพราะการกด Deploy โดยไม่เลือก "New version" เป็นความผิดพลาดที่เงียบสนิท
+ * — URL ยังตอบปกติทุกอย่าง แต่รันโค้ดเก่า และอาการที่เห็นคือคำสั่งใหม่หายไปเฉย ๆ
+ * ที่เคยให้เปิด URL ดูข้อความ OK นั้นแยกเวอร์ชันไม่ออก เพราะ doGet มีมาก่อนแล้ว
+ *
+ * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
+ */
+const API_VERSION = '2026-08-10 saveAdvice';
+
+/**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
  *
  * ไม่มีฟังก์ชันนี้ Apps Script จะขึ้นหน้าแดง "Script function not found: doGet"
@@ -30,11 +41,14 @@
  *
  * หน้านี้ใครก็เปิดได้ (deploy แบบ Anyone) จึงต้องไม่มีข้อมูลอะไรทั้งสิ้น
  * ไม่บอกว่าเป็นระบบอะไร ไม่แตะชีต ไม่อ่าน Script Properties
+ * เลขเวอร์ชันเป็นแค่วันที่ ไม่ได้บอกว่ามีคำสั่งอะไรบ้าง
  */
 function doGet() {
   return ContentService.createTextOutput(
     'OK — endpoint นี้รับเฉพาะคำสั่งแบบ POST\n' +
-      'เห็นข้อความนี้แปลว่า deploy สำเร็จและ URL ถูกต้องแล้ว',
+      'เห็นข้อความนี้แปลว่า deploy สำเร็จและ URL ถูกต้องแล้ว\n' +
+      'version: ' +
+      API_VERSION,
   ).setMimeType(ContentService.MimeType.TEXT);
 }
 
@@ -60,7 +74,12 @@ function doPost(e) {
       return jsonResponse_({ ok: true, data: saveAdvice_(body.payload || {}) });
     }
 
-    return jsonResponse_({ ok: false, error: 'ไม่รู้จักคำสั่ง: ' + body.action });
+    // ติดเวอร์ชันไปกับข้อความ error ด้วย เพราะสาเหตุที่พบเกือบทุกครั้งของคำสั่ง
+    // ที่ "หายไป" คือ deploy ค้างเวอร์ชันเก่า — บอกไปเลยว่าโค้ดตัวไหนเป็นคนตอบ
+    return jsonResponse_({
+      ok: false,
+      error: 'ไม่รู้จักคำสั่ง: ' + body.action + ' (โค้ดที่ deploy อยู่: ' + API_VERSION + ')',
+    });
   } catch (err) {
     console.error('doPost error: ' + err);
     return jsonResponse_({ ok: false, error: String(err && err.message ? err.message : err) });
