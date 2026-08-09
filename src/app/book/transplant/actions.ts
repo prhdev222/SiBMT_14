@@ -1,6 +1,6 @@
 "use server";
 
-import { bookTransplantSlot, type BookingInput } from "@/lib/booking-api";
+import { bookTransplantSlot, type BookingInput } from "@/lib/apps-script-api";
 import { DISEASE_GROUPS } from "@/lib/referral-types";
 
 /**

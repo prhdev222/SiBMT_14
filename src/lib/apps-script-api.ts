@@ -1,5 +1,5 @@
 /**
- * จองคิว fellow ให้เคสกลุ่มที่ 1
+ * เรียก Apps Script เพื่อ "เขียน" ลงไฟล์ข้อมูลผู้ป่วย
  *
  * ต่างจาก schedule-store.ts ที่เขียนไฟล์ตารางเวรตรง ๆ — การจองต้องผ่าน Apps Script
  * ด้วยเหตุผลสองข้อ
@@ -46,6 +46,30 @@ export interface BookingResult {
 export async function bookTransplantSlot(
   payload: BookingInput,
 ): Promise<BookingResult> {
+  return callAppsScript("bookTransplantSlot", payload);
+}
+
+export interface AdviceInput {
+  referralId: string;
+  advice: string;
+  status: string;
+}
+
+export interface AdviceResult {
+  referralId: string;
+  status: string;
+  /** false = เคสไม่มีอีเมลผู้ส่ง หรือส่งไม่สำเร็จ ต้องแจ้งกลับเอง */
+  emailed: boolean;
+}
+
+export async function saveAdvice(payload: AdviceInput): Promise<AdviceResult> {
+  return callAppsScript("saveAdvice", payload);
+}
+
+async function callAppsScript<T>(
+  action: string,
+  payload: unknown,
+): Promise<T> {
   if (!API_URL || !API_TOKEN) {
     throw new Error(
       "ระบบจองคิวยังไม่พร้อมใช้งาน กรุณาโทรติดต่อเจ้าหน้าที่",
@@ -57,11 +81,7 @@ export async function bookTransplantSlot(
     response = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "bookTransplantSlot",
-        token: API_TOKEN,
-        payload,
-      }),
+      body: JSON.stringify({ action, token: API_TOKEN, payload }),
       // Apps Script ตอบด้วย 302 ไปยัง googleusercontent ก่อนเสมอ
       redirect: "follow",
       cache: "no-store",
@@ -88,10 +108,10 @@ export async function bookTransplantSlot(
 
   const result = (await response.json().catch(() => {
     throw new Error("ระบบจองคิวตอบกลับผิดรูปแบบ กรุณาโทรติดต่อเจ้าหน้าที่");
-  })) as { ok: boolean; data?: BookingResult; error?: string };
+  })) as { ok: boolean; data?: T; error?: string };
 
   // ข้อความ error จาก Apps Script เขียนไว้ให้ผู้ใช้อ่านเข้าใจแล้ว เช่น "คิวเต็มแล้ว"
-  if (!result.ok) throw new Error(result.error || "จองคิวไม่สำเร็จ");
+  if (!result.ok) throw new Error(result.error || "บันทึกไม่สำเร็จ");
 
-  return result.data as BookingResult;
+  return result.data as T;
 }

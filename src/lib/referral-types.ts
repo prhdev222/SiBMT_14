@@ -324,6 +324,20 @@ export interface Referral {
   /** fellow ที่ผู้ป่วยถูกนัดให้พบ — เฉพาะกลุ่มที่ 1 */
   fellowAssigned: string | null;
   note: string;
+
+  /**
+   * เนื้อหาทางคลินิกที่แพทย์ผู้ตอบต้องอ่านก่อนให้คำแนะนำ
+   *
+   * มาจากคอลัมน์กลางที่ Apps Script รวมค่าจาก _g2/_g3 ให้แล้ว
+   * หนึ่งเคสตอบได้กลุ่มเดียว จึงมีชุดเดียวเสมอ
+   */
+  diagnosis: string;
+  stage: string;
+  treatmentSummary: string;
+  comorbidity: string;
+  clinicalQuestion: string;
+  /** คำตอบที่บันทึกไว้แล้ว — ว่าง = ยังไม่มีใครตอบ */
+  adviceRecord: string;
 }
 
 /**

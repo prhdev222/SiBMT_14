@@ -232,6 +232,12 @@ function toReferral(row: Record<string, string>): Referral | null {
     appointmentDate: toIsoDate(row["appointment_date"]),
     fellowAssigned: text(row["fellow_assigned"]) || null,
     note: pickNote(row),
+    diagnosis: text(row["diagnosis"]),
+    stage: text(row["stage"]),
+    treatmentSummary: text(row["treatment_summary"]),
+    comorbidity: text(row["comorbidity"]),
+    clinicalQuestion: text(row["clinical_question"]),
+    adviceRecord: text(row["advice_record"]),
   };
 }
 

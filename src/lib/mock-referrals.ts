@@ -24,6 +24,12 @@ export const MOCK_REFERRALS: Referral[] = [
     appointmentDate: null,
     fellowAssigned: null,
     note: "ขาดผล Chromosome และ Molecular mutation — แจ้งขอเอกสารเพิ่มแล้ว",
+    diagnosis: "",
+    stage: "",
+    treatmentSummary: "",
+    comorbidity: "",
+    clinicalQuestion: "",
+    adviceRecord: "",
   },
   {
     referralId: "HEM-20260728-0002",
@@ -41,6 +47,12 @@ export const MOCK_REFERRALS: Referral[] = [
     appointmentDate: "2026-08-05",
     fellowAssigned: "พญ. สุดา",
     note: "จองคิววันที่ 5 ส.ค. (คิวที่ 1 จาก 2)",
+    diagnosis: "",
+    stage: "",
+    treatmentSummary: "",
+    comorbidity: "",
+    clinicalQuestion: "",
+    adviceRecord: "",
   },
   {
     referralId: "HEM-20260729-0003",
@@ -58,6 +70,12 @@ export const MOCK_REFERRALS: Referral[] = [
     appointmentDate: null,
     fellowAssigned: null,
     note: "รอแอดมินกลางจัดคิว fellow",
+    diagnosis: "",
+    stage: "",
+    treatmentSummary: "",
+    comorbidity: "",
+    clinicalQuestion: "",
+    adviceRecord: "",
   },
   {
     referralId: "HEM-20260722-0004",
@@ -75,6 +93,12 @@ export const MOCK_REFERRALS: Referral[] = [
     appointmentDate: "2026-08-03",
     fellowAssigned: "พญ. สุดา",
     note: "นัด 3 ส.ค. 08:00 น. ที่ OPD 700 — พี่น้องมาตรวจ HLA ด้วย",
+    diagnosis: "",
+    stage: "",
+    treatmentSummary: "",
+    comorbidity: "",
+    clinicalQuestion: "",
+    adviceRecord: "",
   },
   {
     referralId: "HEM-20260730-0015",
@@ -92,6 +116,12 @@ export const MOCK_REFERRALS: Referral[] = [
     appointmentDate: null,
     fellowAssigned: null,
     note: "High-risk MDS (IPSS-R 5.5) — พิจารณา allogeneic SCT",
+    diagnosis: "",
+    stage: "",
+    treatmentSummary: "",
+    comorbidity: "",
+    clinicalQuestion: "",
+    adviceRecord: "",
   },
 
   /* ---------- กลุ่มที่ 2: Regimen consult ---------- */
@@ -111,6 +141,14 @@ export const MOCK_REFERRALS: Referral[] = [
     appointmentDate: null,
     fellowAssigned: null,
     note: "เลือกสูตร R-CHOP จาก Template Library แล้ว รออาจารย์ตรวจทาน",
+    diagnosis: "DLBCL, GCB subtype",
+    stage: "Stage IIIA, IPI 2 (intermediate-low)",
+    treatmentSummary:
+      "ยังไม่ได้เริ่มเคมีบำบัด ได้ CT ทั้งตัวและ bone marrow biopsy แล้ว ไม่มี marrow involvement",
+    comorbidity: "DM type 2 คุมได้ด้วยยากิน, eGFR 68",
+    clinicalQuestion:
+      "เริ่ม R-CHOP ที่ รพ. ต้นทางได้เลยหรือไม่ ต้องปรับขนาดยาตามการทำงานของไตหรือเปล่า และควรให้ G-CSF ป้องกันตั้งแต่ cycle แรกไหม",
+    adviceRecord: "",
   },
   {
     referralId: "HEM-20260724-0006",
@@ -128,6 +166,14 @@ export const MOCK_REFERRALS: Referral[] = [
     appointmentDate: null,
     fellowAssigned: null,
     note: "ส่งคำแนะนำสูตรยาและเบอร์ติดต่อกลับให้แพทย์ต้นทางแล้ว",
+    diagnosis: "APL (PML-RARA positive)",
+    stage: "Low risk (WBC 2,400, platelet 62,000)",
+    treatmentSummary: "เริ่ม ATRA ทันทีที่สงสัย รอผล molecular ยืนยัน",
+    comorbidity: "ไม่มี",
+    clinicalQuestion:
+      "ขอสูตร ATRA + ATO และแนวทางเฝ้าระวัง differentiation syndrome",
+    adviceRecord:
+      "ให้ ATRA 45 mg/m2/day ร่วมกับ ATO 0.15 mg/kg/day ต่อเนื่องจน CR เฝ้าระวัง differentiation syndrome และ QTc ทุกสัปดาห์ หากมีอาการให้ dexamethasone 10 mg IV q12h ทันที",
   },
   {
     referralId: "HEM-20260727-0007",
@@ -145,6 +191,14 @@ export const MOCK_REFERRALS: Referral[] = [
     appointmentDate: null,
     fellowAssigned: null,
     note: "ไม่มีสูตรมาตรฐานตรงเคส — ต้องปรึกษาอาจารย์โดยตรง",
+    diagnosis: "Warm autoimmune hemolytic anemia ดื้อต่อสเตียรอยด์",
+    stage: "Hb 6.8 g/dL, reticulocyte 12%, DAT IgG+C3d positive",
+    treatmentSummary:
+      "Prednisolone 1 mg/kg/day นาน 4 สัปดาห์ ไม่ตอบสนอง ให้เลือดไปแล้ว 4 ยูนิตใน 3 สัปดาห์",
+    comorbidity: "ไม่มี",
+    clinicalQuestion:
+      "ขั้นต่อไปควรใช้ rituximab หรือส่งตัดม้าม ถ้าใช้ rituximab ให้ที่ รพ. ต้นทางได้ไหม ต้องเตรียมวัคซีนอะไรก่อน",
+    adviceRecord: "",
   },
   {
     referralId: "HEM-20260730-0016",
@@ -162,6 +216,14 @@ export const MOCK_REFERRALS: Referral[] = [
     appointmentDate: null,
     fellowAssigned: null,
     note: "ดื้อ imatinib — ปรึกษาการเปลี่ยน TKI",
+    diagnosis: "CML, chronic phase",
+    stage: "BCR-ABL1 IS 4.2% ที่ 12 เดือน (ยังไม่ถึง MMR)",
+    treatmentSummary:
+      "Imatinib 400 mg/day 12 เดือน ผู้ป่วยกินยาสม่ำเสมอ ตรวจ mutation analysis แล้วไม่พบ T315I",
+    comorbidity: "ความดันโลหิตสูง, ไขมันในเลือดสูง",
+    clinicalQuestion:
+      "ควรเพิ่มขนาด imatinib เป็น 600-800 mg หรือเปลี่ยนเป็น 2nd generation TKI ถ้าเปลี่ยนควรใช้ตัวใด เมื่อคำนึงถึงความเสี่ยงหลอดเลือด",
+    adviceRecord: "",
   },
 
   /* ---------- กลุ่มที่ 3: Chemo admission ---------- */
@@ -181,6 +243,14 @@ export const MOCK_REFERRALS: Referral[] = [
     appointmentDate: null,
     fellowAssigned: null,
     note: "รออาจารย์ตรวจทานก่อนตอบกลับ — ค้างเกิน 48 ชม.",
+    diagnosis: "AML with myelodysplasia-related changes",
+    stage: "Blast ในไขกระดูก 38%, karyotype complex",
+    treatmentSummary:
+      "ยังไม่ได้เริ่มเคมีบำบัด ให้เลือดและเกล็ดเลือดประคับประคองอยู่ ECOG 1",
+    comorbidity: "COPD, EF 55%",
+    clinicalQuestion:
+      "ขอส่งตัวมารับ induction 7+3 ที่ศิริราช เนื่องจาก รพ. ต้นทางไม่มีห้องแยกและไม่มีเกล็ดเลือดสำรองเพียงพอ",
+    adviceRecord: "",
   },
   {
     referralId: "HEM-20260728-0009",
@@ -198,6 +268,12 @@ export const MOCK_REFERRALS: Referral[] = [
     appointmentDate: null,
     fellowAssigned: null,
     note: "นัดประเมินร่างกายที่ OPD 700 วันที่ 31 ก.ค. — จนท. ทำนัดแล้ว",
+    diagnosis: "",
+    stage: "",
+    treatmentSummary: "",
+    comorbidity: "",
+    clinicalQuestion: "",
+    adviceRecord: "",
   },
   {
     referralId: "HEM-20260729-0010",
@@ -215,6 +291,14 @@ export const MOCK_REFERRALS: Referral[] = [
     appointmentDate: null,
     fellowAssigned: null,
     note: "ระบบพบชื่อ-นามสกุลใกล้เคียงกับเคสกลุ่ม 1 ที่ยื่นเมื่อวาน — ให้ตรวจสอบ",
+    diagnosis: "Multiple myeloma, IgG kappa",
+    stage: "R-ISS II",
+    treatmentSummary:
+      "VRd ครบ 4 cycles ตอบสนองบางส่วน (VGPR) มีปลายประสาทอักเสบระดับ 2",
+    comorbidity: "CKD stage 3, creatinine 1.9",
+    clinicalQuestion:
+      "ขอส่งตัวมาให้ cycle ถัดไปที่ศิริราช และขอความเห็นเรื่องปรับ bortezomib เป็นสัปดาห์ละครั้งเพราะปลายประสาทอักเสบ",
+    adviceRecord: "",
   },
   {
     referralId: "HEM-20260721-0011",
@@ -232,6 +316,13 @@ export const MOCK_REFERRALS: Referral[] = [
     appointmentDate: null,
     fellowAssigned: null,
     note: "ประเมินแล้วแพทย์ต้นทางดูแลต่อได้เอง — ส่งคำแนะนำกลับพร้อมบันทึกใน record",
+    diagnosis: "ITP เรื้อรัง",
+    stage: "Platelet 28,000 ไม่มีเลือดออก",
+    treatmentSummary: "Prednisolone แล้วค่อยลดขนาด ปัจจุบัน 10 mg/day",
+    comorbidity: "ไม่มี",
+    clinicalQuestion: "ต้องส่งตัวมารักษาต่อที่ศิริราชหรือไม่",
+    adviceRecord:
+      "ระดับเกล็ดเลือดนี้ยังไม่มีข้อบ่งชี้ต้องส่งตัว ดูแลต่อที่ รพ. ต้นทางได้ ติดตาม CBC ทุก 2 สัปดาห์ หากต่ำกว่า 20,000 หรือมีเลือดออกจึงส่งปรึกษาอีกครั้ง",
   },
 
   /* ---------- กลุ่มที่ 4: General OPD (fully automated) ---------- */
@@ -251,6 +342,12 @@ export const MOCK_REFERRALS: Referral[] = [
     appointmentDate: null,
     fellowAssigned: null,
     note: "ระบบส่ง QR code นัดหมายกลางให้ผู้ป่วยอัตโนมัติ",
+    diagnosis: "",
+    stage: "",
+    treatmentSummary: "",
+    comorbidity: "",
+    clinicalQuestion: "",
+    adviceRecord: "",
   },
   {
     referralId: "HEM-20260728-0013",
@@ -268,6 +365,12 @@ export const MOCK_REFERRALS: Referral[] = [
     appointmentDate: null,
     fellowAssigned: null,
     note: "",
+    diagnosis: "",
+    stage: "",
+    treatmentSummary: "",
+    comorbidity: "",
+    clinicalQuestion: "",
+    adviceRecord: "",
   },
   {
     referralId: "HEM-20260726-0014",
@@ -285,6 +388,12 @@ export const MOCK_REFERRALS: Referral[] = [
     appointmentDate: null,
     fellowAssigned: null,
     note: "ผู้ป่วยได้รับใบนัดจากระบบนัดหมายกลางแล้ว",
+    diagnosis: "",
+    stage: "",
+    treatmentSummary: "",
+    comorbidity: "",
+    clinicalQuestion: "",
+    adviceRecord: "",
   },
 ];
 
@@ -297,7 +406,12 @@ export const MOCK_FELLOW_SCHEDULE: FellowClinicDay[] = [
   { clinicDate: "2026-08-05", fellowName: "พญ. สุดา", maxSlots: 2, note: "" },
   { clinicDate: "2026-08-05", fellowName: "นพ. ธนกร", maxSlots: 2, note: "" },
   { clinicDate: "2026-08-12", fellowName: "นพ. ธนกร", maxSlots: 2, note: "" },
-  { clinicDate: "2026-08-17", fellowName: "พญ. สุดา", maxSlots: 1, note: "ครึ่งวันเช้า" },
+  {
+    clinicDate: "2026-08-17",
+    fellowName: "พญ. สุดา",
+    maxSlots: 1,
+    note: "ครึ่งวันเช้า",
+  },
   { clinicDate: "2026-08-19", fellowName: "นพ. ธนกร", maxSlots: 2, note: "" },
   { clinicDate: "2026-08-26", fellowName: "พญ. สุดา", maxSlots: 2, note: "" },
   { clinicDate: "2026-09-02", fellowName: "นพ. ธนกร", maxSlots: 2, note: "" },

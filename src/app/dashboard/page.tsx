@@ -33,6 +33,12 @@ export default async function DashboardPage() {
           </div>
           <div className="flex items-center gap-4">
             <Link
+              href="/dashboard/review"
+              className="text-sm font-medium text-blue-600 hover:underline whitespace-nowrap"
+            >
+              ตอบคำปรึกษา
+            </Link>
+            <Link
               href="/dashboard/schedule"
               className="text-sm font-medium text-blue-600 hover:underline whitespace-nowrap"
             >

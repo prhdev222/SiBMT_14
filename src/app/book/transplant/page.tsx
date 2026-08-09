@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { loadFellowSchedule, loadReferrals } from "@/lib/referral-repository";
 import { buildSchedule } from "@/lib/fellow-schedule";
-import { isBookingConfigured } from "@/lib/booking-api";
+import { isBookingConfigured } from "@/lib/apps-script-api";
 import { CONTACT } from "@/lib/config";
 import { BookingFlow } from "./BookingFlow";
 

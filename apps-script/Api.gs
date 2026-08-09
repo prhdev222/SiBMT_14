@@ -56,6 +56,10 @@ function doPost(e) {
       return jsonResponse_({ ok: true, data: bookTransplantSlot_(body.payload || {}) });
     }
 
+    if (body.action === 'saveAdvice') {
+      return jsonResponse_({ ok: true, data: saveAdvice_(body.payload || {}) });
+    }
+
     return jsonResponse_({ ok: false, error: 'ไม่รู้จักคำสั่ง: ' + body.action });
   } catch (err) {
     console.error('doPost error: ' + err);
@@ -195,6 +199,96 @@ function bookTransplantSlot_(payload) {
     };
   } finally {
     lock.releaseLock();
+  }
+}
+
+/**
+ * บันทึกคำตอบของอาจารย์ลงเคส แล้วส่งกลับให้แพทย์ต้นทาง
+ *
+ * หาแถวด้วย referral_id ไม่ใช่เลขแถว — เลขแถวเลื่อนได้เมื่อมีคนแทรกหรือลบแถว
+ * ในชีต แล้วคำตอบจะไปเขียนทับเคสของผู้ป่วยคนอื่น
+ *
+ * ปฏิเสธถ้าเคสถูกตอบไปแล้ว เพื่อไม่ให้สองคนตอบทับกันโดยไม่รู้ตัว
+ */
+function saveAdvice_(payload) {
+  const referralId = String(payload.referralId || '').trim();
+  const advice = String(payload.advice || '').trim();
+  const status = String(payload.status || 'Advice Sent').trim();
+
+  if (!referralId) throw new Error('ไม่ได้ระบุเลขที่อ้างอิงของเคส');
+  if (!advice) throw new Error('ยังไม่ได้พิมพ์คำตอบ');
+
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) {
+    throw new Error('ระบบกำลังบันทึกคำตอบอื่นอยู่ กรุณาลองใหม่อีกครั้ง');
+  }
+
+  try {
+    const sheet = getSheet_(SHEETS.referrals);
+    const map = headerMap_(sheet);
+    const rows = readRows_(sheet);
+
+    const match = rows.filter(function (r) {
+      return String(r['referral_id'] || '').trim() === referralId;
+    })[0];
+
+    if (!match) throw new Error('ไม่พบเคส ' + referralId + ' — กรุณาโหลดหน้าใหม่');
+
+    const already = String(match['advice_record'] || '').trim();
+    if (already && !payload.overwrite) {
+      throw new Error(
+        'เคสนี้มีคำตอบอยู่แล้ว — อาจมีคนตอบไปก่อนหน้า กรุณาโหลดหน้าใหม่เพื่อดูคำตอบล่าสุด'
+      );
+    }
+
+    const now = new Date();
+    setCell_(sheet, map, match._row, 'advice_record', advice);
+    setCell_(sheet, map, match._row, 'status', status);
+    if (TERMINAL_STATUSES.indexOf(status) !== -1) {
+      setCell_(sheet, map, match._row, 'closed_at', now);
+    }
+
+    // ส่งคำตอบกลับทันที ไม่ต้องรอให้ใครคัดลอกไปส่งเอง
+    const email = String(match['referrer_email'] || '').trim();
+    let emailed = false;
+    if (email) {
+      emailed = sendAdviceEmail_(email, {
+        referralId: referralId,
+        advice: advice,
+        question: String(match['clinical_question'] || '').trim(),
+      });
+    }
+
+    return { referralId: referralId, status: status, emailed: emailed };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** ส่งคำตอบของอาจารย์กลับให้แพทย์ต้นทาง — ส่งไม่สำเร็จต้องไม่ทำให้การบันทึกล้ม */
+function sendAdviceEmail_(email, data) {
+  const body =
+    'ทีมโลหิตวิทยา ศิริราช ได้ตอบคำปรึกษาของท่านแล้ว\n\n' +
+    'เลขที่อ้างอิง: ' + data.referralId + '\n\n' +
+    (data.question ? '--- คำถามของท่าน ---\n' + data.question + '\n\n' : '') +
+    '--- คำตอบ ---\n' + data.advice + '\n\n' +
+    'หากมีข้อสงสัยเพิ่มเติม กรุณาโทร ' + CONTACT_PHONE + '\n' +
+    '(จันทร์-ศุกร์ 08:00-16:00 น.) พร้อมแจ้งเลขที่อ้างอิงข้างต้น\n\n' +
+    'กรุณาอย่าส่งชื่อ-สกุล หรือเลข HN ของผู้ป่วยทางอีเมลนี้\n\n' +
+    '--\n' +
+    'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช\n' +
+    'อีเมลนี้ส่งจากระบบอัตโนมัติ กรุณาอย่าตอบกลับ';
+
+  try {
+    MailApp.sendEmail({
+      to: email,
+      subject: 'คำตอบการปรึกษา ' + data.referralId,
+      body: body,
+    });
+    return true;
+  } catch (err) {
+    console.error('ส่งคำตอบไม่สำเร็จ (' + data.referralId + '): ' + err);
+    return false;
   }
 }
 
