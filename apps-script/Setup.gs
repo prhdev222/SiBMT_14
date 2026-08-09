@@ -66,27 +66,6 @@ function seedConfigKeys_(ss) {
   sheet.getRange(sheet.getLastRow() + 1, 1, toAdd.length, 3).setValues(toAdd);
 }
 
-/**
- * เติมคอลัมน์ที่ยังไม่มีต่อท้ายชีตที่มีข้อมูลอยู่แล้ว
- *
- * createIfMissing_ เขียนหัวตารางเฉพาะตอนชีตยังว่างเปล่า ชีตที่ใช้งานไปแล้ว
- * จึงไม่ได้คอลัมน์ใหม่ที่เพิ่มมาทีหลัง ฟังก์ชันนี้ปิดช่องว่างนั้น
- * ต่อท้ายอย่างเดียว ไม่แตะของเดิม รันซ้ำได้ปลอดภัย
- */
-function ensureColumns_(sheet, headers) {
-  if (!sheet || sheet.getLastRow() === 0) return;
-
-  const lastCol = sheet.getLastColumn();
-  const existing = sheet.getRange(1, 1, 1, lastCol).getValues()[0]
-    .map(function (h) { return String(h).trim(); });
-
-  const missing = headers.filter(function (h) { return existing.indexOf(h) === -1; });
-  if (missing.length === 0) return;
-
-  sheet.getRange(1, lastCol + 1, 1, missing.length).setValues([missing]);
-  console.log('เพิ่มคอลัมน์ในชีต ' + sheet.getName() + ': ' + missing.join(', '));
-}
-
 function createIfMissing_(ss, name, headers) {
   let sheet = ss.getSheetByName(name);
   if (!sheet) {

@@ -28,6 +28,15 @@ function headerMap_(sheet) {
  * เพิ่มคอลัมน์ที่ยังไม่มีต่อท้ายชีต แล้วคืน headerMap ที่อัปเดตแล้ว
  * ใช้ตอนติดตั้งครั้งแรก เพราะคอลัมน์ที่ระบบสร้างเองไม่ได้มาจากฟอร์ม
  */
+/**
+ * ⚠️ ห้ามประกาศฟังก์ชันชื่อนี้ซ้ำในไฟล์อื่น
+ *
+ * Apps Script ใช้ scope เดียวกันทั้งโปรเจกต์ ชื่อซ้ำจะทับกันเงียบ ๆ ไม่มี error
+ * เคยเกิดจริง — มีตัวซ้ำใน Setup.gs ที่ไม่คืนค่า ทำให้ onFormSubmit ได้ undefined
+ * แล้วเคสที่ส่งเข้ามาไม่ได้ referral_id เลยทั้งที่แถวลงชีตครบ
+ *
+ * คืน header map เสมอ เพราะผู้เรียกใช้ต่อทันที
+ */
 function ensureColumns_(sheet, names) {
   let map = headerMap_(sheet);
   const missing = names.filter(function (n) { return !(n in map); });
