@@ -370,3 +370,84 @@ function diagnoseBooking() {
     console.log('สิทธิ์ Viewer พอ (สคริปต์แค่อ่านโควตา ไม่ได้เขียน)');
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* คืนชื่อหัวคอลัมน์ที่ Google Form เขียนทับ                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * ชื่อคอลัมน์จากฟอร์ม เรียงตามตำแหน่งจริงในชีต (คอลัมน์ A เป็นต้นไป)
+ *
+ * ⚠️ ลำดับสำคัญ ห้ามสลับ — การคืนชื่อทำตามตำแหน่ง ไม่ใช่ตามชื่อ
+ * เพราะข้อความคำถามซ้ำกันหลายที่ ("การวินิจฉัย" มี 3 ที่ สำหรับกลุ่ม 1/2/3)
+ * ถ้าจับคู่ด้วยชื่อจะแยกไม่ออกว่าอันไหนของกลุ่มไหน
+ */
+const FORM_COLUMN_ORDER = [
+  'submitted_at', 'consent_raw', 'referrer_org', 'referrer_name',
+  'referrer_phone', 'referrer_email', 'patient_age', 'patient_sex',
+  'urgency', 'referral_type',
+  // กลุ่มที่ 1 — เลิกใช้ฟอร์มแล้ว แต่คอลัมน์ยังอยู่ (ซ่อนไว้)
+  'diagnosis_g1', 'disease_group_g1', 'diagnosis_date_ym', 'disease_status',
+  'treatment_summary_g1', 'transplant_type', 'sibling_available',
+  'documents_ready', 'preferred_period', 'additional_note',
+  // กลุ่มที่ 2
+  'diagnosis_g2', 'disease_group_g2', 'stage_g2', 'treatment_summary_g2',
+  'key_labs', 'clinical_question_g2', 'comorbidity_g2',
+  // กลุ่มที่ 3
+  'diagnosis_g3', 'disease_group_g3', 'stage_g3', 'comorbidity_g3',
+  'treatment_summary_g3', 'performance_status', 'admission_reason',
+  'clinical_question_g3',
+  // กลุ่มที่ 4 — เลิกใช้ฟอร์มแล้ว แต่คอลัมน์ยังอยู่ (ซ่อนไว้)
+  'referral_reason', 'diagnosis_g4', 'refer_letter_ready',
+];
+
+/**
+ * คืนชื่อหัวคอลัมน์เป็นชื่อ field หลัง Google Form เขียนทับด้วยข้อความคำถาม
+ *
+ * ทุกครั้งที่แก้ฟอร์ม Google จะเขียนหัวคอลัมน์ในชีตใหม่เป็นข้อความคำถาม
+ * ภาษาไทย เช่น "โรงพยาบาลต้นทาง" แทน referrer_org ซึ่งทำให้ทั้ง onFormSubmit
+ * และ dashboard หาคอลัมน์ไม่เจอ เคสใหม่จะไม่ถูกประมวลผลและหายจากหน้าจอ
+ * โดยไม่มีอะไรฟ้อง — จึงต้องรันฟังก์ชันนี้ทุกครั้งหลังแก้ฟอร์ม
+ *
+ * เขียนตามตำแหน่ง ไม่ใช่ตามชื่อ และตรวจว่าคอลัมน์ระบบยังอยู่ตำแหน่งเดิมก่อน
+ * ถ้าโครงสร้างไม่ตรงกับที่คาดจะหยุดทันที ดีกว่าเขียนชื่อผิดคอลัมน์
+ */
+function restoreFormHeaders() {
+  const sheet = getSheet_(SHEETS.referrals);
+  const width = sheet.getLastColumn();
+  const current = sheet.getRange(1, 1, 1, width).getValues()[0]
+    .map(function (h) { return String(h).trim(); });
+
+  const n = FORM_COLUMN_ORDER.length;
+
+  if (width < n + 1) {
+    throw new Error('ชีตมีแค่ ' + width + ' คอลัมน์ ซึ่งน้อยกว่าที่คาด — หยุดไว้ก่อน');
+  }
+
+  // ยามกันเขียนผิดที่ — คอลัมน์ถัดจากช่วงฟอร์มต้องเป็น referral_id เสมอ
+  if (current[n] !== 'referral_id') {
+    throw new Error(
+      'คอลัมน์ที่ ' + (n + 1) + ' ควรเป็น "referral_id" แต่พบ "' + current[n] + '"\n' +
+      'โครงสร้างชีตไม่ตรงกับที่คาด หยุดเพื่อไม่ให้เขียนชื่อผิดคอลัมน์'
+    );
+  }
+
+  const changed = [];
+  for (let i = 0; i < n; i++) {
+    if (current[i] !== FORM_COLUMN_ORDER[i]) {
+      changed.push('  ' + (current[i] || '(ว่าง)') + '  →  ' + FORM_COLUMN_ORDER[i]);
+    }
+  }
+
+  if (changed.length === 0) {
+    console.log('หัวคอลัมน์ถูกต้องอยู่แล้ว ไม่มีอะไรต้องแก้');
+    return;
+  }
+
+  sheet.getRange(1, 1, 1, n).setValues([FORM_COLUMN_ORDER]);
+
+  console.log('คืนชื่อหัวคอลัมน์แล้ว ' + changed.length + ' คอลัมน์:');
+  console.log(changed.join('\n'));
+  console.log('');
+  console.log('รัน runSelfTest() ต่อเพื่อยืนยัน');
+}
