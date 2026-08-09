@@ -43,6 +43,16 @@ function onFormSubmit(e) {
     const map = ensureColumns_(sheet, SYSTEM_COLUMNS);
     const row = e && e.range ? e.range.getRow() : sheet.getLastRow();
 
+    // เรียกด้วยมือตอนชีตยังไม่มีข้อมูลจะได้ row = 1 ซึ่งคือแถวหัวตาราง
+    // แล้วโค้ดจะไล่เขียนทับชื่อคอลัมน์ทั้งแถว ทำให้ทั้งระบบหาคอลัมน์ไม่เจอ
+    // (ชีตที่เป็น Google Sheets Table บล็อกให้เอง แต่ชีตธรรมดาไม่บล็อก)
+    if (row < 2) {
+      throw new Error(
+        'ไม่มีแถวข้อมูลให้ประมวลผล — ชีต ' + SHEETS.referrals + ' มีแต่หัวตาราง\n' +
+        'ถ้าต้องการทดสอบ ให้ส่งฟอร์มเข้ามาก่อน แล้ว trigger จะทำงานเอง'
+      );
+    }
+
     const submittedAt = toDate_(sheet.getRange(row, 1).getValue()) || new Date();
 
     // 1. referral_id
