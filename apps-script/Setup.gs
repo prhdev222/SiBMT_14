@@ -245,6 +245,49 @@ function runSelfTest() {
     );
   }
 
+  // trigger ครบไหม
+  //
+  // ⚠️ ข้อนี้เพิ่มมาเพราะเคยพลาดจริง — trigger onFormSubmit หายไปหลังแก้ฟอร์ม
+  // เคสที่ส่งเข้ามาจึงไม่ได้ referral_id ไม่ได้สถานะ และไม่มีอีเมลตอบกลับ
+  // โดยไม่มีอะไรฟ้องเลย ชีตดูเหมือนปกติเพราะแถวลงครบ
+  //
+  // trigger ผูกกับบัญชี Google ของคนที่สร้าง ไม่ได้ผูกกับไฟล์
+  // เปลี่ยนคนดูแลเมื่อไหร่ คนใหม่ต้องรัน setupTriggers() เองอีกครั้ง
+  const EXPECTED_TRIGGERS = [
+    'onFormSubmit', 'recalculateSla', 'sendRedAlert',
+    'sendDailyBatch', 'anonymizeExpired', 'buildMonthlyStats',
+  ];
+  const installed = ScriptApp.getProjectTriggers().map(function (t) {
+    return t.getHandlerFunction();
+  });
+  const missingTriggers = EXPECTED_TRIGGERS.filter(function (name) {
+    return installed.indexOf(name) === -1;
+  });
+  if (missingTriggers.length > 0) {
+    problems.push(
+      '⚠️ ไม่พบ trigger: ' + missingTriggers.join(', ') +
+      ' — เคสที่ส่งเข้ามาจะไม่ถูกประมวลผลเลย ให้รัน setupTriggers()'
+    );
+  }
+
+  // มีแถวที่ trigger ไม่ได้ประมวลผลค้างอยู่ไหม
+  //
+  // ตรวจผลลัพธ์จริง ไม่ใช่แค่ว่ามี trigger อยู่ — trigger ที่มีอยู่แต่ error
+  // ทุกครั้งจะให้อาการเดียวกันคือแถวมาแต่ไม่มี referral_id
+  if (referrals) {
+    const orphans = readRows_(referrals).filter(function (r) {
+      return String(r['submitted_at'] || r['Timestamp'] || '').trim() &&
+             !String(r['referral_id'] || '').trim();
+    });
+    if (orphans.length > 0) {
+      problems.push(
+        '⚠️ มี ' + orphans.length + ' แถวที่ยังไม่มี referral_id — ' +
+        'trigger ไม่ได้ประมวลผล ให้รัน setupTriggers() แล้วรัน onFormSubmit() ' +
+        'เพื่อซ่อมแถวล่าสุด (แถวเก่ากว่านั้นต้องกรอกเอง)'
+      );
+    }
+  }
+
   // การนับเวลาทำการทำงานถูกไหม — ศุกร์ 15:00 ถึง จันทร์ 09:00 ควรได้ 2 ชั่วโมง
   const friday = new Date(2026, 6, 31, 15, 0, 0);   // ศุกร์ 31 ก.ค. 2026
   const monday = new Date(2026, 7, 3, 9, 0, 0);     // จันทร์ 3 ส.ค. 2026
