@@ -473,3 +473,93 @@ function restoreFormHeaders() {
   console.log('');
   console.log('รัน runSelfTest() ต่อเพื่อยืนยัน');
 }
+
+/* ------------------------------------------------------------------ */
+/* จัดชีตให้อาจารย์อ่านและตอบได้                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * คอลัมน์ที่อาจารย์ต้องเห็นเวลาอ่านเคสและตอบ เรียงตามลำดับความสำคัญในการอ่าน
+ * นอกรายการนี้ซ่อนทั้งหมด
+ */
+const REVIEW_VISIBLE_COLUMNS = {
+  'referral_id': 'เลขที่อ้างอิงของเคส',
+  'submitted_at': 'วันเวลาที่แพทย์ต้นทางส่งเข้ามา',
+  'status': 'สถานะ — เลือกจากรายการ เปลี่ยนเป็น "Advice Sent" เมื่อตอบเสร็จ',
+  'alert_level': 'none = ปกติ / yellow = ค้างเกิน 24 ชม.ทำการ / red = เกิน 48 ชม.',
+  'referral_type': 'กลุ่มที่ 2 = ขอความเห็นสูตรยา, กลุ่มที่ 3 = ขอส่งตัวมารับยา',
+  'urgency': 'ความเร่งด่วนที่แพทย์ต้นทางระบุ',
+  'referrer_org': 'โรงพยาบาลต้นทาง',
+  'referrer_name': 'ชื่อแพทย์ผู้ส่ง',
+  'referrer_phone': 'เบอร์ติดต่อกลับ',
+  'patient_age': 'อายุผู้ป่วย (ปี)',
+  'patient_sex': 'เพศ',
+  'diagnosis': 'การวินิจฉัย',
+  'disease_group': 'กลุ่มโรค',
+  'stage': 'Stage / risk group',
+  'treatment_summary': 'การรักษาที่ได้รับมาแล้ว',
+  'comorbidity': 'โรคประจำตัว / ข้อจำกัดในการให้ยา',
+  'clinical_question': 'สิ่งที่แพทย์ต้นทางต้องการปรึกษา',
+  'advice_record': '⬅️ พิมพ์คำตอบของอาจารย์ตรงนี้',
+  'assigned_to': 'แพทย์ประจำบ้านที่ดูแลเคสนี้',
+  'incomplete_reason': 'เหตุผลที่ข้อมูลไม่ครบ (ถ้ามี)',
+};
+
+const ALL_STATUSES = [
+  'Submitted', 'Pending Review', 'Incomplete', 'Slot Reserved',
+  'Awaiting Attending', 'Advice Sent', 'Readiness Visit Scheduled',
+  'Appointment Confirmed', 'Auto Replied', 'Rejected / Redirected', 'Closed',
+];
+
+/**
+ * จัดหน้าตาชีต referrals ให้อ่านและตอบได้โดยไม่ต้องเปิด dashboard
+ *
+ * ชีตดิบมี 60 กว่าคอลัมน์ ชื่อเป็นภาษาอังกฤษ และมีข้อมูลซ้ำสองชุด
+ * (คอลัมน์ _g2 _g3 จากฟอร์ม กับคอลัมน์กลางที่ระบบรวมให้) คนที่ไม่ได้สร้างระบบ
+ * เปิดมาแล้วไม่รู้ว่าต้องดูตรงไหนและตอบตรงไหน
+ *
+ * ทำ 4 อย่าง — ซ่อนคอลัมน์ที่ไม่ต้องใช้, ใส่คำอธิบายภาษาไทยเป็น note บนหัวคอลัมน์
+ * (เอาเมาส์ชี้แล้วเห็น), ทำ status เป็น dropdown กันพิมพ์ผิด, และตรึงแถวหัวไว้
+ *
+ * ไม่แตะข้อมูลสักเซลล์ ปรับแค่การแสดงผล รันซ้ำได้ปลอดภัย
+ */
+function prepareSheetForReview() {
+  const sheet = getSheet_(SHEETS.referrals);
+  const map = headerMap_(sheet);
+  const lastCol = sheet.getLastColumn();
+
+  let hidden = 0, shown = 0;
+  for (let i = 0; i < lastCol; i++) {
+    const name = Object.keys(map).find(function (k) { return map[k] === i; });
+    if (name && name in REVIEW_VISIBLE_COLUMNS) {
+      sheet.showColumns(i + 1);
+      sheet.getRange(1, i + 1).setNote(REVIEW_VISIBLE_COLUMNS[name]);
+      shown++;
+    } else {
+      sheet.hideColumns(i + 1);
+      hidden++;
+    }
+  }
+
+  // status เป็น dropdown — พิมพ์เองผิดตัวเดียวแล้วเคสหายจาก dashboard ทันที
+  if ('status' in map) {
+    const rows = Math.max(sheet.getMaxRows() - 1, 1);
+    sheet.getRange(2, map['status'] + 1, rows, 1).setDataValidation(
+      SpreadsheetApp.newDataValidation()
+        .requireValueInList(ALL_STATUSES, true)
+        .setAllowInvalid(false)
+        .setHelpText('เลือกจากรายการ — พิมพ์เองระบบจะอ่านไม่ออก')
+        .build()
+    );
+  }
+
+  sheet.setFrozenRows(1);
+  if ('referral_id' in map && map['referral_id'] === 0) sheet.setFrozenColumns(1);
+
+  console.log('จัดชีตให้อ่านง่ายแล้ว');
+  console.log('  แสดง ' + shown + ' คอลัมน์ / ซ่อน ' + hidden + ' คอลัมน์');
+  console.log('  หัวคอลัมน์มีคำอธิบายภาษาไทย เอาเมาส์ชี้เพื่อดู');
+  console.log('  ช่อง status เป็น dropdown แล้ว');
+  console.log('');
+  console.log('อยากเห็นทุกคอลัมน์อีกครั้ง ให้รัน showAllColumns()');
+}
