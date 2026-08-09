@@ -176,6 +176,17 @@ function bookTransplantSlot_(payload) {
 
     sheet.appendRow(row);
 
+    // ส่งใบยืนยันนัดถ้ามีอีเมล — หน้าจองเขียนไว้ว่า "ใช้ส่งใบยืนยันนัด"
+    // ถ้าไม่ส่งก็เท่ากับสัญญาแล้วไม่ทำ
+    const email = String(payload.referrerEmail || '').trim();
+    if (email) {
+      sendBookingConfirmationEmail_(email, {
+        referralId: referralId,
+        clinicDate: clinicDate,
+        fellowName: fellowName,
+      });
+    }
+
     return {
       referralId: referralId,
       clinicDate: clinicDate,
@@ -184,6 +195,67 @@ function bookTransplantSlot_(payload) {
     };
   } finally {
     lock.releaseLock();
+  }
+}
+
+const TH_MONTHS = [
+  'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม',
+];
+const TH_DAYS = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+
+/** "2026-08-11" → "วันอังคารที่ 11 สิงหาคม 2569" */
+function formatThaiDate_(iso) {
+  const parts = iso.split('-').map(Number);
+  const d = new Date(parts[0], parts[1] - 1, parts[2]);
+  return 'วัน' + TH_DAYS[d.getDay()] + 'ที่ ' + parts[2] + ' ' +
+    TH_MONTHS[parts[1] - 1] + ' ' + (parts[0] + 543);
+}
+
+/**
+ * ใบยืนยันนัดสำหรับกลุ่มที่ 1
+ *
+ * ต่างจาก sendReferralIdEmail_ ที่ใช้กับฟอร์มกลุ่ม 2 และ 3 — ฉบับนั้นบอกว่า
+ * "ทีมงานจะตอบกลับภายใน 48 ชั่วโมงทำการ" ซึ่งไม่จริงกับกลุ่มนี้อีกแล้ว
+ * เพราะได้วันนัดทันทีตั้งแต่ตอนจอง ไม่มีใครต้องตอบกลับ
+ *
+ * ส่งไม่สำเร็จต้องไม่ทำให้การจองล้ม — คิวถูกจองไปแล้วและใบยืนยันแสดงบนหน้าจอ
+ * ตั้งแต่ตอนกดเสร็จ อีเมลเป็นสำเนาสำรองเท่านั้น
+ */
+function sendBookingConfirmationEmail_(email, booking) {
+  const referLine = 'ส่งพบ fellow transplant ชื่อ ' + booking.fellowName + ' ที่ OPD 700';
+
+  const body =
+    'ยืนยันการนัดหมายเรียบร้อยแล้ว\n\n' +
+    '  เลขที่อ้างอิง  ' + booking.referralId + '\n' +
+    '  วันนัด         ' + formatThaiDate_(booking.clinicDate) + '\n' +
+    '  เวลา           08:00 น.\n' +
+    '  สถานที่        OPD 700 โรงพยาบาลศิริราช\n' +
+    '  พบแพทย์        ' + booking.fellowName + ' (fellow transplant)\n\n' +
+    '--- สิ่งที่ขอความร่วมมือ (สำคัญมาก) ---\n\n' +
+    '1. เขียนบนหัวกระดาษใบ refer ให้ชัดเจนว่า\n\n' +
+    '     "' + referLine + '"\n\n' +
+    '   ข้อความนี้ช่วยให้พยาบาลคัดกรองด่านหน้าส่งผู้ป่วยถึงตัวแพทย์ได้ทันที\n' +
+    '   ถ้าไม่มี ผู้ป่วยจะต้องวนหาแผนกเอง\n\n' +
+    '2. แจ้งผู้ป่วยให้ทำบัตรโรงพยาบาลศิริราชให้เรียบร้อยก่อนวันนัด\n' +
+    '   https://si-eservice2.mahidol.ac.th/medrecord/index.php\n\n' +
+    '3. นำเอกสารตาม checklist มาให้ครบในวันนัด\n\n' +
+    'หากต้องการเลื่อนหรือยกเลิกนัด กรุณาโทร ' + CONTACT_PHONE + '\n' +
+    '(จันทร์-ศุกร์ 08:00-16:00 น.)\n\n' +
+    'กรุณาอย่าส่งชื่อ-สกุล หรือเลข HN ของผู้ป่วยทางอีเมลนี้\n\n' +
+    '--\n' +
+    'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช\n' +
+    'อีเมลนี้ส่งจากระบบอัตโนมัติ กรุณาอย่าตอบกลับ';
+
+  try {
+    MailApp.sendEmail({
+      to: email,
+      subject: 'ยืนยันนัด ' + booking.referralId + ' — ' +
+        formatThaiDate_(booking.clinicDate),
+      body: body,
+    });
+  } catch (err) {
+    console.error('ส่งใบยืนยันนัดไม่สำเร็จ (' + booking.referralId + '): ' + err);
   }
 }
 
