@@ -38,17 +38,23 @@ export interface ReviewCase {
  * ไม่ได้เอามาจาก STATUSES_BY_TYPE ทั้งชุด เพราะสถานะอย่าง Submitted /
  * Pending Review เป็นสถานะระหว่างทางที่ระบบตั้งให้เอง ไม่ใช่คำตัดสินของคนตอบ
  */
-const ANSWER_OPTIONS: { value: Status; labelTh: string; onlyGroup3?: boolean }[] =
-  [
-    { value: "Advice Sent", labelTh: "ตอบคำแนะนำกลับ — จบเคส" },
-    {
-      value: "Readiness Visit Scheduled",
-      labelTh: "นัดมาประเมินความพร้อมที่ OPD",
-      onlyGroup3: true,
-    },
-    { value: "Incomplete", labelTh: "ขอข้อมูลเพิ่ม — ยังไม่จบเคส" },
-    { value: "Rejected / Redirected", labelTh: "ไม่เข้าเกณฑ์ / แนะนำช่องทางอื่น" },
-  ];
+const ANSWER_OPTIONS: {
+  value: Status;
+  labelTh: string;
+  onlyGroup3?: boolean;
+}[] = [
+  { value: "Advice Sent", labelTh: "ตอบคำแนะนำกลับ — จบเคส" },
+  {
+    value: "Readiness Visit Scheduled",
+    labelTh: "นัดมาประเมินความพร้อมที่ OPD",
+    onlyGroup3: true,
+  },
+  { value: "Incomplete", labelTh: "ขอข้อมูลเพิ่ม — ยังไม่จบเคส" },
+  {
+    value: "Rejected / Redirected",
+    labelTh: "ไม่เข้าเกณฑ์ / แนะนำช่องทางอื่น",
+  },
+];
 
 export function ReviewList({ cases }: { cases: ReviewCase[] }) {
   return (
@@ -65,7 +71,10 @@ export function ReviewList({ cases }: { cases: ReviewCase[] }) {
 const INITIAL: AdviceState = { ok: false, message: "" };
 
 function ReviewCard({ item }: { item: ReviewCase }) {
-  const [state, formAction, pending] = useActionState(saveAdviceAction, INITIAL);
+  const [state, formAction, pending] = useActionState(
+    saveAdviceAction,
+    INITIAL,
+  );
   const [open, setOpen] = useState(false);
 
   const alert = alertLevelFor(item.elapsedBusinessHours, item.status);
@@ -181,41 +190,52 @@ function ReviewCard({ item }: { item: ReviewCase }) {
             </div>
           ) : (
             <form action={formAction} className="space-y-3">
+              {/* อยู่นอก fieldset เพราะช่องที่ถูก disabled จะไม่ถูกส่งไปกับฟอร์ม */}
               <input type="hidden" name="referralId" value={item.referralId} />
 
-              <label className="block text-sm">
-                <span className="block font-medium text-zinc-700 mb-1">
-                  คำตอบถึงแพทย์ต้นทาง <span className="text-red-600">*</span>
-                </span>
-                <textarea
-                  name="advice"
-                  required
-                  rows={6}
-                  placeholder="เช่น แนะนำให้ R-CHOP ครบ 6 cycles ก่อน แล้วประเมินซ้ำด้วย PET-CT หากยังมี residual disease จึงส่งปรึกษาการปลูกถ่าย"
-                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 leading-relaxed"
-                />
-                <span className="block text-xs text-zinc-500 mt-1">
-                  ข้อความนี้จะถูกส่งอีเมลกลับแพทย์ต้นทางตามที่กรอกไว้
-                  และลงชื่อผู้ตอบให้อัตโนมัติ
-                </span>
-              </label>
+              {/*
+                ล็อกช่องกรอกระหว่างรอบันทึก — การบันทึกใช้เวลา 2-3 วินาที
+                ถ้าปล่อยให้แก้ข้อความต่อได้ สิ่งที่พิมพ์เพิ่มจะไม่ถูกส่งไปด้วย
+                แต่หน้าจอยังแสดงอยู่ ทำให้เข้าใจผิดว่าบันทึกไปแล้ว
+              */}
+              <fieldset
+                disabled={pending}
+                className={`space-y-3 transition-opacity ${pending ? "opacity-50" : ""}`}
+              >
+                <label className="block text-sm">
+                  <span className="block font-medium text-zinc-700 mb-1">
+                    คำตอบถึงแพทย์ต้นทาง <span className="text-red-600">*</span>
+                  </span>
+                  <textarea
+                    name="advice"
+                    required
+                    rows={6}
+                    placeholder="เช่น แนะนำให้ R-CHOP ครบ 6 cycles ก่อน แล้วประเมินซ้ำด้วย PET-CT หากยังมี residual disease จึงส่งปรึกษาการปลูกถ่าย"
+                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 leading-relaxed"
+                  />
+                  <span className="block text-xs text-zinc-500 mt-1">
+                    ข้อความนี้จะถูกส่งอีเมลกลับแพทย์ต้นทางตามที่กรอกไว้
+                    และลงชื่อผู้ตอบให้อัตโนมัติ
+                  </span>
+                </label>
 
-              <label className="block text-sm">
-                <span className="block font-medium text-zinc-700 mb-1">
-                  ผลการพิจารณา
-                </span>
-                <select
-                  name="status"
-                  defaultValue="Advice Sent"
-                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900"
-                >
-                  {options.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.labelTh}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                <label className="block text-sm">
+                  <span className="block font-medium text-zinc-700 mb-1">
+                    ผลการพิจารณา
+                  </span>
+                  <select
+                    name="status"
+                    defaultValue="Advice Sent"
+                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900"
+                  >
+                    {options.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.labelTh}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </fieldset>
 
               {state.message && (
                 <p
@@ -233,15 +253,62 @@ function ReviewCard({ item }: { item: ReviewCase }) {
               <button
                 type="submit"
                 disabled={pending}
-                className="w-full rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:bg-zinc-300 transition-colors"
+                aria-busy={pending}
+                className="w-full flex items-center justify-center gap-2.5 rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-wait transition-colors"
               >
+                {pending && <Spinner />}
                 {pending ? "กำลังบันทึก…" : "บันทึกและส่งกลับแพทย์ต้นทาง"}
               </button>
+
+              {/*
+                บอกให้ชัดว่ายังทำงานอยู่และใช้เวลาเท่าไร — การบันทึกวิ่งผ่าน
+                Apps Script ซึ่งช้ากว่าที่คนคาดจากการกดปุ่มบนเว็บทั่วไป
+                ถ้าไม่บอก คนกดจะคิดว่าค้างแล้วกดซ้ำหรือปิดหน้าไปเสียก่อน
+              */}
+              {pending && (
+                <p
+                  role="status"
+                  className="flex items-start gap-2 text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3"
+                >
+                  <span aria-hidden="true">⏳</span>
+                  <span>
+                    กำลังบันทึกลง Google Sheet และส่งอีเมลกลับแพทย์ต้นทาง —
+                    ใช้เวลาประมาณ 2–3 วินาที กรุณาอย่าปิดหน้านี้
+                  </span>
+                </p>
+              )}
             </form>
           )}
         </div>
       )}
     </div>
+  );
+}
+
+/** วงกลมหมุน — บอกว่าระบบยังทำงานอยู่ ไม่ได้ค้าง */
+function Spinner() {
+  return (
+    <svg
+      className="h-4 w-4 animate-spin shrink-0"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="3"
+        className="opacity-25"
+      />
+      <path
+        d="M12 2a10 10 0 0 1 10 10"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 
