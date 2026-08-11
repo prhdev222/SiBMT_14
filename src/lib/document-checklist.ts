@@ -4,12 +4,26 @@
  */
 
 import type { ReferralType } from "./referral-types";
+import { HOSPITAL_LINKS } from "./config";
 
 export interface ChecklistItem {
   label: string;
   /** เงื่อนไข — แสดงเฉพาะบางโรค เช่น "กรณีผู้ป่วย Lymphoma" */
   conditionTh?: string;
   detail?: string;
+  /**
+   * ลิงก์ที่กดได้ท้ายรายการ
+   *
+   * แยกเป็นฟิลด์ของตัวเองแทนการวาง URL ลงใน `detail` เพราะข้อความใน `detail`
+   * ถูกเรนเดอร์เป็นข้อความล้วน URL ที่วางไว้จึงกดไม่ได้ ต้องคัดลอกไปวางเอง
+   * — และการไปไล่หา URL ในข้อความด้วย regex แทนก็จะพังกับ detail ที่มีวงเล็บ
+   * หรือเครื่องหมายวรรคตอนติดท้าย URL
+   */
+  link?: {
+    href: string;
+    /** ข้อความบนลิงก์ — ถ้าไม่ใส่จะแสดง URL ตามจริง */
+    labelTh?: string;
+  };
 }
 
 export interface ChecklistSection {
@@ -32,7 +46,11 @@ const TRANSPLANT_CHECKLIST: ChecklistSection = {
     },
     {
       label: "แจ้งผู้ป่วยให้ทำบัตรโรงพยาบาลออนไลน์ให้เรียบร้อยก่อนวันนัด",
-      detail: "https://si-eservice2.mahidol.ac.th/medrecord/index.php",
+      detail: "ทำล่วงหน้าได้เลย ไม่ต้องรอถึงวันนัด จะได้ไม่ต้องต่อคิวทำบัตรหน้างาน",
+      link: {
+        href: HOSPITAL_LINKS.onlineRegistration,
+        labelTh: "เปิดหน้าทำบัตรโรงพยาบาลศิริราช",
+      },
     },
     {
       label:

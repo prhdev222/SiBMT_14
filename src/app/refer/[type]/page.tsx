@@ -354,6 +354,19 @@ function ChecklistCard({
               {item.detail && (
                 <p className="text-zinc-500 mt-0.5 break-words">{item.detail}</p>
               )}
+              {item.link && (
+                // เปิดแท็บใหม่ — คนอ่านหน้านี้กำลังไล่ checklist อยู่
+                // ถ้าพาออกไปทั้งแท็บ ต้องกดย้อนกลับมาหาที่ค้างไว้ใหม่
+                <a
+                  href={item.link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1.5 inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 font-medium text-blue-700 hover:bg-blue-100 transition-colors break-all"
+                >
+                  {item.link.labelTh ?? item.link.href}
+                  <span aria-hidden>↗</span>
+                </a>
+              )}
             </div>
           </li>
         ))}
