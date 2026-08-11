@@ -35,10 +35,10 @@
 
 | ช่อง | ประเภท action | ค่า |
 | --- | --- | --- |
-| 🧬 กลุ่ม 1 | URI | `https://sibmt-refer.pages.dev/refer/transplant` |
-| 💊 กลุ่ม 2 | URI | `https://sibmt-refer.pages.dev/refer/regimen-consult` |
-| 🏥 กลุ่ม 3 | URI | `https://sibmt-refer.pages.dev/refer/chemo-admission` |
-| 🌐 กลุ่ม 4 | URI | `https://sibmt-refer.pages.dev/refer/general` |
+| 🧬 กลุ่ม 1 | URI | `https://sibmt-refer.uradev222.workers.dev/refer/transplant` |
+| 💊 กลุ่ม 2 | URI | `https://sibmt-refer.uradev222.workers.dev/refer/regimen-consult` |
+| 🏥 กลุ่ม 3 | URI | `https://sibmt-refer.uradev222.workers.dev/refer/chemo-admission` |
+| 🌐 กลุ่ม 4 | URI | `https://sibmt-refer.uradev222.workers.dev/refer/general` |
 | ❓ ไม่แน่ใจ | Message | `ไม่แน่ใจว่าเข้ากลุ่มไหน` |
 | ☎️ ติดต่อ | Message | `ขอติดต่อเจ้าหน้าที่` |
 
@@ -348,7 +348,7 @@ Referral ID: {{referral_id}}
 • HEM-20260727-0007 (26 ชม.)
 
 เปิดดูรายละเอียด:
-https://sibmt-refer.pages.dev/dashboard
+https://sibmt-refer.uradev222.workers.dev/dashboard
 ```
 
 **สังเกต:** มีเฉพาะ referral ID กลุ่ม และจำนวนชั่วโมง ไม่มีข้อมูลผู้ป่วยเลย
@@ -361,7 +361,7 @@ Referral ID: HEM-20260723-0008
 กลุ่มที่: 3
 ค้างมาแล้ว: 52 ชั่วโมงทำการ
 กรุณาเข้าตรวจสอบโดยด่วน
-https://sibmt-refer.pages.dev/dashboard
+https://sibmt-refer.uradev222.workers.dev/dashboard
 ```
 
 ### 6.3 แจ้ง fellow → กลุ่ม fellow transplant
@@ -375,7 +375,7 @@ Referral ID: HEM-20260728-0002
 วันนัด: 5 ส.ค. 2569 08:00 น. OPD 700
 ผู้ป่วย: หญิง อายุ 52 ปี
 การวินิจฉัย: Multiple Myeloma
-รายละเอียดเพิ่มเติม: https://sibmt-refer.pages.dev/dashboard
+รายละเอียดเพิ่มเติม: https://sibmt-refer.uradev222.workers.dev/dashboard
 ```
 
 > หากต้องการรัดกุมกว่านี้ สามารถตัดบรรทัด "ผู้ป่วย" และ "การวินิจฉัย" ออก

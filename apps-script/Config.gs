@@ -170,8 +170,17 @@ const MERGED_COLUMNS = {
   clinical_question: ['clinical_question_g2', 'clinical_question_g3'],
 };
 
-/** URL ของ dashboard ที่แนบไปกับข้อความ LINE */
-const DASHBOARD_URL = 'https://sibmt-refer.pages.dev/dashboard';
+/**
+ * ที่อยู่ของเว็บ — แก้ที่เดียวพอ
+ *
+ * เป็น Cloudflare **Worker** ไม่ใช่ Pages โดเมนจึงเป็น workers.dev
+ * ถ้าวันหลังผูกโดเมนของภาควิชา ให้แก้บรรทัดเดียวนี้แล้ว deploy เวอร์ชันใหม่
+ * (อย่าลืมแก้ API_VERSION ใน Api.gs ด้วย ไม่งั้นแยกไม่ออกว่า deploy ติดหรือยัง)
+ */
+const SITE_URL = 'https://sibmt-refer.uradev222.workers.dev';
+
+/** URL ของ dashboard ที่แนบไปกับข้อความ LINE และอีเมลทุกฉบับ */
+const DASHBOARD_URL = SITE_URL + '/dashboard';
 
 /** เบอร์ติดต่อสำรอง แสดงในข้อความตอบกลับอัตโนมัติ */
 const CONTACT_PHONE = '02-419-9903';

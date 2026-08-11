@@ -79,7 +79,7 @@ npx wrangler secret bulk .env.local
 ### 4. แก้ลิงก์ในข้อความแจ้งเตือน
 
 `DASHBOARD_URL` ใน [apps-script/Config.gs](../apps-script/Config.gs) ยังชี้ไป
-`https://sibmt-refer.pages.dev/dashboard` ซึ่งเปิดไม่ได้ — ลิงก์นี้อยู่ท้าย
+`https://sibmt-refer.uradev222.workers.dev/dashboard` ซึ่งเปิดไม่ได้ — ลิงก์นี้อยู่ท้าย
 **ทุกข้อความ** ที่ระบบส่ง ทั้งอีเมลและ LINE
 
 แก้เป็น URL จริงจากขั้นที่ 2 แล้ว **Deploy → Manage deployments → ✏️ → New version**
@@ -305,7 +305,7 @@ DASHBOARD_USERS=admin:ยาวหน่อยนะรหัสนี้;fellow
 
 1. Cloudflare Dashboard → Zero Trust → Access → Applications → Add an application
 2. เลือก **Self-hosted**
-3. ตั้ง path เป็น `sibmt-refer.pages.dev/dashboard*`
+3. ตั้ง path เป็น `sibmt-refer.uradev222.workers.dev/dashboard*`
 4. เพิ่ม Policy: Allow → Emails ending in `@<โดเมนองค์กร>` หรือระบุรายชื่ออีเมลเฉพาะบุคลากรที่เกี่ยวข้อง
 5. ทบทวนรายชื่อผู้มีสิทธิ์ทุก 3 เดือนตาม PDPA-004
 
