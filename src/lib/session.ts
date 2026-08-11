@@ -33,12 +33,22 @@ export async function getSession(): Promise<Session | null> {
 /**
  * บังคับให้ล็อกอินก่อน ไม่งั้นเด้งไปหน้า login
  *
- * ต้องเรียกในทุก Server Action และทุกหน้าที่มีข้อมูล ไม่ใช่พึ่ง proxy.ts อย่างเดียว
- * เพราะ Server Action ถูกยิงด้วย POST ตรง ๆ ได้ และเอกสาร Next ระบุชัดว่า
- * proxy เป็นแค่ด่านคัดกรองหยาบ ๆ ไม่ใช่ระบบ authorization
+ * ⚠️ นี่คือด่านเดียวของระบบ ไม่มี proxy.ts คอยกันไว้ให้ข้างหน้าแล้ว
+ * ทุกหน้าใต้ /dashboard และทุก Server Action ต้องเรียกฟังก์ชันนี้เอง
+ * (Server Action ถูกยิงด้วย POST ตรง ๆ ได้อยู่แล้ว proxy จึงกันไม่ได้จริงตั้งแต่ต้น
+ *  เอกสาร Next ก็ระบุเองว่า proxy เป็นแค่ด่านคัดกรองหยาบ ๆ ไม่ใช่ authorization)
+ *
+ * @param returnTo เส้นทางที่ผู้ใช้ตั้งใจจะเข้า เพื่อพากลับมาหลังล็อกอินสำเร็จ
+ *                 หน้าต้องส่งค่านี้มาเอง เพราะ Server Component อ่าน pathname
+ *                 ของตัวเองไม่ได้ถ้าไม่มี proxy คอยแปะ header ให้
  */
-export async function requireSession(): Promise<Session> {
+export async function requireSession(returnTo?: string): Promise<Session> {
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) {
+    // กันการถูกหลอกให้เด้งออกไปเว็บอื่น — รับเฉพาะเส้นทางภายในเท่านั้น
+    const safe =
+      returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//");
+    redirect(safe ? `/login?next=${encodeURIComponent(returnTo)}` : "/login");
+  }
   return session;
 }

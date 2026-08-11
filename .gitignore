@@ -38,6 +38,15 @@ yarn-error.log*
 # vercel
 .vercel
 
+# cloudflare
+.open-next
+.wrangler
+# ค่าลับตอน preview ด้วย wrangler dev — เทียบเท่า .env.local ของฝั่ง Cloudflare
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+cloudflare-env.d.ts

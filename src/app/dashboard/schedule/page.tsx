@@ -48,7 +48,7 @@ export default async function SchedulePage({
 }: {
   searchParams: Promise<{ month?: string }>;
 }) {
-  const session = await requireSession();
+  const session = await requireSession("/dashboard/schedule");
 
   const { month } = await searchParams;
   const [{ referrals }, source, fellows] = await Promise.all([

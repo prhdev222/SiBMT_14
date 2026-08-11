@@ -28,7 +28,7 @@ function needsAnswer(referral: Referral): boolean {
 }
 
 export default async function ReviewPage() {
-  const session = await requireSession();
+  const session = await requireSession("/dashboard/review");
   const { referrals, isSampleData } = await loadReferrals();
 
   // ค้างนานสุดขึ้นก่อน — เคสที่รอมานานที่สุดคือเคสที่ควรได้รับความสนใจก่อน

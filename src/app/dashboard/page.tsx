@@ -11,8 +11,8 @@ import { requireSession } from "@/lib/session";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  // ตรวจก่อนโหลดข้อมูล — proxy.ts เป็นแค่ด่านหยาบ ไม่ใช่ตัวกั้นจริง
-  const session = await requireSession();
+  // ตรวจก่อนโหลดข้อมูล — ไม่มี proxy.ts แล้ว ด่านนี้คือด่านเดียว
+  const session = await requireSession("/dashboard");
 
   const [{ referrals, isSampleData, error }, config] = await Promise.all([
     loadReferrals(),

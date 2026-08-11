@@ -1,0 +1,15 @@
+# ค่าลับสำหรับ `wrangler dev` (preview แบบ Cloudflare บนเครื่องตัวเอง)
+# คัดลอกเป็น .dev.vars แล้วเติมค่าจริง — .dev.vars อยู่ใน .gitignore
+#
+# ตอน deploy จริงห้ามใช้ไฟล์นี้ ให้ตั้งเป็น Secret แทน:
+#   npx wrangler secret put GOOGLE_PRIVATE_KEY
+# ค่าที่ตั้งแบบ Secret จะอ่านกลับออกมาดูไม่ได้ ต่างจาก Variable ธรรมดา
+
+GOOGLE_SERVICE_ACCOUNT_EMAIL=
+GOOGLE_PRIVATE_KEY=
+GOOGLE_SHEET_ID=
+GOOGLE_SCHEDULE_SHEET_ID=
+AUTH_SECRET=
+DASHBOARD_USERS=
+BOOKING_API_URL=
+BOOKING_API_TOKEN=
