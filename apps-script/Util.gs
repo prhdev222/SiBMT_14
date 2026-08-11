@@ -164,6 +164,45 @@ function ageBand_(age) {
   return lo + '–' + (lo + 9);
 }
 
+const TH_MONTHS_SHORT = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+                         'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const TH_MONTHS_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                        'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+const TH_DAYS_FULL = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+
+/**
+ * วันที่ภาษาไทยพร้อม พ.ศ.
+ *
+ * ⚠️ ห้ามประกาศฟังก์ชันชื่อนี้ซ้ำในไฟล์อื่น — Apps Script มี global scope เดียว
+ * ทั้งโปรเจกต์ ตัวที่โหลดทีหลังจะทับตัวแรกเงียบ ๆ โดยไม่ฟ้อง error
+ * เคยเกิดมาแล้วจริง: Api.gs มีตัวที่รับสตริง ISO ส่วน Notify.gs มีตัวที่รับ Date
+ * ตัวที่ชนะจะทำให้อีกฝั่งพังทันที (`iso.split is not a function` หรือ
+ * `date.getDate is not a function`) และพังในที่ที่ไม่มีใครเห็น
+ *
+ * รับได้ทั้ง Date และสตริง "yyyy-MM-dd" เพราะทั้งสองแบบมีใช้จริงในระบบ
+ *
+ * @param {Date|string} value
+ * @param {boolean} [long] แบบเต็ม "วันอังคารที่ 11 สิงหาคม 2569" — ใช้กับใบนัด
+ *                         ที่คนต้องจำวันให้ได้ ค่าปกติคือแบบสั้น "11 ส.ค. 2569"
+ *                         ซึ่งใช้ในข้อความ LINE ที่ต้องประหยัดพื้นที่
+ */
+function formatThaiDate_(value, long) {
+  let d;
+  if (value instanceof Date) {
+    d = value;
+  } else {
+    const parts = String(value || '').split('-').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return String(value || '-');
+    d = new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+  if (isNaN(d.getTime())) return String(value || '-');
+
+  const month = long ? TH_MONTHS_FULL[d.getMonth()] : TH_MONTHS_SHORT[d.getMonth()];
+  const body = d.getDate() + ' ' + month + ' ' + (d.getFullYear() + 543);
+
+  return long ? 'วัน' + TH_DAYS_FULL[d.getDay()] + 'ที่ ' + body : body;
+}
+
 function logStatusChange_(referralId, oldStatus, newStatus, changedBy, note) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEETS.statusLog);

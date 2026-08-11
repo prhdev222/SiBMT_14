@@ -125,20 +125,42 @@ function sendDailyBatch() {
 }
 
 /**
- * แจ้ง fellow เมื่อมีผู้ป่วยนัดพบในวันที่ตนออกตรวจ (กลุ่มที่ 1)
+ * แจ้ง fellow เมื่อมีผู้ป่วยจองคิวมาพบในวันที่ตนออกตรวจ (กลุ่มที่ 1)
  *
- * อาจารย์กำหนดให้ส่ง เพศ อายุ และโรค ได้ — ไม่มีชื่อและ HN
+ * อาจารย์กำหนดให้ส่ง เพศ อายุ และโรค ได้ — ไม่มีชื่อและ HN จึงไม่ระบุตัวผู้ป่วย
+ * นี่เป็นข้อยกเว้นเดียวของ PDPA-003 ข้อความ LINE อื่นห้ามมีข้อมูลผู้ป่วย
+ *
+ * ⚠️ ข้อจำกัดที่ยังแก้ไม่ได้: pushLineMessage_ ส่งไปที่ LINE_TARGET_FELLOW
+ * ซึ่งเป็น group ID — fellow ทุกคนในกลุ่มเห็นข้อความนี้ ไม่ใช่เฉพาะคนที่ถูกจอง
+ * ข้อความจึงต้องขึ้นชื่อ fellow ให้ชัดว่าเป็นคิวของใคร
+ * การส่งถึงตัวบุคคลต้องรู้ userId ซึ่งต้องมี LINE Login + LIFF ก่อน
+ *
+ * @param {{referralId: string, clinicDate: string, fellowName: string,
+ *          referrerOrg: string, patientSex: string, patientAge: string,
+ *          diagnosis: string}} booking ผลจาก bookTransplantSlot_
  */
-function notifyFellow_(referral) {
-  const message =
-    '🧬 มีผู้ป่วยนัดพบท่าน\n' +
-    'Referral ID: ' + referral['referral_id'] + '\n' +
-    'วันนัด: ' + (referral['appointment_note'] || '-') + '\n' +
-    'ผู้ป่วย: ' + (referral['patient_sex'] || '-') + ' อายุ ' + (referral['patient_age'] || '-') + ' ปี\n' +
-    'การวินิจฉัย: ' + (referral['diagnosis'] || '-') + '\n' +
-    'รายละเอียดเพิ่มเติม: ' + DASHBOARD_URL;
+function notifyFellowOfBooking_(booking) {
+  // การแจ้งเตือนล้มเหลวต้องไม่ทำให้การจองที่เขียนลงชีตแล้วกลายเป็นล้มเหลวตามไปด้วย
+  // แพทย์ต้นทางได้เลขนัดไปแล้ว ถ้าโยน error ต่อ หน้าเว็บจะบอกว่าจองไม่สำเร็จทั้งที่สำเร็จ
+  try {
+    const message =
+      '🧬 มีผู้ป่วยจองคิวมาพบ\n' +
+      '────────────────\n' +
+      'แพทย์ผู้ตรวจ: ' + (booking.fellowName || '-') + '\n' +
+      'วันนัด: ' + formatThaiDate_(booking.clinicDate) + ' เวลา 08:00 น.\n' +
+      'เลขที่อ้างอิง: ' + (booking.referralId || '-') + '\n' +
+      'ส่งมาจาก: ' + (booking.referrerOrg || '-') + '\n' +
+      'ผู้ป่วย: ' + (booking.patientSex || '-') +
+        ' อายุ ' + (booking.patientAge || '-') + ' ปี\n' +
+      'การวินิจฉัย: ' + (booking.diagnosis || '-') + '\n\n' +
+      'รายละเอียดเพิ่มเติม: ' + DASHBOARD_URL;
 
-  pushLineMessage_(message, 'fellow');
+    pushLineMessage_(message, 'fellow');
+  } catch (err) {
+    console.error(
+      'แจ้ง fellow ไม่สำเร็จ (' + (booking && booking.referralId) + '): ' + err
+    );
+  }
 }
 
 /**
@@ -156,8 +178,4 @@ function notifyConfigProblem_(detail) {
   );
 }
 
-function formatThaiDate_(date) {
-  const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
-                  'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-  return date.getDate() + ' ' + months[date.getMonth()] + ' ' + (date.getFullYear() + 543);
-}
+// formatThaiDate_ ย้ายไปอยู่ที่ Util.gs แล้ว ดูคำเตือนเรื่องชื่อซ้ำที่นั่น

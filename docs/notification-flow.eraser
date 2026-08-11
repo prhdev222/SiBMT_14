@@ -7,7 +7,7 @@
 // สรุปที่อ่านจากโค้ดจริง ณ 10 ส.ค. 2569:
 //   • แพทย์ต้นทางได้รับ "อีเมลเท่านั้น" ไม่เคยได้รับ LINE เลย
 //   • LINE ส่งได้เฉพาะเข้ากลุ่มภายใน 3 กลุ่ม ไม่ถึงตัวบุคคลภายนอก
-//   • notifyFellow_ เขียนไว้แล้วแต่ยังไม่มีใครเรียก (เส้นประในภาพ)
+//   • fellow ได้รับแจ้งเมื่อมีคนจองคิว แต่เห็นกันทั้งกลุ่ม ไม่ใช่รายบุคคล
 // ═══════════════════════════════════════════════════════════════════
 
 title Flow การแจ้งเตือน — Email และ LINE
@@ -38,7 +38,7 @@ Apps Script [icon: code, color: yellow] {
   sendRedAlert [icon: siren]
   sendDailyBatch [icon: list]
   notifyConfigProblem_ [icon: tool]
-  notifyFellow_ ยังไม่ถูกเรียก [icon: user-x, color: gray]
+  notifyFellowOfBooking_ [icon: user-check, color: teal]
 }
 
 // ───────────────────────────────────────────────────────────────────
@@ -90,15 +90,15 @@ notifyConfigProblem_ > LINE Messaging API push: ระบบตั้งค่�
 
 LINE Messaging API push > LINE_TARGET_RESIDENT กลุ่ม resident: รอบ 10:00 น.
 LINE Messaging API push > LINE_TARGET_ADMIN แอดมินกลาง: Red Alert และปัญหาระบบ
-LINE Messaging API push --> LINE_TARGET_FELLOW กลุ่ม fellow: ยังไม่มีเหตุการณ์ใดส่งมาทางนี้
+LINE Messaging API push > LINE_TARGET_FELLOW กลุ่ม fellow: มีผู้ป่วยจองคิวมาพบ
 
 // ═══════════════════════════════════════════════════════════════════
-// ⚠️ ช่องว่างที่ 1 — fellow ไม่รู้ว่ามีคนจองคิวมาพบ
-// notifyFellow_ เขียนเสร็จแล้วใน Notify.gs แต่ไม่มีที่ไหนเรียกใช้
-// bookTransplantSlot_ เขียนคิวลงชีตแล้วจบ ไม่ได้แจ้ง fellow ต่อ
+// แจ้ง fellow เมื่อมีคนจองคิวมาพบ (ต่อสายแล้ว 11 ส.ค. 2569)
+// ส่งหลังปล่อย LockService แล้ว เพื่อไม่ให้คนจองคิวถัดไปต้องรอ
+// ปลายทางเป็น group ID จึงเห็นทั้งกลุ่ม ข้อความจึงขึ้นชื่อ fellow ไว้บรรทัดแรก
 // ═══════════════════════════════════════════════════════════════════
-จองคิวกลุ่ม 1 สำเร็จ --> notifyFellow_ ยังไม่ถูกเรียก: เส้นนี้ยังไม่มีในโค้ด
-notifyFellow_ ยังไม่ถูกเรียก --> LINE Messaging API push: เพศ อายุ โรค (ไม่มีชื่อ ไม่มี HN)
+จองคิวกลุ่ม 1 สำเร็จ > notifyFellowOfBooking_
+notifyFellowOfBooking_ > LINE Messaging API push: เพศ อายุ โรค (ไม่มีชื่อ ไม่มี HN)
 
 // ═══════════════════════════════════════════════════════════════════
 // ⚠️ ช่องว่างที่ 2 — LINE ส่งถึงแพทย์ต้นทางรายบุคคลไม่ได้

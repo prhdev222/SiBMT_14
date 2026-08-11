@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-08-10 saveAdvice';
+const API_VERSION = '2026-08-11 notifyFellow';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -130,6 +130,7 @@ function bookTransplantSlot_(payload) {
     throw new Error('ระบบกำลังมีผู้จองพร้อมกัน กรุณาลองใหม่อีกครั้ง');
   }
 
+  let booking;
   try {
     const clinicDate = String(payload.clinicDate || '').trim();
     const fellowName = String(payload.fellowName || '').trim();
@@ -199,26 +200,40 @@ function bookTransplantSlot_(payload) {
 
     sheet.appendRow(row);
 
-    // ส่งใบยืนยันนัดถ้ามีอีเมล — หน้าจองเขียนไว้ว่า "ใช้ส่งใบยืนยันนัด"
-    // ถ้าไม่ส่งก็เท่ากับสัญญาแล้วไม่ทำ
-    const email = String(payload.referrerEmail || '').trim();
-    if (email) {
-      sendBookingConfirmationEmail_(email, {
-        referralId: referralId,
-        clinicDate: clinicDate,
-        fellowName: fellowName,
-      });
-    }
-
-    return {
+    booking = {
       referralId: referralId,
       clinicDate: clinicDate,
       fellowName: fellowName,
       remainingAfter: remaining - 1,
+      referrerEmail: values.referrer_email,
+      referrerOrg: values.referrer_org,
+      patientSex: values.patient_sex,
+      patientAge: values.patient_age,
+      diagnosis: values.diagnosis,
     };
   } finally {
     lock.releaseLock();
   }
+
+  // ── ส่วนแจ้งเตือน อยู่นอกล็อกโดยตั้งใจ ────────────────────────────
+  // ส่งอีเมลกับยิง LINE ใช้เวลาระดับวินาที ถ้าทำตอนยังถือล็อกอยู่
+  // คนที่กดจองคิวถัดไปจะต้องรอไปด้วยทั้งที่ไม่เกี่ยวกัน
+  // ถึงตรงนี้แถวถูกเขียนลงชีตเรียบร้อยแล้ว การจองสำเร็จแน่นอน
+
+  // ส่งใบยืนยันนัดถ้ามีอีเมล — หน้าจองเขียนไว้ว่า "ใช้ส่งใบยืนยันนัด"
+  // ถ้าไม่ส่งก็เท่ากับสัญญาแล้วไม่ทำ
+  if (booking.referrerEmail) {
+    sendBookingConfirmationEmail_(booking.referrerEmail, booking);
+  }
+
+  notifyFellowOfBooking_(booking);
+
+  return {
+    referralId: booking.referralId,
+    clinicDate: booking.clinicDate,
+    fellowName: booking.fellowName,
+    remainingAfter: booking.remainingAfter,
+  };
 }
 
 /**
@@ -311,19 +326,9 @@ function sendAdviceEmail_(email, data) {
   }
 }
 
-const TH_MONTHS = [
-  'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
-  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม',
-];
-const TH_DAYS = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
-
-/** "2026-08-11" → "วันอังคารที่ 11 สิงหาคม 2569" */
-function formatThaiDate_(iso) {
-  const parts = iso.split('-').map(Number);
-  const d = new Date(parts[0], parts[1] - 1, parts[2]);
-  return 'วัน' + TH_DAYS[d.getDay()] + 'ที่ ' + parts[2] + ' ' +
-    TH_MONTHS[parts[1] - 1] + ' ' + (parts[0] + 543);
-}
+// formatThaiDate_ ย้ายไปอยู่ที่ Util.gs แล้ว — เคยมีสองตัวในโปรเจกต์นี้
+// ตัวนี้รับสตริง ISO ส่วนของ Notify.gs รับ Date ซึ่งทับกันเงียบ ๆ ใน global scope
+// เดียวกัน ทำให้ฝั่งที่แพ้พังทุกครั้งที่ถูกเรียก
 
 /**
  * ใบยืนยันนัดสำหรับกลุ่มที่ 1
@@ -341,7 +346,7 @@ function sendBookingConfirmationEmail_(email, booking) {
   const body =
     'ยืนยันการนัดหมายเรียบร้อยแล้ว\n\n' +
     '  เลขที่อ้างอิง  ' + booking.referralId + '\n' +
-    '  วันนัด         ' + formatThaiDate_(booking.clinicDate) + '\n' +
+    '  วันนัด         ' + formatThaiDate_(booking.clinicDate, true) + '\n' +
     '  เวลา           08:00 น.\n' +
     '  สถานที่        OPD 700 โรงพยาบาลศิริราช\n' +
     '  พบแพทย์        ' + booking.fellowName + ' (fellow transplant)\n\n' +
@@ -364,7 +369,7 @@ function sendBookingConfirmationEmail_(email, booking) {
     MailApp.sendEmail({
       to: email,
       subject: 'ยืนยันนัด ' + booking.referralId + ' — ' +
-        formatThaiDate_(booking.clinicDate),
+        formatThaiDate_(booking.clinicDate, true),
       body: body,
     });
   } catch (err) {
