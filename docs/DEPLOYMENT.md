@@ -85,10 +85,43 @@ npx wrangler secret bulk .env.local
 แก้เป็น URL จริงจากขั้นที่ 2 แล้ว **Deploy → Manage deployments → ✏️ → New version**
 พร้อมแก้ `API_VERSION` ใน `Api.gs` ด้วย
 
-### 5. ตั้ง Rate Limiting ที่ `/login`
+### 5. Rate limiting ที่ `/login` — ทำในโค้ดแล้ว ไม่ต้องตั้งใน dashboard
 
-ดู §Access Control ชั้นที่ 2 ด้านล่าง — ต้องทำก่อนเปิดใช้จริง
-เพราะระบบใช้รหัสผ่านล้วน ไม่มีการยืนยันตัวตนสองชั้น
+**WAF ใช้กับ `*.workers.dev` ไม่ได้** กฎ Rate limiting ของ WAF ผูกกับ zone
+คือโดเมนที่อยู่ในบัญชีเรา แต่ `workers.dev` เป็นโดเมนของ Cloudflare เอง
+ในหน้า dashboard ของ Worker จึงไม่มีเมนู Security → WAF ให้ตั้ง
+
+ใช้ **Rate Limiting binding** ของ Workers แทน ตั้งไว้ใน
+[wrangler.jsonc](../wrangler.jsonc) แล้ว ทำงานตั้งแต่ deploy ครั้งถัดไป:
+
+```jsonc
+"ratelimits": [
+  { "name": "LOGIN_RATE_LIMIT", "namespace_id": "1001",
+    "simple": { "limit": 5, "period": 60 } }
+]
+```
+
+บังคับใช้ที่ [src/lib/rate-limit.ts](../src/lib/rate-limit.ts) ซึ่ง
+`loginAction` เรียก **ก่อน** ตรวจรหัสผ่าน เพื่อให้การยิงรัวถูกหยุดตั้งแต่ยังไม่ได้
+เสียซีพียูไปกับ PBKDF2
+
+- นับแยกราย IP จาก `CF-Connecting-IP` ซึ่ง Cloudflare เขียนทับให้เองทุก request
+  (ห้ามใช้ `X-Forwarded-For` เพราะผู้เรียกปลอมค่าเองได้ แล้วเลี่ยงตัวนับได้ทันที)
+- `period` ใส่ได้เฉพาะ 10 หรือ 60 วินาที
+- เป็นหน้าต่างเลื่อน ไม่ใช่ล็อกบัญชี — พอพ้นนาทีนั้นก็ลองใหม่ได้เอง
+  ไม่ต้องมีใครมาปลดให้ และผู้โจมตีจะล็อกบัญชีคนอื่นด้วยการยิงรัวไม่ได้
+- ถ้าตัวนับพังจะ **ปล่อยผ่าน** ไม่ใช่ปิดกั้น — ระบบนี้ใช้ตอนดูแลผู้ป่วยจริง
+  การกันคนที่ควรเข้าได้ออกไปเสียหายกว่าการปล่อยให้เดารหัสได้ชั่วคราว
+- ตอน `npm run dev` บนเครื่องตัวเองไม่มี binding นี้ จะปล่อยผ่านเสมอ
+  การทดสอบว่ากันได้จริงต้องทำบน production
+
+ตรวจว่า binding ติดจริงจากบรรทัดที่ `npm run cf:deploy` พิมพ์ออกมา:
+
+```
+env.LOGIN_RATE_LIMIT (5 requests/60s)      Rate Limit
+```
+
+ถ้าวันหลังผูกโดเมนของภาควิชา จะย้ายไปใช้ WAF แทนก็ได้ แต่ตัวนี้ทำงานได้เลย
 
 ### คำสั่งที่ใช้บ่อย
 

@@ -17,7 +17,24 @@
 
   "observability": {
     "enabled": true
-  }
+  },
+
+  // กันเดารหัสผ่านที่หน้า /login
+  //
+  // ⚠️ ต้องทำตรงนี้ ไม่ใช่ที่ WAF — กฎ Rate limiting ของ WAF ผูกกับ zone
+  //    (โดเมนที่อยู่ในบัญชีเรา) แต่ *.workers.dev เป็นโดเมนของ Cloudflare เอง
+  //    จึงไม่มีเมนู WAF ให้ตั้ง ถ้าวันหลังผูกโดเมนของภาควิชาแล้วจะย้ายไป WAF
+  //    ก็ทำได้ แต่ตัวนี้ทำงานได้เลยตั้งแต่วันนี้
+  //
+  // namespace_id เป็นเลขที่เราตั้งเอง ไม่ต้องไปสร้าง resource ที่ไหน
+  // period ใส่ได้เฉพาะ 10 หรือ 60 วินาทีเท่านั้น
+  "ratelimits": [
+    {
+      "name": "LOGIN_RATE_LIMIT",
+      "namespace_id": "1001",
+      "simple": { "limit": 5, "period": 60 }
+    }
+  ]
 
   // ไม่ได้ตั้ง R2 incremental cache, self-reference service และ images binding
   // ตามที่ template ของ adapter ใส่มาให้ เพราะแอปนี้ไม่ได้ใช้:

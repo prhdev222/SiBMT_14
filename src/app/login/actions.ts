@@ -9,6 +9,7 @@ import {
   sessionCookieOptions,
   verifyPassword,
 } from "@/lib/auth";
+import { allowLoginAttempt } from "@/lib/rate-limit";
 
 export interface LoginState {
   error: string | null;
@@ -25,6 +26,16 @@ export async function loginAction(
     };
   }
 
+  // นับก่อนตรวจรหัส — ให้การยิงรัวถูกหยุดตั้งแต่ยังไม่ได้แตะ verifyPassword
+  // ซึ่งเป็นงานที่กินซีพียู (PBKDF2 ราว 150 มิลลิวินาทีต่อครั้ง)
+  if (!(await allowLoginAttempt())) {
+    return {
+      error:
+        "พยายามเข้าสู่ระบบบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่อีกครั้ง " +
+        "หากลืมรหัสผ่านกรุณาติดต่อแพทย์แอดมินกลาง",
+    };
+  }
+
   const username = String(formData.get("username") ?? "");
   const password = String(formData.get("password") ?? "");
   const next = String(formData.get("next") ?? "/dashboard");
@@ -38,7 +49,7 @@ export async function loginAction(
     // เวลาที่ตอบกลับจะบอกใบ้ได้ว่าผู้ใช้คนนั้นเก็บรหัสไว้แบบไหน หรือมีตัวตนหรือไม่
     //
     // นี่เป็นแค่ลูกระนาด ไม่ใช่ประตู — ผู้โจมตียิงพร้อมกันหลายเส้นได้
-    // ตัวกั้นจริงคือ rate limiting ที่ Cloudflare (ดู docs/DEPLOYMENT.md)
+    // ประตูจริงคือ allowLoginAttempt() ข้างบน (ดู src/lib/rate-limit.ts)
     await new Promise((resolve) =>
       setTimeout(resolve, 600 + Math.floor(Math.random() * 600)),
     );
