@@ -1,54 +1,107 @@
-# Deployment — Cloudflare Pages
+# Deployment — Cloudflare Workers
 
-เอกสารนี้อธิบายการ deploy web portal ขึ้น Cloudflare Pages ตามที่ตัดสินใจไว้ใน [SRS.md §7.2](SRS.md)
+เอกสารนี้อธิบายการ deploy web portal ขึ้น Cloudflare ตามที่ตัดสินใจไว้ใน [SRS.md §7.2](SRS.md)
 
-## ทำไมเลือก Cloudflare Pages
+> **หมายเหตุ: Workers ไม่ใช่ Pages** — เอกสารฉบับก่อนเขียนว่า Cloudflare Pages
+> แต่ adapter ที่ Cloudflare แนะนำสำหรับ Next.js ปัจจุบัน (`@opennextjs/cloudflare`)
+> deploy เป็น **Worker** ไม่ใช่ Pages project ชื่อโดเมนจึงเป็น `*.workers.dev`
+> ไม่ใช่ `*.pages.dev` — ต้องแก้ `DASHBOARD_URL` ใน `apps-script/Config.gs` ตามด้วย
+
+## ทำไมเลือก Cloudflare
 
 | เหตุผล | รายละเอียด |
 | --- | --- |
-| Access control ฟรีในตัว | Cloudflare Access (Zero Trust) กั้นหน้า `/dashboard` ด้วยบัญชีองค์กรได้โดยไม่ต้องเขียนระบบ login เอง — ตรงกับ PDPA-004 |
-| สอดคล้องกับ infra เดิม | ทีมมีโปรเจกต์อื่นบน Cloudflare Pages อยู่แล้ว ใช้ความรู้เดิมได้ |
-| ค่าใช้จ่าย | Free tier เพียงพอสำหรับปริมาณ traffic ระดับนี้ |
+| ค่าใช้จ่าย | Free tier ใช้ในนามหน่วยงานได้ ต่างจาก Vercel Hobby ที่เป็นแผนสำหรับงานส่วนตัวที่ไม่ใช่เชิงพาณิชย์ ระบบของโรงพยาบาลจึงต้องใช้ Pro |
+| Rate limiting ในตัว | WAF กั้น brute force ที่ `/login` ได้โดยไม่ต้องเขียนเอง |
+| สอดคล้องกับ infra เดิม | ทีมมีโปรเจกต์อื่นบน Cloudflare อยู่แล้ว |
 
-**ข้อแลกเปลี่ยน:** ต้องเรียก Google Sheets API แบบ REST + JWT เอง แทนการใช้ `googleapis` SDK เต็ม เพราะ SDK หนักเกินสำหรับ edge runtime
+**ข้อแลกเปลี่ยนที่ต้องรับรู้:** เอกสาร Next.js 16 จัด Cloudflare อยู่กลุ่ม "Other Platforms"
+ซึ่ง *ไม่ได้* สร้างบน Adapter API สาธารณะและทีม Next ไม่ได้ตรวจสอบ
+ต่างจาก Vercel และ Bun ที่เป็น **verified adapter** (ผ่านชุดทดสอบความเข้ากันได้เต็ม)
+ทุกครั้งที่ Next ออกเวอร์ชันใหญ่จึงมีโอกาสที่ adapter จะตามไม่ทัน
+
+ตัวอย่างที่เกิดขึ้นจริงแล้ว: Next 16 ตรึง Proxy ไว้ที่ Node runtime และห้ามตั้ง
+`runtime` config ส่วน adapter รัน Node middleware ไม่ได้ — จึงต้องเอา `src/proxy.ts` ออก
+(ไม่กระทบความปลอดภัย ดู §Access Control)
+
+อีกข้อ: ต้องเรียก Google Sheets API แบบ REST + JWT เอง แทนการใช้ `googleapis` SDK
+เพราะ SDK หนักเกินสำหรับ edge runtime
+
+---
 
 ## ขั้นตอน Deploy
 
-### 1. ติดตั้ง adapter
+ไฟล์ตั้งค่าทั้งหมดอยู่ใน repo แล้ว ([wrangler.jsonc](../wrangler.jsonc),
+[open-next.config.ts](../open-next.config.ts)) และแพ็กเกจติดตั้งแล้ว
+เหลือแค่ 5 ขั้นตอนนี้
+
+### 1. ล็อกอิน Cloudflare
 
 ```bash
-npm install --save-dev @opennextjs/cloudflare wrangler
+npx wrangler login
 ```
 
-### 2. เพิ่ม script ใน package.json
+เปิดเบราว์เซอร์ให้กด Allow — ต้องรันในเทอร์มินัลของตัวเอง
 
-```json
-{
-  "scripts": {
-    "preview:cf": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy:cf": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
-  }
-}
+ตรวจว่าล็อกอินแล้วด้วย `npx wrangler whoami`
+
+### 2. Deploy ครั้งแรก
+
+```bash
+npm run cf:deploy
 ```
 
-### 3. สร้าง wrangler.jsonc
+ครั้งแรกจะสร้าง Worker ชื่อ `sibmt-refer` ให้เอง จบแล้วจะพิมพ์ URL ออกมา
+รูปแบบ `https://sibmt-refer.<ชื่อบัญชี>.workers.dev` — **จดไว้ ใช้ในขั้นที่ 4**
 
-```jsonc
-{
-  "name": "sibmt-refer",
-  "main": ".open-next/worker.js",
-  "compatibility_date": "2026-07-29",
-  "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  }
-}
+ตอนนี้เว็บจะขึ้นว่า "กำลังแสดงข้อมูลตัวอย่าง" เพราะยังไม่มี secret ถูกต้องแล้ว
+
+### 3. ใส่ค่าลับ
+
+Worker ต้องมีอยู่ก่อนถึงจะใส่ secret ได้ จึง deploy ก่อนในขั้นที่ 2
+
+```bash
+npx wrangler secret bulk .env.local
 ```
 
-### 4. เชื่อม Git repository
+อัปโหลดทั้ง 8 ค่าในครั้งเดียว ค่าที่ตั้งแบบ secret จะอ่านกลับออกมาดูไม่ได้
+ต่างจาก Variable ธรรมดาที่เห็นได้จากหน้า dashboard
 
-ที่ Cloudflare Dashboard → Workers & Pages → Create → เลือก repo นี้ แล้วตั้ง build command เป็น `npm run deploy:cf`
+**ห้ามใส่ค่าเหล่านี้ใน `wrangler.jsonc`** เพราะไฟล์นั้นขึ้น git
+
+ตรวจว่าครบด้วย `npx wrangler secret list` (แสดงเฉพาะชื่อ ไม่แสดงค่า) ต้องเห็นครบ 8 ชื่อ:
+`GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`, `GOOGLE_SHEET_ID`,
+`GOOGLE_SCHEDULE_SHEET_ID`, `AUTH_SECRET`, `DASHBOARD_USERS`,
+`BOOKING_API_URL`, `BOOKING_API_TOKEN`
+
+จากนั้นเปิดเว็บอีกครั้ง แถบ "ข้อมูลตัวอย่าง" ต้องหายไป
+
+### 4. แก้ลิงก์ในข้อความแจ้งเตือน
+
+`DASHBOARD_URL` ใน [apps-script/Config.gs](../apps-script/Config.gs) ยังชี้ไป
+`https://sibmt-refer.pages.dev/dashboard` ซึ่งเปิดไม่ได้ — ลิงก์นี้อยู่ท้าย
+**ทุกข้อความ** ที่ระบบส่ง ทั้งอีเมลและ LINE
+
+แก้เป็น URL จริงจากขั้นที่ 2 แล้ว **Deploy → Manage deployments → ✏️ → New version**
+พร้อมแก้ `API_VERSION` ใน `Api.gs` ด้วย
+
+### 5. ตั้ง Rate Limiting ที่ `/login`
+
+ดู §Access Control ชั้นที่ 2 ด้านล่าง — ต้องทำก่อนเปิดใช้จริง
+เพราะระบบใช้รหัสผ่านล้วน ไม่มีการยืนยันตัวตนสองชั้น
+
+### คำสั่งที่ใช้บ่อย
+
+| คำสั่ง | ทำอะไร |
+| --- | --- |
+| `npm run cf:deploy` | build แล้ว deploy ขึ้นจริง |
+| `npm run cf:preview` | build แล้วเปิด preview บนเครื่อง (ใช้ `.dev.vars`) |
+| `npm run cf:build` | build อย่างเดียว ไว้ดูว่าพังไหมก่อน deploy |
+| `npx wrangler tail` | ดู log สดจาก production |
+
+`npm run dev` ยังใช้ได้เหมือนเดิมสำหรับพัฒนาประจำวัน — เร็วกว่ามาก
+
+---
 
 ## ที่เก็บข้อมูล (Data Store)
 

@@ -15,11 +15,24 @@
  * ⚠️ server-only — token อยู่ใน environment ห้ามเรียกจาก client component
  */
 
-const API_URL = process.env.BOOKING_API_URL;
-const API_TOKEN = process.env.BOOKING_API_TOKEN;
+/**
+ * อ่านค่าตอนถูกเรียก ไม่ใช่ตอนโหลดโมดูล
+ *
+ * บน Cloudflare Workers ค่า environment มาพร้อมกับ request ไม่ได้อยู่ตั้งแต่
+ * ตอนสร้าง isolate การอ่านไว้เป็น const ที่ระดับบนสุดจะได้ undefined ค้างไว้
+ * ตลอดอายุ isolate แล้วหน้าเว็บจะขึ้นว่า "ยังไม่ได้ตั้งค่า BOOKING_API_URL"
+ * ทั้งที่ตั้ง secret ไว้เรียบร้อย — และแก้ด้วยการ deploy ใหม่ก็ไม่หาย
+ */
+function credentials() {
+  return {
+    url: process.env.BOOKING_API_URL,
+    token: process.env.BOOKING_API_TOKEN,
+  };
+}
 
 export function isBookingConfigured(): boolean {
-  return Boolean(API_URL && API_TOKEN);
+  const { url, token } = credentials();
+  return Boolean(url && token);
 }
 
 export interface BookingInput {
@@ -70,7 +83,9 @@ async function callAppsScript<T>(
   action: string,
   payload: unknown,
 ): Promise<T> {
-  if (!API_URL || !API_TOKEN) {
+  const { url, token } = credentials();
+
+  if (!url || !token) {
     throw new Error(
       "ระบบจองคิวยังไม่พร้อมใช้งาน กรุณาโทรติดต่อเจ้าหน้าที่",
     );
@@ -78,10 +93,10 @@ async function callAppsScript<T>(
 
   let response: Response;
   try {
-    response = await fetch(API_URL, {
+    response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, token: API_TOKEN, payload }),
+      body: JSON.stringify({ action, token, payload }),
       // Apps Script ตอบด้วย 302 ไปยัง googleusercontent ก่อนเสมอ
       redirect: "follow",
       cache: "no-store",

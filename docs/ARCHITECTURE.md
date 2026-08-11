@@ -48,7 +48,7 @@ graph TB
 
     subgraph cf["Cloudflare — Next.js 16"]
         PUB["หน้าสาธารณะ<br/>เลือกกลุ่ม · จองคิว · ใบยินยอม"]
-        PROXY["proxy.ts + หน้า login"]
+        PROXY["หน้า login"]
         DASH["หลังบ้าน<br/>Dashboard · ตอบคำปรึกษา · ตารางเวร"]
     end
 
@@ -330,7 +330,7 @@ LINE push ต้องรู้ `userId` ของปลายทาง แต�
 | ไฟล์ Google Sheet | General access = Restricted แชร์เป็นรายอีเมล **ห้าม "anyone with link"** |
 | Service account | Viewer บนไฟล์ A · Editor บนไฟล์ B เท่านั้น |
 | หลังบ้าน | username + password จาก `DASHBOARD_USERS` · session cookie ลงลายเซ็น HMAC อายุ 12 ชม. |
-| Server Action | เรียก `requireSession()` ทุกจุด ไม่พึ่ง `proxy.ts` เพราะ Server Action ถูกยิง POST ตรงได้ |
+| ทุกหน้าและ Server Action | เรียก `requireSession()` เอง — ไม่มี proxy คอยกันข้างหน้า และไม่ควรมี เพราะ Server Action ถูกยิง POST ตรงได้อยู่แล้ว |
 | Apps Script Web App | deploy แบบ Anyone (LINE ต้องเรียกได้) แต่ทุกคำสั่งต้องมี token ที่เทียบแบบ timing-safe |
 | ความยินยอม | สองชั้น — แพทย์ต้นทางติ๊กรับรองในระบบ ต้นฉบับที่ผู้ป่วยลงนามเก็บไว้ที่โรงพยาบาลต้นทาง |
 | การเก็บรักษา | `anonymizeExpired` ถอดตัวตนข้อมูลเก่าเป็นรายเดือน เก็บเฉพาะสถิติไว้ในชีต `library` |
@@ -346,9 +346,17 @@ LINE push ต้องรู้ `userId` ของปลายทาง แต�
 
 ## 9. หมายเหตุสำหรับผู้ดูแลระบบ
 
-**Next.js 16** เปลี่ยนชื่อ `middleware.ts` เป็น `proxy.ts` แล้ว
-และเอกสาร Next ระบุชัดว่า proxy เป็นแค่ด่านคัดกรองหยาบ ๆ ไม่ใช่ระบบ authorization
-— การตรวจสิทธิ์จริงต้องอยู่ในทุกหน้าและทุก Server Action
+**ระบบนี้ไม่มี proxy (middleware) แล้ว** Next.js 16 เปลี่ยนชื่อ `middleware.ts` เป็น `proxy.ts`
+พร้อมตรึงให้รันบน Node runtime และห้ามตั้ง `runtime` config ซึ่ง adapter ของ Cloudflare รันไม่ได้
+จึงถอดออกไปเมื่อ 11 ส.ค. 2569
+
+**ไม่กระทบความปลอดภัย** เพราะเอกสาร Next ระบุเองว่า proxy เป็นแค่ด่านคัดกรองหยาบ ๆ
+ไม่ใช่ระบบ authorization — การตรวจสิทธิ์จริงอยู่ที่ `requireSession()` ในทุกหน้าและทุก Server Action
+ซึ่งมีครบอยู่แล้วตั้งแต่ต้น
+
+⚠️ **หน้าใหม่ทุกหน้าใต้ `/dashboard` ต้องเรียก `requireSession()` เอง** ไม่มีอะไรกันให้อีกแล้ว
+และควรส่งเส้นทางของตัวเองเข้าไปด้วย เช่น `requireSession("/dashboard/review")`
+เพื่อให้พาผู้ใช้กลับมาหน้าเดิมหลังล็อกอิน
 
 **Apps Script มี global scope เดียวทั้งโปรเจกต์** ฟังก์ชันชื่อซ้ำในคนละไฟล์จะทับกันเงียบ ๆ ไม่ฟ้อง error
 เคยเกิดกับ `ensureColumns_` มาแล้วครั้งหนึ่ง และทำให้ทุกการส่งฟอร์มหยุดทำงานโดยไม่มีใครรู้

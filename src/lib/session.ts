@@ -1,7 +1,7 @@
 /**
  * อ่านและตรวจ session จาก cookie
  *
- * แยกจาก auth.ts เพราะไฟล์นี้ใช้ next/headers ซึ่ง proxy.ts เรียกไม่ได้
+ * แยกจาก auth.ts เพราะไฟล์นี้ใช้ next/headers ซึ่ง Web Crypto ล้วน ๆ ใน auth.ts ไม่ต้องพึ่ง
  *
  * ⚠️ server-only — เรียกจาก server component หรือ Server Action เท่านั้น
  */
