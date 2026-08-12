@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-08-11 siteUrl';
+const API_VERSION = '2026-08-11 lineWhoami';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -444,6 +444,19 @@ function remainingSlots_(clinicDate, fellowName) {
  * เมื่อถึงเวลาทำระบบตอบโต้จริง ให้เขียนไฟล์ LineWebhook.gs แล้วย้ายเนื้อใน
  * มาไว้ที่นั่น โดยไม่ต้องแตะ doPost อีก
  */
+/**
+ * คำที่พิมพ์ในแชทแล้วบอทจะตอบกลับด้วย ID ของห้องนั้น
+ *
+ * มีไว้ตอนตั้งค่าเท่านั้น — การส่งข้อความเข้ากลุ่มต้องรู้ groupId ล่วงหน้า
+ * แต่ groupId ไม่มีให้ดูที่ไหนในแอป LINE เลย ต้องดักจาก webhook อย่างเดียว
+ * เดิมต้องไปนั่งไล่อ่าน Executions ใน Apps Script ซึ่งหายากและพิมพ์ผิดง่าย
+ * แบบนี้พิมพ์ในกลุ่มแล้วคัดลอกจากข้อความที่บอทตอบได้เลย
+ *
+ * ปลอดภัยพอ: ตอบเฉพาะ ID ของห้องที่คนถามอยู่แล้ว ไม่ได้บอกอะไรที่คนนอกไม่รู้
+ * และไม่แตะชีตเลย
+ */
+const LINE_WHOAMI_KEYWORD = '#id';
+
 function handleLineWebhook_(body) {
   (body.events || []).forEach(function (event) {
     const source = event.source || {};
@@ -452,9 +465,35 @@ function handleLineWebhook_(body) {
     console.log(
       'LINE source: ' + (source.type || '?') + ' ' + id + ' | event: ' + event.type,
     );
+
+    const text = event.message && event.message.type === 'text'
+      ? String(event.message.text || '').trim()
+      : '';
+
+    if (text === LINE_WHOAMI_KEYWORD) {
+      replyLineMessage_(event.replyToken, buildWhoAmIReply_(source.type, id));
+    }
   });
 
   return ContentService.createTextOutput('OK');
+}
+
+/** ข้อความบอก ID พร้อมบอกว่าต้องเอาไปวางที่ Script Property ตัวไหน */
+function buildWhoAmIReply_(sourceType, id) {
+  const target = {
+    group: 'LINE_TARGET_RESIDENT หรือ LINE_TARGET_ADMIN หรือ LINE_TARGET_FELLOW\n' +
+      '(เลือกตามว่ากลุ่มนี้คือกลุ่มไหน)',
+    room: 'LINE_TARGET_* ตามหน้าที่ของห้องนี้',
+    user: 'ไม่ต้องใช้ — นี่คือ ID ส่วนตัว ไม่ใช่ของกลุ่ม',
+  }[sourceType] || 'LINE_TARGET_*';
+
+  return (
+    'ID ของที่นี่คือ\n' +
+    id + '\n\n' +
+    'ประเภท: ' + (sourceType || 'ไม่ทราบ') + '\n\n' +
+    'นำไปวางที่ Apps Script → Project Settings → Script Properties\n' +
+    'ชื่อ: ' + target
+  );
 }
 
 function jsonResponse_(obj) {

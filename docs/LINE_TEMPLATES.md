@@ -384,6 +384,49 @@ Referral ID: HEM-20260728-0002
 
 ---
 
+## 6.4 วิธีหา group ID ของทั้ง 3 กลุ่ม
+
+`LINE_TARGET_RESIDENT` / `LINE_TARGET_ADMIN` / `LINE_TARGET_FELLOW` เป็น **group ID**
+ซึ่ง **ไม่มีให้ดูที่ไหนในแอป LINE เลย** ดูได้ทางเดียวคือดักจาก webhook
+
+ระบบมีตัวช่วยไว้แล้ว ทำตามนี้ทีละกลุ่ม:
+
+1. เชิญ LINE OA เข้ากลุ่ม (เมนู "เชิญ" ในกลุ่มนั้น)
+2. พิมพ์ `#id` ลงในกลุ่ม
+3. บอทจะตอบกลับมาในกลุ่มนั้นเลย เช่น
+
+   ```
+   ID ของที่นี่คือ
+   Cxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+   ประเภท: group
+
+   นำไปวางที่ Apps Script → Project Settings → Script Properties
+   ชื่อ: LINE_TARGET_RESIDENT หรือ LINE_TARGET_ADMIN หรือ LINE_TARGET_FELLOW
+   ```
+
+4. คัดลอกบรรทัด ID ไปวางใน **Apps Script → ⚙️ Project Settings → Script Properties**
+   โดยตั้งชื่อตามหน้าที่ของกลุ่มนั้น
+
+ทำซ้ำกับอีก 2 กลุ่ม
+
+**ถ้าพิมพ์ `#id` แล้วบอทเงียบ** ให้ไล่ตามลำดับนี้:
+
+| อาการ | สาเหตุที่พบบ่อย |
+| --- | --- |
+| เงียบสนิท | ยังไม่ได้ตั้ง Webhook URL หรือยังไม่ได้เปิด "Use webhook" |
+| เงียบเฉพาะในกลุ่ม แต่ตอบตัวต่อตัวได้ | ปิด "Allow bot to join group chats" อยู่ใน LINE Official Account Manager |
+| ตอบว่าไม่มี token | ยังไม่ได้ใส่ `LINE_CHANNEL_ACCESS_TOKEN` ใน Script Properties |
+| ตอบช้ามาก แล้วเงียบ | replyToken หมดอายุแล้ว (มีอายุ 1 นาที) — พิมพ์ `#id` ใหม่อีกครั้ง |
+
+ดูสาเหตุจริงได้ที่ Apps Script → **Executions** ทุก event ที่เข้ามาถูกบันทึกไว้
+
+> `#id` ตอบเฉพาะ ID ของห้องที่คนถามอยู่แล้ว ไม่ได้เปิดเผยอะไรที่คนในห้องนั้นไม่รู้
+> และไม่แตะชีตเลย จะเก็บไว้ใช้ตอนเพิ่มกลุ่มใหม่ในอนาคตก็ได้
+> ถ้าอยากปิด ให้ลบบล็อก `if (text === LINE_WHOAMI_KEYWORD)` ใน `apps-script/Api.gs`
+
+---
+
 ## 7. ตรวจสอบก่อนเปิดใช้
 
 - [ ] Rich Menu ตั้งเป็นค่าเริ่มต้นแล้ว และทั้ง 6 ช่องกดแล้วไปถูกที่

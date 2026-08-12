@@ -12,6 +12,42 @@
  */
 
 const LINE_PUSH_ENDPOINT = 'https://api.line.me/v2/bot/message/push';
+const LINE_REPLY_ENDPOINT = 'https://api.line.me/v2/bot/message/reply';
+
+/**
+ * ตอบกลับข้อความที่เพิ่งเข้ามา
+ *
+ * ต่างจาก push ตรงที่ใช้ replyToken แทน ID ปลายทาง จึงตอบได้โดยยังไม่รู้ว่า
+ * ปลายทางคือใคร — เป็นเหตุผลที่ใช้ตัวนี้หา group ID ตอนตั้งค่าได้
+ * และ reply ไม่นับโควตาข้อความของ LINE ด้วย
+ *
+ * replyToken ใช้ได้ครั้งเดียวและหมดอายุใน 1 นาที
+ */
+function replyLineMessage_(replyToken, text) {
+  const token = PropertiesService.getScriptProperties()
+    .getProperty('LINE_CHANNEL_ACCESS_TOKEN');
+
+  if (!token || !replyToken) {
+    console.log('[ตอบ LINE ไม่ได้ ยังไม่มี token] ' + text);
+    return;
+  }
+
+  const response = UrlFetchApp.fetch(LINE_REPLY_ENDPOINT, {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { Authorization: 'Bearer ' + token },
+    payload: JSON.stringify({
+      replyToken: replyToken,
+      messages: [{ type: 'text', text: text.substring(0, 4900) }],
+    }),
+    muteHttpExceptions: true,
+  });
+
+  if (response.getResponseCode() !== 200) {
+    console.error('ตอบ LINE ไม่สำเร็จ (' + response.getResponseCode() + '): ' +
+      response.getContentText());
+  }
+}
 
 /**
  * ส่งข้อความเข้ากลุ่ม LINE
