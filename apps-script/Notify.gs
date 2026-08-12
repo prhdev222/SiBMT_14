@@ -49,22 +49,51 @@ function replyLineMessage_(replyToken, text) {
   }
 }
 
+const LINE_TARGET_BY_AUDIENCE = {
+  batch: 'LINE_TARGET_RESIDENT',
+  red: 'LINE_TARGET_ADMIN',
+  fellow: 'LINE_TARGET_FELLOW',
+};
+
 /**
- * ส่งข้อความเข้ากลุ่ม LINE
+ * ปลายทางสำรอง — ใช้เมื่อยังไม่ได้ตั้งปลายทางเฉพาะของกลุ่มนั้น
+ *
+ * มีไว้เพื่อให้เริ่มใช้งานได้ด้วยการตั้งค่าเพียงตัวเดียว
+ * แอดมินแอด LINE OA เป็นเพื่อน พิมพ์ #id ในแชทตัวต่อตัว แล้วเอา userId
+ * มาใส่ตัวนี้ ก็ได้รับครบทุกการแจ้งเตือนโดยไม่ต้องสร้างกลุ่มสักกลุ่ม
+ *
+ * ที่ต้องมีเพราะการเงียบสนิทเป็นค่าเริ่มต้นที่อันตราย — ระบบจะดูเหมือนทำงานปกติ
+ * ทุกอย่าง ยกเว้นไม่มีใครรู้ว่ามีเคสค้าง ซึ่งเป็นสิ่งเดียวที่การแจ้งเตือนมีไว้ทำ
+ */
+const LINE_TARGET_FALLBACK = 'LINE_TARGET_ADMIN';
+
+/**
+ * ส่งข้อความเข้า LINE
+ *
+ * ปลายทางเป็น groupId หรือ userId ก็ได้ — LINE ไม่แยก ใช้ช่อง `to` เดียวกัน
+ * จึงไม่จำเป็นต้องสร้างกลุ่มถ้ายังไม่พร้อม
+ *
  * @param {string} text ข้อความ
- * @param {string} audience 'batch' = กลุ่ม resident, 'red' = แอดมินกลาง, 'fellow' = fellow
+ * @param {string} audience 'batch' = resident, 'red' = แอดมินกลาง, 'fellow' = fellow
  */
 function pushLineMessage_(text, audience) {
   const props = PropertiesService.getScriptProperties();
   const token = props.getProperty('LINE_CHANNEL_ACCESS_TOKEN');
 
-  const targetKey = {
-    batch: 'LINE_TARGET_RESIDENT',
-    red: 'LINE_TARGET_ADMIN',
-    fellow: 'LINE_TARGET_FELLOW',
-  }[audience] || 'LINE_TARGET_RESIDENT';
+  const targetKey = LINE_TARGET_BY_AUDIENCE[audience] || LINE_TARGET_FALLBACK;
+  let target = props.getProperty(targetKey);
+  let message = text;
 
-  const target = props.getProperty(targetKey);
+  if (!target && targetKey !== LINE_TARGET_FALLBACK) {
+    target = props.getProperty(LINE_TARGET_FALLBACK);
+    if (target) {
+      // บอกให้รู้ว่าทำไมข้อความนี้ถึงมาถึงตัวเอง ไม่งั้นแอดมินจะงงว่าเกี่ยวอะไรด้วย
+      // และจะไม่มีทางรู้เลยว่ายังตั้งค่าไม่ครบ
+      message =
+        '(ส่งถึงคุณเพราะยังไม่ได้ตั้ง ' + targetKey + ')\n' +
+        '──────────\n' + text;
+    }
+  }
 
   if (!token || !target) {
     // ยังไม่ได้ตั้งค่า — บันทึก log ไว้แทนการส่ง เพื่อให้ทดสอบระบบได้ก่อนมี LINE OA
@@ -78,7 +107,7 @@ function pushLineMessage_(text, audience) {
     headers: { Authorization: 'Bearer ' + token },
     payload: JSON.stringify({
       to: target,
-      messages: [{ type: 'text', text: text.substring(0, 4900) }],
+      messages: [{ type: 'text', text: message.substring(0, 4900) }],
     }),
     muteHttpExceptions: true,
   });
