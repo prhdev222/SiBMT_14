@@ -15,6 +15,139 @@
 
 ---
 
+## 0. สร้าง LINE Official Account ตั้งแต่ต้น
+
+ทำครั้งเดียวตอนเริ่มระบบ ใช้เวลาราว 20–30 นาที
+อ้างอิงจากเอกสารทางการของ LINE (ตรวจเมื่อ 11 ส.ค. 2569 — ขั้นตอนนี้เปลี่ยนจากของเดิม
+ที่เคยสร้าง channel ใน Developers Console โดยตรง)
+
+### ขั้นที่ 1 — สมัคร LINE Business ID
+
+ไปที่ https://account.line.biz/signup
+
+เลือกสมัครด้วย **บัญชี LINE ที่มีอยู่** (ง่ายกว่าและผูกกับมือถือที่ใช้อยู่แล้ว)
+หรือด้วยอีเมลก็ได้
+
+> ใช้บัญชีที่เป็นของหน่วยงานหรือของผู้ดูแลระบบระยะยาว **อย่าใช้บัญชีส่วนตัวของคนที่จะย้ายไป**
+> เพราะเจ้าของบัญชีคือคนที่กู้คืนสิทธิ์ได้เมื่อมีปัญหา
+
+### ขั้นที่ 2 — สร้าง LINE Official Account
+
+ที่ https://manager.line.biz → **สร้างบัญชีใหม่ / Create new account**
+
+| ช่อง | ใส่อะไร |
+| --- | --- |
+| ชื่อบัญชี | เช่น `ส่งต่อผู้ป่วยโลหิตวิทยา ศิริราช` — ชื่อนี้แสดงในแชทของแพทย์ต้นทาง |
+| อีเมล | อีเมลผู้ดูแล |
+| ประเทศ | ไทย |
+| ประเภท | องค์กร / โรงพยาบาล |
+
+เสร็จแล้วจะเข้าหน้า LINE Official Account Manager ของบัญชีนี้
+
+### ขั้นที่ 3 — เปิดใช้ Messaging API
+
+ยังอยู่ใน **LINE Official Account Manager** → **Settings (ตั้งค่า)** → **Messaging API**
+→ กด **Enable Messaging API / ใช้ Messaging API**
+
+จะถูกถามให้ **เลือก Provider**
+
+> ⚠️ **สำคัญที่สุดในทั้งเอกสารนี้**
+> เอกสาร LINE ระบุว่า Provider ที่เลือกตรงนี้ **เปลี่ยนหรือถอดออกภายหลังไม่ได้**
+> ("can't be changed or de-assigned")
+>
+> ถ้าวันหลังจะทำ **LINE Login + LIFF** เพื่อให้ระบบส่ง LINE ถึงแพทย์ต้นทาง
+> รายบุคคลได้ (ดู §6.4 ช่องว่างที่ 2) **ต้องอยู่ใต้ Provider เดียวกันนี้**
+> ตั้งชื่อ Provider เป็นชื่อหน่วยงาน เช่น `สาขาวิชาโลหิตวิทยา ศิริราช`
+> ไม่ใช่ชื่อโปรเจกต์หรือชื่อบุคคล
+
+การเปิดตรงนี้จะสร้าง **Messaging API channel** ให้อัตโนมัติ
+
+### ขั้นที่ 4 — ปิดระบบตอบกลับอัตโนมัติของ LINE
+
+ยังอยู่ใน **LINE Official Account Manager** → **Settings** → **Messaging API Settings**
+
+ปิดทั้งสองอย่าง:
+
+- **Greeting messages** (ข้อความทักทายเมื่อเพิ่มเพื่อน)
+- **Auto-reply messages** (ตอบกลับอัตโนมัติ)
+
+ถ้าไม่ปิด ระบบของ LINE จะตอบชนกับบอทของเรา ผู้ใช้จะได้ข้อความซ้อนสองฉบับ
+และคำสั่ง `#id` จะใช้ไม่ได้
+
+> ข้อความทักทายที่เราต้องการอยู่ใน §2 ของเอกสารนี้ — ตั้งเป็น
+> Greeting message ของ LINE ก็ได้ แต่ต้องเลือกอย่างใดอย่างหนึ่ง ไม่ใช่ทั้งคู่
+
+### ขั้นที่ 5 — เอา Channel access token
+
+ไปที่ https://developers.line.biz/console → เลือก Provider → เลือก channel ที่เพิ่งสร้าง
+→ แท็บ **Messaging API** → เลื่อนลงหา **Channel access token (long-lived)** → กด **Issue**
+
+คัดลอกไปวางที่ **Apps Script → ⚙️ Project Settings → Script Properties**
+
+| Property | ค่า |
+| --- | --- |
+| `LINE_CHANNEL_ACCESS_TOKEN` | token ที่เพิ่ง issue |
+
+> token ยาวมาก (ราว 170 ตัวอักษร) คัดลอกให้ครบทั้งบรรทัด
+> ถ้ากด Issue ซ้ำ token เดิมจะใช้ไม่ได้ทันที ต้องเอาตัวใหม่ไปแทน
+
+### ขั้นที่ 6 — ตั้ง Webhook
+
+แท็บ **Messaging API** เดิม → หัวข้อ **Webhook settings** → กด **Edit** ที่ Webhook URL
+
+ใส่ค่าเดียวกับ `BOOKING_API_URL` ใน `.env.local` (Apps Script Web App URL — ตัวเดียวกัน
+ไม่ต้อง deploy แยก) ดูด้วยคำสั่ง:
+
+```bash
+grep '^BOOKING_API_URL=' .env.local
+```
+
+จากนั้น:
+
+1. กด **Verify** → ต้องขึ้น **Success**
+2. เปิดสวิตช์ **Use webhook**
+
+**ถ้า Verify ไม่ผ่าน** ให้เปิด URL นั้นในเบราว์เซอร์ก่อน ต้องเห็นข้อความ
+`OK — endpoint นี้รับเฉพาะคำสั่งแบบ POST` พร้อมบรรทัด `version:`
+ถ้าไม่เห็น แปลว่า Apps Script ยังไม่ได้ deploy หรือ deploy ไม่ใช่แบบ
+"Anyone" (ดู §การติดตั้ง ในหัวไฟล์ `apps-script/Api.gs`)
+
+### ขั้นที่ 7 — เปิดให้บอทเข้ากลุ่มได้ (ข้ามได้ถ้ายังไม่ใช้กลุ่ม)
+
+แท็บ **Messaging API** เดิม → **Allow bot to join group chats** → เปิด
+
+**ปิดไว้เป็นค่าเริ่มต้น** ถ้าไม่เปิด เชิญบอทเข้ากลุ่มไม่ได้เลย
+
+ข้ามขั้นนี้ได้ถ้าใช้วิธีส่งเข้าแชทตัวต่อตัวตาม §6.4
+
+### ขั้นที่ 8 — ผูกปลายทางการแจ้งเตือน
+
+แอด LINE OA เป็นเพื่อน (QR code อยู่ใน OA Manager → หน้าแรก) → พิมพ์ `#id` ในแชท
+→ เอา ID ที่บอทตอบมาใส่ Script Property ชื่อ `LINE_TARGET_ADMIN`
+
+รายละเอียดและทางเลือกอื่นดู §6.4
+
+### ขั้นที่ 9 — ทดสอบ
+
+ใน Apps Script เลือกฟังก์ชัน **`sendDailyBatch`** แล้วกด **Run**
+
+ควรได้ข้อความสรุปคิวเข้า LINE ทันที ถ้าไม่มา ดูที่ **Executions** จะเห็นสาเหตุ
+
+---
+
+### สรุปสิ่งที่ต้องมีครบก่อนใช้งานจริง
+
+| ที่ | ต้องเป็น |
+| --- | --- |
+| Script Property `LINE_CHANNEL_ACCESS_TOKEN` | มีค่า |
+| Script Property `LINE_TARGET_ADMIN` | มีค่า |
+| Developers Console → Use webhook | เปิด |
+| Developers Console → Webhook URL | ตรงกับ `BOOKING_API_URL` |
+| OA Manager → Auto-reply messages | **ปิด** |
+| OA Manager → Greeting messages | **ปิด** (หรือใช้ข้อความใน §2) |
+
+---
+
 ## 1. Rich Menu
 
 ขนาดภาพ **2500 × 1686 px** แบ่ง 6 ช่อง (3 คอลัมน์ × 2 แถว)
@@ -448,7 +581,7 @@ userId ระบบจึงส่งเข้าแชทตัวต่อต�
 | อาการ | สาเหตุที่พบบ่อย |
 | --- | --- |
 | เงียบสนิท | ยังไม่ได้ตั้ง Webhook URL หรือยังไม่ได้เปิด "Use webhook" |
-| เงียบเฉพาะในกลุ่ม แต่ตอบตัวต่อตัวได้ | ปิด "Allow bot to join group chats" อยู่ใน LINE Official Account Manager |
+| เงียบเฉพาะในกลุ่ม แต่ตอบตัวต่อตัวได้ | ยังไม่ได้เปิด "Allow bot to join group chats" ใน **LINE Developers Console → แท็บ Messaging API** (ปิดไว้เป็นค่าเริ่มต้น) |
 | ตอบว่าไม่มี token | ยังไม่ได้ใส่ `LINE_CHANNEL_ACCESS_TOKEN` ใน Script Properties |
 | ตอบช้ามาก แล้วเงียบ | replyToken หมดอายุแล้ว (มีอายุ 1 นาที) — พิมพ์ `#id` ใหม่อีกครั้ง |
 
