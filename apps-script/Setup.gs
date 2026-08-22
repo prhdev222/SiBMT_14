@@ -151,6 +151,8 @@ function runSelfTest() {
   const referrals = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.referrals);
   if (referrals) {
     const map = headerMap_(referrals);
+    // อ่านครั้งเดียวแล้วใช้ร่วมกันทั้งฟังก์ชัน — ชีตนี้โตขึ้นเรื่อย ๆ
+    const rows = readRows_(referrals);
 
     SYSTEM_COLUMNS.forEach(function (c) {
       if (!(c in map)) problems.push('ไม่พบคอลัมน์ระบบ: ' + c);
@@ -167,6 +169,27 @@ function runSelfTest() {
       );
     }
 
+    // อีเมลว่าง = แพทย์ต้นทางไม่ได้รับรหัสอ้างอิง และเช็คสถานะกับบอทไม่ได้
+    //
+    // ⚠️ การย้าย referrer_email ไปอยู่ใน FORM_COLUMNS_REQUIRED ตรวจได้แค่ว่า
+    // "มีหัวคอลัมน์" ซึ่งมีอยู่แล้วไม่ว่าคำถามในฟอร์มจะติ๊ก Required หรือไม่
+    // การติ๊ก Required อยู่ในฟอร์มของ Google โค้ดมองไม่เห็น ตรวจได้ทางเดียว
+    // คือดูว่ามีแถวไหนที่อีเมลว่างจริงหรือเปล่า
+    if ('referrer_email' in map) {
+      const blankEmail = rows.filter(function (r) {
+        return r['referral_id'] && !String(r['referrer_email'] || '').trim();
+      });
+      if (blankEmail.length > 0) {
+        problems.push(
+          'มี ' + blankEmail.length + ' เคสที่ไม่มีอีเมลผู้ส่ง (' +
+          blankEmail.slice(0, 5).map(function (r) { return r['referral_id']; }).join(', ') +
+          (blankEmail.length > 5 ? ', …' : '') +
+          ') — แพทย์ต้นทางไม่ได้รับรหัสอ้างอิงและเช็คสถานะเองไม่ได้ ' +
+          'ตรวจว่าคำถาม "อีเมล" ในฟอร์มติ๊ก Required แล้วหรือยัง'
+        );
+      }
+    }
+
     // ต้องไม่มีคอลัมน์ที่ระบุตัวตนเด็ดขาด
     const forbidden = ['patient_name', 'hn', 'siriraj_hn', 'national_id',
                        'ชื่อผู้ป่วย', 'ชื่อ-สกุลผู้ป่วย', 'HN', 'เลขบัตรประชาชน'];
@@ -179,7 +202,7 @@ function runSelfTest() {
     // เคสเหล่านั้นจะไม่ขึ้นบน dashboard เลย
     const validTypes = Object.keys(GROUP_NUMBER);
     const badTypes = {};
-    readRows_(referrals).forEach(function (r) {
+    rows.forEach(function (r) {
       const t = String(r['referral_type'] || '').trim();
       if (t && validTypes.indexOf(t) === -1) badTypes[t] = (badTypes[t] || 0) + 1;
     });
