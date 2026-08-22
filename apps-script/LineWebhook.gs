@@ -141,7 +141,12 @@ function lookupReferralForLine_(referralId) {
   return {
     status: String(match['status'] || '').trim(),
     referralType: String(match['referral_type'] || '').trim(),
-    submittedAt: match['submitted_at'],
+    // ต้องเผื่อ 'Timestamp' ด้วย และต้องผ่าน toDate_() เหมือนที่ Sla.gs, Stats.gs,
+    // Retention.gs และ OnFormSubmit.gs ทำ — ชีตนี้เกิดจาก Google Form ซึ่งตั้งชื่อ
+    // คอลัมน์เวลาว่า 'Timestamp' และ restoreFormHeaders() จะเปลี่ยนเป็น
+    // 'submitted_at' ก็ต่อเมื่อมีคนรัน ส่วนค่าในเซลล์ก็เป็นสตริงได้ถ้าถูกวางทับ
+    // ทั้งสองกรณีทำให้บรรทัด "ส่งเมื่อ" หายไปเงียบ ๆ โดยไม่มีใครรู้
+    submittedAt: toDate_(match['submitted_at'] || match['Timestamp']),
   };
 }
 
@@ -175,7 +180,8 @@ function buildStatusReply_(referralId, found) {
 
   // ใช้ formatThaiDate_() ของโปรเจกต์ ไม่ใช่ Utilities.formatDate ดิบ
   // เพราะตัวหลังให้ ค.ศ. ซึ่งทั้งระบบไม่ได้ใช้เลย
-  if (found.submittedAt instanceof Date) {
+  // toDate_() คืน null ถ้าแปลงไม่ได้ จึงยังต้องเช็คก่อนใช้
+  if (found.submittedAt) {
     message += 'ส่งเมื่อ: ' + formatThaiDate_(found.submittedAt) + ' ' +
       Utilities.formatDate(found.submittedAt, TIMEZONE, 'HH:mm') + ' น.\n';
   }

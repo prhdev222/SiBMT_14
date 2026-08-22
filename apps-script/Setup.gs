@@ -424,6 +424,122 @@ const FORM_COLUMN_ORDER = [
 ];
 
 /**
+ * พิมพ์แถวหัวตารางออกมาทั้งแถว พร้อมเลขคอลัมน์ — อ่านอย่างเดียว ไม่เขียนอะไรเลย
+ *
+ * มีไว้ใช้ตอน restoreFormHeaders() ปฏิเสธที่จะทำงาน เพราะมันบอกได้แค่ว่า
+ * คอลัมน์ที่คาดไว้ผิดไปหนึ่งช่อง แต่ไม่ได้บอกว่าทั้งแถวหน้าตาเป็นอย่างไร
+ *
+ * เคยเจอมาแล้ว: หัวคอลัมน์ referral_id กลายเป็นรหัสเคสจริง (HEM-...) เพราะบั๊ก
+ * รุ่นก่อนหลุดไปประมวลผลแถวที่ 1 เหมือนเป็นเคส แล้วเขียนค่าทับชื่อคอลัมน์
+ * กรณีแบบนั้นต้องเห็นทั้งแถวก่อนถึงจะรู้ว่าโดนไปกี่ช่อง
+ */
+function showHeaderRow() {
+  const sheet = getSheet_(SHEETS.referrals);
+  const width = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, width).getValues()[0];
+
+  console.log('ชีต "' + SHEETS.referrals + '" มี ' + width + ' คอลัมน์');
+  console.log('โค้ดคาดว่าคอลัมน์จากฟอร์มมี ' + FORM_COLUMN_ORDER.length +
+    ' คอลัมน์ แล้ว referral_id อยู่คอลัมน์ที่ ' + (FORM_COLUMN_ORDER.length + 1));
+  console.log('');
+
+  const lines = headers.map(function (h, i) {
+    const text = String(h).trim();
+    const expected = i < FORM_COLUMN_ORDER.length ? FORM_COLUMN_ORDER[i] : '';
+    let mark = '  ';
+    if (!text) mark = '∅ ';
+    else if (expected && text !== expected) mark = '✗ ';
+    else if (expected) mark = '✓ ';
+    return mark + (i + 1) + '. ' + (text || '(ว่าง)') +
+      (expected && text !== expected ? '   [ควรเป็น ' + expected + ']' : '');
+  });
+
+  console.log(lines.join('\n'));
+  console.log('');
+  console.log('✓ ตรง   ✗ ไม่ตรงกับที่คาด   ∅ ว่าง   (ไม่มีเครื่องหมาย = คอลัมน์ระบบ ไม่ได้มาจากฟอร์ม)');
+}
+
+/**
+ * ตรวจว่ามีคอลัมน์ referral_id ซ้ำกันหรือไม่ และข้อมูลอยู่คอลัมน์ไหนบ้าง
+ *
+ * อ่านอย่างเดียว ไม่เขียนอะไรทั้งสิ้น
+ *
+ * เกิดจากลูกโซ่นี้: บั๊กรุ่นก่อนหลุดไปประมวลผลแถวที่ 1 เหมือนเป็นเคสจริง
+ * แล้วเขียนรหัสเคสทับ "ชื่อคอลัมน์" referral_id ในแถวหัวตาราง
+ * พอชื่อหาย ensureColumns_ ก็ทำตามหน้าที่คือสร้างคอลัมน์ referral_id ใหม่
+ * ต่อท้ายชีตให้ เคสที่เข้ามาหลังจากนั้นจึงไปลงคอลัมน์ใหม่ ส่วนเคสเก่ายังอยู่
+ * คอลัมน์เดิมที่ตอนนี้ระบบมองไม่เห็นแล้ว
+ *
+ * ต้องรู้ว่าเคสไหนอยู่คอลัมน์ไหนก่อน ถึงจะรวมกลับได้โดยไม่ทำข้อมูลหาย
+ */
+function diagnoseReferralIdColumns() {
+  const sheet = getSheet_(SHEETS.referrals);
+  const width = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
+  const headers = sheet.getRange(1, 1, 1, width).getValues()[0]
+    .map(function (h) { return String(h).trim(); });
+
+  const ID_PATTERN = /^HEM-\d{8}-\d{4}$/;
+
+  const named = [];
+  const polluted = [];
+  headers.forEach(function (h, i) {
+    if (h === 'referral_id') named.push(i);
+    else if (ID_PATTERN.test(h)) polluted.push(i);
+  });
+
+  console.log('คอลัมน์ทั้งหมด ' + width + ' | แถวข้อมูล ' + Math.max(0, lastRow - 1));
+  console.log('คอลัมน์ที่ชื่อ referral_id: ' +
+    (named.length ? named.map(function (i) { return i + 1; }).join(', ') : 'ไม่มีเลย'));
+  console.log('คอลัมน์ที่หัวตารางเป็นรหัสเคส (โดนเขียนทับ): ' +
+    (polluted.length
+      ? polluted.map(function (i) { return (i + 1) + ' → "' + headers[i] + '"'; }).join(', ')
+      : 'ไม่มี'));
+  console.log('');
+
+  const check = named.concat(polluted).sort(function (a, b) { return a - b; });
+  if (check.length === 0 || lastRow < 2) {
+    console.log('ไม่มีข้อมูลให้เทียบ');
+    return;
+  }
+
+  const values = sheet.getRange(2, 1, lastRow - 1, width).getValues();
+
+  check.forEach(function (col) {
+    const filled = [];
+    values.forEach(function (row, i) {
+      const v = String(row[col] || '').trim();
+      if (v) filled.push({ row: i + 2, value: v });
+    });
+
+    console.log('── คอลัมน์ ' + (col + 1) + ' (หัวตาราง: "' + headers[col] + '")');
+    console.log('   มีค่า ' + filled.length + ' แถว จาก ' + (lastRow - 1));
+    filled.slice(0, 10).forEach(function (f) {
+      console.log('     แถว ' + f.row + ': ' + f.value);
+    });
+    if (filled.length > 10) console.log('     ... และอีก ' + (filled.length - 10) + ' แถว');
+    console.log('');
+  });
+
+  if (check.length === 2) {
+    let both = 0, onlyA = 0, onlyB = 0, neither = 0, conflict = 0;
+    values.forEach(function (row) {
+      const a = String(row[check[0]] || '').trim();
+      const b = String(row[check[1]] || '').trim();
+      if (a && b) { both++; if (a !== b) conflict++; }
+      else if (a) onlyA++;
+      else if (b) onlyB++;
+      else neither++;
+    });
+    console.log('สรุปการทับซ้อน');
+    console.log('  มีค่าทั้งสองคอลัมน์: ' + both + ' แถว (ค่าไม่ตรงกัน ' + conflict + ' แถว)');
+    console.log('  มีเฉพาะคอลัมน์ ' + (check[0] + 1) + ': ' + onlyA + ' แถว');
+    console.log('  มีเฉพาะคอลัมน์ ' + (check[1] + 1) + ': ' + onlyB + ' แถว');
+    console.log('  ว่างทั้งคู่ (ไม่มีรหัสเลย): ' + neither + ' แถว');
+  }
+}
+
+/**
  * คืนชื่อหัวคอลัมน์เป็นชื่อ field หลัง Google Form เขียนทับด้วยข้อความคำถาม
  *
  * ทุกครั้งที่แก้ฟอร์ม Google จะเขียนหัวคอลัมน์ในชีตใหม่เป็นข้อความคำถาม
