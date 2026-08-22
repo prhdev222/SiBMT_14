@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-08-11 lineFallback';
+const API_VERSION = '2026-08-22 lineStatusLookup';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -58,6 +58,8 @@ function doPost(e) {
 
     // LINE ส่ง webhook มาในรูป { destination: "...", events: [...] } และไม่มี token
     // ต่างจากคำสั่งของ dashboard ที่มี action กับ token เสมอ
+    //
+    // ตัวจัดการอยู่ใน LineWebhook.gs — doPost รู้แค่ว่าต้องส่งต่อให้ใคร
     if (body.events && body.destination) {
       return handleLineWebhook_(body);
     }
@@ -420,80 +422,6 @@ function remainingSlots_(clinicDate, fellowName) {
   });
 
   return quota - booked;
-}
-
-/**
- * รับ webhook จาก LINE
- *
- * ── ใช้หา group ID สำหรับตั้ง Script Properties ────────────────────
- * Notify.gs ต้องรู้ group ID ของกลุ่มปลายทาง (LINE_TARGET_RESIDENT,
- * LINE_TARGET_ADMIN, LINE_TARGET_FELLOW) แต่ LINE ไม่มีหน้าจอไหนบอกค่านี้เลย
- * ทางเดียวที่ได้มาคือให้บอทเข้ากลุ่มแล้วอ่านจาก webhook ที่ LINE ยิงมา
- *
- * วิธีใช้
- *   1. ตั้ง Webhook URL ใน LINE Developers Console เป็น Web app URL นี้
- *      แล้วเปิด "Use webhook"
- *   2. เชิญบอทเข้ากลุ่ม แล้วพิมพ์อะไรก็ได้ในกลุ่มนั้นสักข้อความ
- *   3. กลับมาที่ Apps Script → Executions → เปิดรายการล่าสุด
- *      จะเห็นบรรทัด "LINE source: group ..." — คัดลอกไปใส่ Script Properties
- *   4. ทำครบทั้ง 3 กลุ่มแล้วปิด "Use webhook" ได้ ถ้ายังไม่ทำระบบตอบโต้
- *
- * ตอบ 200 เสมอ เพราะปุ่ม Verify ใน LINE Console จะไม่ผ่านถ้าไม่ตอบ
- * และ LINE จะหยุดส่ง webhook ให้ถ้าปลายทางล้มเหลวบ่อย ๆ
- *
- * เมื่อถึงเวลาทำระบบตอบโต้จริง ให้เขียนไฟล์ LineWebhook.gs แล้วย้ายเนื้อใน
- * มาไว้ที่นั่น โดยไม่ต้องแตะ doPost อีก
- */
-/**
- * คำที่พิมพ์ในแชทแล้วบอทจะตอบกลับด้วย ID ของห้องนั้น
- *
- * มีไว้ตอนตั้งค่าเท่านั้น — การส่งข้อความเข้ากลุ่มต้องรู้ groupId ล่วงหน้า
- * แต่ groupId ไม่มีให้ดูที่ไหนในแอป LINE เลย ต้องดักจาก webhook อย่างเดียว
- * เดิมต้องไปนั่งไล่อ่าน Executions ใน Apps Script ซึ่งหายากและพิมพ์ผิดง่าย
- * แบบนี้พิมพ์ในกลุ่มแล้วคัดลอกจากข้อความที่บอทตอบได้เลย
- *
- * ปลอดภัยพอ: ตอบเฉพาะ ID ของห้องที่คนถามอยู่แล้ว ไม่ได้บอกอะไรที่คนนอกไม่รู้
- * และไม่แตะชีตเลย
- */
-const LINE_WHOAMI_KEYWORD = '#id';
-
-function handleLineWebhook_(body) {
-  (body.events || []).forEach(function (event) {
-    const source = event.source || {};
-    // groupId/roomId/userId มาไม่พร้อมกัน ขึ้นกับว่าเป็นแชทกลุ่ม ห้อง หรือตัวต่อตัว
-    const id = source.groupId || source.roomId || source.userId || '(ไม่มี)';
-    console.log(
-      'LINE source: ' + (source.type || '?') + ' ' + id + ' | event: ' + event.type,
-    );
-
-    const text = event.message && event.message.type === 'text'
-      ? String(event.message.text || '').trim()
-      : '';
-
-    if (text === LINE_WHOAMI_KEYWORD) {
-      replyLineMessage_(event.replyToken, buildWhoAmIReply_(source.type, id));
-    }
-  });
-
-  return ContentService.createTextOutput('OK');
-}
-
-/** ข้อความบอก ID พร้อมบอกว่าต้องเอาไปวางที่ Script Property ตัวไหน */
-function buildWhoAmIReply_(sourceType, id) {
-  const target = {
-    group: 'LINE_TARGET_RESIDENT หรือ LINE_TARGET_ADMIN หรือ LINE_TARGET_FELLOW\n' +
-      '(เลือกตามว่ากลุ่มนี้คือกลุ่มไหน)',
-    room: 'LINE_TARGET_* ตามหน้าที่ของห้องนี้',
-    user: 'ไม่ต้องใช้ — นี่คือ ID ส่วนตัว ไม่ใช่ของกลุ่ม',
-  }[sourceType] || 'LINE_TARGET_*';
-
-  return (
-    'ID ของที่นี่คือ\n' +
-    id + '\n\n' +
-    'ประเภท: ' + (sourceType || 'ไม่ทราบ') + '\n\n' +
-    'นำไปวางที่ Apps Script → Project Settings → Script Properties\n' +
-    'ชื่อ: ' + target
-  );
 }
 
 function jsonResponse_(obj) {

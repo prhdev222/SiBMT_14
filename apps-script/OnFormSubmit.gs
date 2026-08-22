@@ -100,10 +100,20 @@ function onFormSubmit(e) {
       setCell_(sheet, map, row, 'possible_duplicate_of', duplicateOf);
     }
 
-    // 6. ส่ง Referral ID กลับให้แพทย์ผู้ส่ง ถ้ากรอกอีเมลไว้
+    // 6. ส่ง Referral ID กลับให้แพทย์ผู้ส่ง
+    //
+    // ช่องอีเมลถูกตั้งเป็นบังคับในฟอร์มแล้ว แต่ยังเช็คตรงนี้อยู่ เพราะเคสเก่า
+    // ที่ส่งมาก่อนเปลี่ยนฟอร์ม และการแก้ฟอร์มผิดพลาด ทำให้ค่าว่างได้อยู่ดี
+    // เขียน log ไว้แทนการเงียบ — เดิมเคสที่ไม่มีอีเมลจะไม่ได้รับรหัสอ้างอิงเลย
+    // แล้วไม่มีใครรู้จนกว่าแพทย์จะโทรมาถาม
     const email = String(readCell_(sheet, map, row, 'referrer_email') || '').trim();
     if (email) {
       sendReferralIdEmail_(email, referralId, referralType);
+    } else {
+      console.warn(
+        'เคส ' + referralId + ' ไม่มีอีเมลผู้ส่ง — ไม่ได้ส่งรหัสอ้างอิงกลับ ' +
+        'แพทย์ต้นทางจะไม่รู้รหัสและเช็คสถานะเองไม่ได้ ต้องติดต่อกลับทางโทรศัพท์'
+      );
     }
   } finally {
     lock.releaseLock();

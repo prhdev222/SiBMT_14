@@ -135,11 +135,14 @@ const FORM_COLUMNS_REQUIRED = [
   'patient_age',
   'patient_sex',
   'urgency',
+  // อีเมลเป็นช่องทางเดียวที่แพทย์ต้นทางได้รับรหัสอ้างอิง และรหัสนั้นคือสิ่งที่
+  // ใช้เช็คสถานะกับบอท LINE ได้ ถ้าไม่กรอกอีเมลก็ไม่รู้รหัส และไม่ได้รับคำตอบ
+  // เดิมเป็นช่อง "ถ้ามี" ซึ่งเว้นว่างได้ แล้วเคสนั้นก็เงียบหายไปจนต้องโทรตาม
+  'referrer_email',
 ];
 
 /** คอลัมน์จากฟอร์มที่มีเฉพาะบางกลุ่ม — ไม่บังคับว่าต้องมีครบ */
 const FORM_COLUMNS_OPTIONAL = [
-  'referrer_email',
   'consent_raw',
   // กลุ่ม 2
   'diagnosis_g2', 'disease_group_g2', 'stage_g2', 'treatment_summary_g2',
