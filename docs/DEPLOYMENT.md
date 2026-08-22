@@ -353,11 +353,17 @@ DASHBOARD_USERS=admin:ยาวหน่อยนะรหัสนี้;fellow
 - [ ] แยก 3 ชุดข้อมูลเป็นคนละชีตแล้ว
 - [ ] เติมค่าจริงใน `src/lib/config.ts` — `ESCALATION_CONTACTS`, `LINE_OA`, `FORM_URL`
 - [ ] มีชื่อผู้สำรองของแพทย์แอดมินกลางแล้ว
-- [ ] ตั้ง `AUTH_SECRET` และ `DASHBOARD_USERS` แล้ว — เปิด `/dashboard` ต้องเด้งไปหน้า login
+- [x] ตั้ง `AUTH_SECRET` และ `DASHBOARD_USERS` แล้ว — เปิด `/dashboard` ต้องเด้งไปหน้า login
       และ**ต้องไม่เห็นแถบแดง "ยังไม่ได้ตั้งรหัสผ่าน"**
+      *(ตรวจบน production แล้ว 22 ส.ค. 2569 — `/dashboard` ตอบ 307 ไป `/login?next=%2Fdashboard`
+      และไม่มีแถบแดง)*
 - [ ] ทดสอบว่ารหัสผ่านผิดเข้าไม่ได้ และปุ่มออกจากระบบใช้ได้จริง
-- [ ] **ตั้ง rate limiting rule บน `/login` ที่ Cloudflare WAF แล้ว** —
-      ข้อนี้สำคัญเป็นพิเศษเพราะไม่ได้ใช้ Cloudflare Access รหัสผ่านจึงเป็นด่านเดียว
+- [x] **จำกัดอัตราการล็อกอินที่ `/login` แล้ว** — ข้อนี้สำคัญเป็นพิเศษเพราะไม่ได้ใช้
+      Cloudflare Access รหัสผ่านจึงเป็นด่านเดียว
+      ⚠️ ทำที่ **Worker ไม่ใช่ WAF** — binding `LOGIN_RATE_LIMIT` ใน `wrangler.jsonc`
+      (5 ครั้งต่อ 60 วินาที) เพราะกฎ Rate limiting ของ WAF ผูกกับ zone ซึ่งต้องเป็นโดเมน
+      ในบัญชีเราเอง แต่ `*.workers.dev` เป็นโดเมนของ Cloudflare จึงไม่มีเมนูให้ตั้ง
+      **ถ้าย้ายไปโดเมนของภาควิชาเมื่อไร ค่อยพิจารณาย้ายกฎนี้ไป WAF**
 - [ ] รหัสผ่านของทุกคนยาว 12 ตัวอักษรขึ้นไป และไม่ได้ส่งกันในกลุ่ม LINE ที่มีคนนอกอยู่
 - [ ] ตรวจว่าไม่มี credential รั่วใน client bundle
 - [ ] แยก Google Sheet ของ production ออกจาก test
