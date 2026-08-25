@@ -338,7 +338,7 @@ LINE push ต้องรู้ `userId` ของปลายทาง แต�
 ทั้งหมดเป็นค่าที่รอคนตอบ ไม่ใช่โค้ดที่ยังไม่ได้เขียน
 
 - `HOSPITAL_APPOINTMENT.lineOaUrl` ยังเป็น `null` — รอ URL จริงของ LINE "Siriraj นัดหมาย"
-- `LINE_OA.addFriendUrl` ยังเป็นลิงก์ชั่วคราว — รอ LINE OA จริงของระบบ
+- ~~`LINE_OA.addFriendUrl` ยังเป็นลิงก์ชั่วคราว~~ — ตั้งเป็น LINE OA จริงแล้ว (`@900eojoi`) 25 ส.ค. 2569
   ขั้นตอนสร้างอยู่ที่ [LINE_TEMPLATES.md](LINE_TEMPLATES.md) §0
 - `central_admin_backup_name` ในชีต `config` ยังว่าง — รอชื่อผู้สำรองจากอาจารย์
   และ `ESCALATION_CONTACTS` ใน `src/lib/config.ts` ยังไม่มีชื่อคนจริงสักช่อง

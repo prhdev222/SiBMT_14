@@ -15,10 +15,27 @@ export const CONTACT = {
 } as const;
 
 export const LINE_OA = {
-  displayName: "Siriraj Hemato Refer",
-  /** TODO: เปลี่ยนเป็น LINE OA ของระบบนี้เมื่อสร้างเสร็จ */
-  addFriendUrl: "https://lin.ee/TVFfRUd",
-  /** ลิงก์เครือข่าย SiAML สำหรับส่งต่อปลูกถ่ายฯ (ทุกโรค) */
+  /**
+   * ต้องตรงกับ Account name ใน LINE Official Account Manager
+   * เพราะแพทย์จะเห็นชื่อนี้บนปุ่ม แล้วต้องจำได้ว่าเป็นบัญชีเดียวกันตอนแอด
+   */
+  displayName: "ReferHematoSi",
+
+  /**
+   * LINE OA ของระบบนี้ — basic ID คือ @900eojoi
+   *
+   * รูปแบบ line.me/R/ti/p/@id ใช้ได้ทั้งบนมือถือและเดสก์ท็อป และสร้างจาก
+   * basic ID ได้ตรง ๆ ต่างจากลิงก์ย่อ lin.ee ที่ต้องไปคัดลอกจาก OA Manager
+   * ถ้าเปลี่ยน basic ID เป็นแบบ premium ภายหลัง ต้องแก้บรรทัดนี้ด้วย
+   */
+  addFriendUrl: "https://line.me/R/ti/p/@900eojoi",
+
+  /**
+   * ลิงก์เครือข่าย SiAML สำหรับส่งต่อปลูกถ่ายฯ (ทุกโรค)
+   *
+   * ⚠️ คนละบัญชีกับ addFriendUrl ข้างบน — เป็นบัญชีของเครือข่าย SiAML
+   * ที่มีอยู่ก่อนระบบนี้ อย่าเปลี่ยนให้ชี้มาที่ OA ของเราเวลาอัปเดตลิงก์
+   */
   siamlUrl: "https://lin.ee/TVFfRUd",
 } as const;
 
