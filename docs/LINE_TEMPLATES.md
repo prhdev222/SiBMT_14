@@ -112,13 +112,35 @@ grep '^BOOKING_API_URL=' .env.local
 ถ้าไม่เห็น แปลว่า Apps Script ยังไม่ได้ deploy หรือ deploy ไม่ใช่แบบ
 "Anyone" (ดู §การติดตั้ง ในหัวไฟล์ `apps-script/Api.gs`)
 
-### ขั้นที่ 7 — เปิดให้บอทเข้ากลุ่มได้ (ข้ามได้ถ้ายังไม่ใช้กลุ่ม)
+### ขั้นที่ 7 — ตั้งค่าบัญชี: เข้ากลุ่มได้ และห้ามส่งไฟล์
 
-แท็บ **Messaging API** เดิม → **Allow bot to join group chats** → เปิด
+**LINE Official Account Manager** → **Settings** → **Account settings**
 
-**ปิดไว้เป็นค่าเริ่มต้น** ถ้าไม่เปิด เชิญบอทเข้ากลุ่มไม่ได้เลย
+**7.1 Group and multi-person chats → เลือก "Allow account to join groups
+and multi-person chats"**
 
-ข้ามขั้นนี้ได้ถ้าใช้วิธีส่งเข้าแชทตัวต่อตัวตาม §6.4
+ค่าเริ่มต้นคือ "Prevent…" ถ้าไม่เปลี่ยน เชิญบอทเข้ากลุ่มไม่ได้เลย
+จำเป็นเมื่อจะใช้ `LINE_TARGET_RESIDENT` และ `LINE_TARGET_FELLOW` เป็น groupId
+ข้ามได้ถ้าใช้แชทตัวต่อตัวอย่างเดียวตาม §6.4
+
+> ค่าเดียวกันนี้ปรากฏใน LINE Developers Console → แท็บ Messaging API ในชื่อ
+> **Allow bot to join group chats** ด้วย ตั้งที่ไหนก็ได้ ผลเหมือนกัน
+
+**7.2 Allow media and files in chat → เลือก "Don't allow"**
+
+ปิดการส่งรูป วิดีโอ และไฟล์เข้าแชทของบัญชีนี้
+
+⚠️ **นี่เป็นมาตรการ PDPA ไม่ใช่แค่การจัดระเบียบ** ระบบนี้ออกแบบมาไม่ให้มี
+ชื่อผู้ป่วย HN หรือเลขบัตรประชาชนอยู่ที่ใดเลย แต่ถ้าเปิดให้ส่งไฟล์ได้
+แพทย์ต้นทางที่หวังดีจะถ่ายรูปใบ lab ฟิล์ม หรือใบส่งตัวส่งเข้ามาในแชท
+ซึ่งเอกสารเหล่านั้นมีชื่อและ HN เต็ม ๆ แล้วจะค้างอยู่ในประวัติแชท LINE
+นอกขอบเขตที่ระบบควบคุมได้ทั้งหมด
+
+บอทของเราอ่านเฉพาะข้อความตัวอักษรอยู่แล้ว (ดู `LineWebhook.gs`) ไฟล์ที่ส่งมา
+จึงไม่มีประโยชน์ต่อระบบเลย มีแต่ความเสี่ยง
+
+การเลือก "Don't allow" จะปิดเสียง ที่อยู่อีเมล และตำแหน่งที่ตั้งไปด้วย
+ซึ่งระบบนี้ไม่ได้ใช้สักอย่าง
 
 ### ขั้นที่ 8 — ผูกปลายทางการแจ้งเตือน
 
@@ -143,8 +165,10 @@ grep '^BOOKING_API_URL=' .env.local
 | Script Property `LINE_TARGET_ADMIN` | มีค่า |
 | Developers Console → Use webhook | เปิด |
 | Developers Console → Webhook URL | ตรงกับ `BOOKING_API_URL` |
-| OA Manager → Auto-reply messages | **ปิด** |
+| OA Manager → Auto-response messages | **ปิด** |
 | OA Manager → Greeting messages | **ปิด** (หรือใช้ข้อความใน §2) |
+| OA Manager → Allow media and files in chat | **Don't allow** |
+| OA Manager → Group and multi-person chats | **Allow** (ถ้าจะใช้กลุ่ม) |
 
 ---
 
