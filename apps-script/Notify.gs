@@ -95,26 +95,68 @@ function pushLineMessage_(text, audience) {
     }
   }
 
-  if (!token || !target) {
+  const targets = parseLineTargets_(target);
+
+  if (!token || targets.length === 0) {
     // ยังไม่ได้ตั้งค่า — บันทึก log ไว้แทนการส่ง เพื่อให้ทดสอบระบบได้ก่อนมี LINE OA
     console.log('[LINE ยังไม่ได้ตั้งค่า: ' + targetKey + '] ' + text);
     return;
   }
 
-  const response = UrlFetchApp.fetch(LINE_PUSH_ENDPOINT, {
-    method: 'post',
-    contentType: 'application/json',
-    headers: { Authorization: 'Bearer ' + token },
-    payload: JSON.stringify({
-      to: target,
-      messages: [{ type: 'text', text: message.substring(0, 4900) }],
-    }),
-    muteHttpExceptions: true,
+  // ส่งทีละปลายทาง ไม่ใช้ multicast เพราะ multicast รับได้เฉพาะ userId
+  // ส่วนที่นี่ต้องรองรับ groupId ด้วย และจำนวนปลายทางอยู่ระดับหลักหน่วย
+  targets.forEach(function (to) {
+    sendOneLinePush_(token, to, message);
   });
+}
 
-  const code = response.getResponseCode();
-  if (code !== 200) {
-    console.error('ส่ง LINE ไม่สำเร็จ (' + code + '): ' + response.getContentText());
+/**
+ * แยกค่า Script Property เป็นรายการปลายทาง
+ *
+ * รองรับหลายปลายทางด้วยการคั่นจุลภาค เพื่อให้มีแอดมินหลายคนได้โดยไม่ต้อง
+ * สร้างกลุ่ม LINE (ซึ่งต้องเปิดสิทธิ์ให้บอทเข้ากลุ่มเพิ่มอีกขั้น)
+ *
+ * ตัดค่าซ้ำออก เพราะคนเดียวกันอาจถูกใส่ไว้ทั้งใน _ADMIN และ _RESIDENT
+ * แล้วจะได้ข้อความเดียวกันสองรอบ
+ */
+function parseLineTargets_(raw) {
+  const seen = {};
+  return String(raw || '')
+    .split(',')
+    .map(function (s) { return s.trim(); })
+    .filter(function (s) {
+      if (!s || seen[s]) return false;
+      seen[s] = true;
+      return true;
+    });
+}
+
+/**
+ * ส่งหนึ่งข้อความไปหนึ่งปลายทาง
+ *
+ * ปลายทางหนึ่งพังต้องไม่ทำให้ปลายทางที่เหลือไม่ได้รับ — แอดมินคนหนึ่งบล็อก
+ * บัญชีหรือออกจากกลุ่ม ไม่ควรทำให้ทั้งทีมพลาด Red Alert
+ */
+function sendOneLinePush_(token, to, message) {
+  try {
+    const response = UrlFetchApp.fetch(LINE_PUSH_ENDPOINT, {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + token },
+      payload: JSON.stringify({
+        to: to,
+        messages: [{ type: 'text', text: message.substring(0, 4900) }],
+      }),
+      muteHttpExceptions: true,
+    });
+
+    const code = response.getResponseCode();
+    if (code !== 200) {
+      console.error('ส่ง LINE ไม่สำเร็จ (' + code + ') ปลายทาง ' + to + ': ' +
+        response.getContentText());
+    }
+  } catch (err) {
+    console.error('ส่ง LINE ไม่สำเร็จ ปลายทาง ' + to + ': ' + err);
   }
 }
 
