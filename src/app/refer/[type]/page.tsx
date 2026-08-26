@@ -285,6 +285,32 @@ function HospitalAppointmentCard() {
           แจ้งผู้ป่วยว่า &ldquo;ให้เพิ่มเพื่อน LINE{" "}
           {HOSPITAL_APPOINTMENT.lineOaNameTh} แล้วทำนัดเองได้เลย&rdquo;
         </p>
+        {HOSPITAL_APPOINTMENT.qrImagePath && (
+          <div className="mt-3 flex flex-col items-center gap-2">
+            {/*
+              ใช้ <img> ธรรมดา ไม่ใช่ next/image โดยตั้งใจ — เว็บนี้รันบน
+              Cloudflare Workers ที่ไม่ได้เปิด images binding ไว้ (ดู wrangler.jsonc)
+              next/image จะพยายามเรียกตัวปรับขนาดภาพแล้วพัง
+
+              ขนาดตายตัว 200px เพราะนี่คือรูปที่ต้องให้คนยกมือถือมาสแกนจากจอ
+              ถ้าปล่อยให้ยืดตามความกว้างคอนเทนเนอร์ บนจอกว้างจะใหญ่จนสแกนยาก
+            */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={HOSPITAL_APPOINTMENT.qrImagePath}
+              alt={`QR code เพิ่มเพื่อน LINE ${HOSPITAL_APPOINTMENT.lineOaNameTh}`}
+              width={200}
+              height={200}
+              className="rounded-lg border border-green-300 bg-white"
+            />
+            <p className="text-xs text-green-900/80 text-center">
+              ให้ผู้ป่วยสแกนจากหน้าจอนี้ได้เลย
+              <br />
+              หรือถ่ายรูปเก็บไว้สแกนทีหลัง
+            </p>
+          </div>
+        )}
+
         {HOSPITAL_APPOINTMENT.lineOaUrl && (
           <a
             href={HOSPITAL_APPOINTMENT.lineOaUrl}
