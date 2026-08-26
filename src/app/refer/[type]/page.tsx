@@ -292,16 +292,20 @@ function HospitalAppointmentCard() {
               Cloudflare Workers ที่ไม่ได้เปิด images binding ไว้ (ดู wrangler.jsonc)
               next/image จะพยายามเรียกตัวปรับขนาดภาพแล้วพัง
 
-              ขนาดตายตัว 200px เพราะนี่คือรูปที่ต้องให้คนยกมือถือมาสแกนจากจอ
-              ถ้าปล่อยให้ยืดตามความกว้างคอนเทนเนอร์ บนจอกว้างจะใหญ่จนสแกนยาก
+              width/height ต้องตรงกับสัดส่วนจริงของไฟล์ (620x435) ไม่ใช่จัตุรัส
+              เพราะรูปมีแถบชื่อบัญชีอยู่ใต้ QR ถ้าใส่เป็นจัตุรัสภาพจะถูกบีบ
+              แล้วกล้องมือถืออ่านโค้ดที่ผิดสัดส่วนไม่ออก
+
+              กว้าง 260px คงที่ ไม่ยืดตามคอนเทนเนอร์ — บนจอกว้างถ้ารูปใหญ่เกินไป
+              กล้องต้องถอยห่างจนโฟกัสยาก
             */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={HOSPITAL_APPOINTMENT.qrImagePath}
               alt={`QR code เพิ่มเพื่อน LINE ${HOSPITAL_APPOINTMENT.lineOaNameTh}`}
-              width={200}
-              height={200}
-              className="rounded-lg border border-green-300 bg-white"
+              width={620}
+              height={435}
+              className="w-[260px] h-auto rounded-lg border border-green-300 bg-white"
             />
             <p className="text-xs text-green-900/80 text-center">
               ให้ผู้ป่วยสแกนจากหน้าจอนี้ได้เลย

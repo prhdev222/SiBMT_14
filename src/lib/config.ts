@@ -140,7 +140,7 @@ export const HOSPITAL_APPOINTMENT = {
    * แล้วให้ผู้ป่วยยกมือถือขึ้นสแกนจากจอได้ทันที ส่วนลิงก์กดได้เฉพาะบนเครื่อง
    * ที่เปิดหน้านี้อยู่ ซึ่งเป็นเครื่องของแพทย์ ไม่ใช่ของผู้ป่วย
    */
-  qrImagePath: null as string | null,
+  qrImagePath: "/siriraj-appointment-qr.png" as string | null,
   /** ขั้นตอนตามใบประชาสัมพันธ์ของโรงพยาบาล */
   stepsTh: [
     'สแกน QR code เพิ่มเพื่อน LINE "Siriraj นัดหมาย"',
