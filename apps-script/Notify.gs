@@ -259,8 +259,9 @@ function notifyFellowOfBooking_(booking) {
       'ส่งมาจาก: ' + (booking.referrerOrg || '-') + '\n' +
       'ผู้ป่วย: ' + (booking.patientSex || '-') +
         ' อายุ ' + (booking.patientAge || '-') + ' ปี\n' +
-      'การวินิจฉัย: ' + (booking.diagnosis || '-') + '\n\n' +
-      'รายละเอียดเพิ่มเติม: ' + DASHBOARD_URL;
+      'การวินิจฉัย: ' + (booking.diagnosis || '-') + '\n' +
+      (booking.indication ? 'ข้อบ่งชี้ (I/C): ' + booking.indication + '\n' : '') +
+      '\nรายละเอียดเพิ่มเติม: ' + DASHBOARD_URL;
 
     pushLineMessage_(message, 'fellow');
   } catch (err) {

@@ -6,6 +6,7 @@ import { isBookingConfigured } from "@/lib/apps-script-api";
 import { requireSession } from "@/lib/session";
 import { SessionBar } from "@/components/SessionBar";
 import { CONTACT } from "@/lib/config";
+import { indicationLabel } from "@/lib/transplant-indications";
 import { AppointmentList, type AppointmentRow } from "./AppointmentList";
 
 export const dynamic = "force-dynamic";
@@ -48,10 +49,15 @@ export default async function AppointmentsPage() {
       referrerOrg: r.referrerOrg,
       referrerPhone: r.referrerPhone,
       diagnosis: r.diagnosis,
+      indicationTh: indicationLabel(r.transplantIndication),
       isPast: (r.appointmentDate ?? "") < todayIso,
     }));
 
   const upcoming = appointments.filter((a) => !a.isPast).length;
+
+  // รายชื่อ fellow ที่มีนัดจริง ไม่ใช่ทุกคนในตารางเวร — fellow ที่ยังไม่มีคนจอง
+  // ไม่ต้องอยู่ในตัวกรอง เพราะเลือกแล้วก็ว่างเปล่า
+  const fellowNames = [...new Set(appointments.map((a) => a.fellowName))].sort();
 
   // วันว่างสำหรับเลือกตอนเลื่อนนัด — ตัดวันที่ผ่านมาแล้วออก
   const horizon = new Date();
@@ -119,7 +125,11 @@ export default async function AppointmentsPage() {
           รายการ (ยังไม่ถึงวันนัด {upcoming} รายการ)
         </p>
 
-        <AppointmentList appointments={appointments} days={days} />
+        <AppointmentList
+          appointments={appointments}
+          days={days}
+          fellows={fellowNames}
+        />
 
         <p className="text-xs text-zinc-500 text-center pt-2">
           ติดต่อ OPD 700 โทร {CONTACT.phoneDisplay} ({CONTACT.hoursTh})

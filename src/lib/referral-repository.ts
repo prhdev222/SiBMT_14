@@ -238,6 +238,7 @@ function toReferral(row: Record<string, string>): Referral | null {
     comorbidity: text(row["comorbidity"]),
     clinicalQuestion: text(row["clinical_question"]),
     adviceRecord: text(row["advice_record"]),
+    transplantIndication: text(row["transplant_indication"]),
   };
 }
 

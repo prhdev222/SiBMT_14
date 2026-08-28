@@ -46,6 +46,7 @@ export async function bookAction(
     patientAge: clean(formData.get("patientAge")),
     patientSex: clean(formData.get("patientSex")),
     note: clean(formData.get("note")),
+    transplantIndication: clean(formData.get("transplantIndication")),
   };
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.clinicDate) || !input.fellowName) {

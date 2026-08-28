@@ -47,6 +47,8 @@ export interface BookingInput {
   patientAge: string;
   patientSex: string;
   note: string;
+  /** id ของข้อบ่งชี้จาก transplant-indications.ts */
+  transplantIndication: string;
 }
 
 export interface BookingResult {

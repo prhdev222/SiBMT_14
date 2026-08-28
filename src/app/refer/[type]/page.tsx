@@ -8,6 +8,10 @@ import {
 } from "@/lib/referral-types";
 import { CHECKLIST_BY_TYPE, type ChecklistItem } from "@/lib/document-checklist";
 import {
+  INDICATIONS_BY_TYPE,
+  TRANSPLANT_TYPE_LABEL_TH,
+} from "@/lib/transplant-indications";
+import {
   BATCH_NOTIFICATION,
   CONTACT,
   FORM_URL,
@@ -169,6 +173,8 @@ export default async function ReferTypePage({
           </Link>
         </section>
         )}
+
+        {type === "TRANSPLANT_APPOINTMENT" && <IndicationCriteriaCard />}
 
         {/* กลุ่มที่ 1 จองคิวเองได้ กลุ่มที่ 4 ไปใช้ระบบนัดหมายของโรงพยาบาล */}
         {type === "GENERAL_OPD" ? (
@@ -377,6 +383,73 @@ function HospitalAppointmentCard() {
         ระบบนัดหมายของโรงพยาบาลจะขอชื่อ-สกุลและเลข HN ของผู้ป่วยโดยตรง
         ซึ่งเป็นการเก็บข้อมูลของโรงพยาบาล ไม่ผ่านระบบส่งต่อนี้
       </p>
+    </section>
+  );
+}
+
+/**
+ * ตารางเกณฑ์การส่งต่อเพื่อปลูกถ่ายเซลล์ต้นกำเนิด
+ *
+ * อาจารย์ขอให้ใส่ในกลุ่มที่ 1 "เพื่อให้แพทย์ต้นทางทราบเบื้องต้นว่าเกณฑ์ตอบสนอง
+ * ในแต่ละโรคก่อนทำการส่งผู้ป่วยมา" (docs/I:CBMT.pdf)
+ *
+ * แสดงทั้งตารางตรงนี้ และแสดงเฉพาะข้อที่เลือกอีกครั้งในหน้าจองคิว
+ * — ตรงนี้ไว้อ่านก่อนตัดสินใจ ส่วนตรงนั้นไว้ยืนยันตอนกำลังกรอก
+ *
+ * ⚠️ ไม่ใช่ด่านกั้น ระบบรับจองต่อแม้เกณฑ์ไม่ครบ (มติอาจารย์ 2 ส.ค. 2569)
+ */
+function IndicationCriteriaCard() {
+  return (
+    <section className="rounded-xl bg-white border border-zinc-200 p-5">
+      <h2 className="font-semibold text-zinc-900">
+        เกณฑ์การส่งต่อเพื่อเตรียมตัวปลูกถ่ายเซลล์ต้นกำเนิด
+      </h2>
+      <p className="text-sm text-zinc-600 mt-1">
+        ใช้ประกอบการตัดสินใจก่อนส่งผู้ป่วย —
+        ระบบไม่ได้ใช้กั้นการจอง หากไม่ตรงเกณฑ์แต่เห็นว่าควรส่ง จองได้ตามปกติ
+      </p>
+
+      <div className="mt-4 space-y-5">
+        {(["AUTOLOGOUS", "ALLOGENEIC"] as const).map((groupType) => (
+          <div key={groupType}>
+            <h3 className="text-sm font-semibold text-blue-700">
+              {TRANSPLANT_TYPE_LABEL_TH[groupType]}
+            </h3>
+            <div className="mt-2 overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="text-left text-xs text-zinc-500">
+                    <th className="border-b border-zinc-200 py-1.5 pr-3 font-medium">
+                      โรค
+                    </th>
+                    <th className="border-b border-zinc-200 py-1.5 pr-3 font-medium">
+                      สถานะโรค
+                    </th>
+                    <th className="border-b border-zinc-200 py-1.5 font-medium whitespace-nowrap">
+                      อายุ
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {INDICATIONS_BY_TYPE[groupType].map((item) => (
+                    <tr key={item.id} className="align-top">
+                      <td className="border-b border-zinc-100 py-2 pr-3 font-medium text-zinc-900">
+                        {item.diseaseTh}
+                      </td>
+                      <td className="border-b border-zinc-100 py-2 pr-3 text-zinc-600">
+                        {item.statusTh || "—"}
+                      </td>
+                      <td className="border-b border-zinc-100 py-2 text-zinc-600">
+                        {item.ageTh || "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

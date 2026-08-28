@@ -349,6 +349,11 @@ export interface Referral {
   appointmentDate: string | null;
   /** fellow ที่ผู้ป่วยถูกนัดให้พบ — เฉพาะกลุ่มที่ 1 */
   fellowAssigned: string | null;
+  /**
+   * ข้อบ่งชี้การปลูกถ่ายที่แพทย์ต้นทางเลือกตอนจอง — เฉพาะกลุ่มที่ 1
+   * เก็บเป็น id จาก transplant-indications.ts ว่างได้ (เคสที่จองก่อนมีช่องนี้)
+   */
+  transplantIndication: string;
   note: string;
 
   /**

@@ -4,6 +4,13 @@ import { useActionState, useState } from "react";
 import Link from "next/link";
 import { bookAction, type BookingState } from "./actions";
 import { DISEASE_GROUPS } from "@/lib/referral-types";
+import {
+  INDICATIONS_BY_TYPE,
+  INDICATION_OTHER,
+  INDICATION_OTHER_LABEL_TH,
+  TRANSPLANT_TYPE_LABEL_TH,
+  findIndication,
+} from "@/lib/transplant-indications";
 import { formatTimeRange } from "@/lib/fellow-schedule";
 
 const TH_MONTH = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
@@ -184,6 +191,8 @@ export function BookingFlow({ days }: { days: OpenDay[] }) {
           required
           hint="เช่น AML, relapsed after 1st CR"
         />
+
+        <IndicationPicker />
         <Field name="note" label="หมายเหตุ (ไม่บังคับ)" />
       </fieldset>
 
@@ -221,6 +230,83 @@ export function BookingFlow({ days }: { days: OpenDay[] }) {
         {pending ? "กำลังจองคิว…" : "ยืนยันการจองคิว"}
       </button>
     </form>
+  );
+}
+
+/**
+ * เลือกข้อบ่งชี้การปลูกถ่าย แล้วแสดงเกณฑ์ของข้อนั้นทันที
+ *
+ * ⚠️ ไม่ได้ใช้กั้นการจอง — ระบบรับจองต่อไม่ว่าเกณฑ์จะครบหรือไม่
+ * ตามมติอาจารย์ 2 ส.ค. 2569 ที่ให้ความครบถ้วนเป็นหน้าที่ของแพทย์ต้นทาง
+ * เหตุผลที่ต้องแสดงตรงนี้คือ **จังหวะ** — แพทย์กำลังตัดสินใจส่งผู้ป่วยอยู่พอดี
+ * ถ้าเอาไปไว้หน้าอื่นหรือในเอกสารแนบ จะไม่มีใครเปิดดูตอนที่มันมีประโยชน์
+ */
+function IndicationPicker() {
+  const [selected, setSelected] = useState("");
+  const detail = findIndication(selected);
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-sm">
+        <span className="block font-medium text-zinc-700 mb-1">
+          ข้อบ่งชี้การปลูกถ่าย (I/C) <span className="text-red-600">*</span>
+        </span>
+        <select
+          name="transplantIndication"
+          required
+          value={selected}
+          onChange={(e) => setSelected(e.target.value)}
+          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900"
+        >
+          <option value="" disabled>
+            — เลือกข้อบ่งชี้ —
+          </option>
+          {(["AUTOLOGOUS", "ALLOGENEIC"] as const).map((type) => (
+            <optgroup key={type} label={TRANSPLANT_TYPE_LABEL_TH[type]}>
+              {INDICATIONS_BY_TYPE[type].map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.diseaseTh}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+          <option value={INDICATION_OTHER}>{INDICATION_OTHER_LABEL_TH}</option>
+        </select>
+      </label>
+
+      {detail && (
+        <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm">
+          <p className="font-semibold text-amber-900">
+            เกณฑ์ของข้อบ่งชี้นี้
+          </p>
+          <dl className="mt-1.5 space-y-1 text-amber-900/90">
+            {detail.statusTh && (
+              <div className="flex gap-2">
+                <dt className="w-20 shrink-0 text-amber-800/70">สถานะโรค</dt>
+                <dd>{detail.statusTh}</dd>
+              </div>
+            )}
+            {detail.ageTh && (
+              <div className="flex gap-2">
+                <dt className="w-20 shrink-0 text-amber-800/70">อายุ</dt>
+                <dd>{detail.ageTh}</dd>
+              </div>
+            )}
+          </dl>
+          <p className="mt-2 text-xs text-amber-800">
+            เป็นข้อมูลประกอบการตัดสินใจ ระบบไม่ได้ใช้กั้นการจอง —
+            หากไม่ตรงเกณฑ์แต่เห็นว่าควรส่ง จองได้ตามปกติแล้วระบุเหตุผลในหมายเหตุ
+          </p>
+        </div>
+      )}
+
+      {selected === INDICATION_OTHER && (
+        <p className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-900">
+          กรุณาระบุรายละเอียดในช่องหมายเหตุด้านล่าง
+          เพื่อให้ทีมเตรียมข้อมูลก่อนวันนัดได้
+        </p>
+      )}
+    </div>
   );
 }
 

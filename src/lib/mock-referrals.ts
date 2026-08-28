@@ -30,6 +30,7 @@ export const MOCK_REFERRALS: Referral[] = [
     comorbidity: "",
     clinicalQuestion: "",
     adviceRecord: "",
+    transplantIndication: "",
   },
   {
     referralId: "HEM-20260728-0002",
@@ -53,6 +54,7 @@ export const MOCK_REFERRALS: Referral[] = [
     comorbidity: "",
     clinicalQuestion: "",
     adviceRecord: "",
+    transplantIndication: "",
   },
   {
     referralId: "HEM-20260729-0003",
@@ -76,6 +78,7 @@ export const MOCK_REFERRALS: Referral[] = [
     comorbidity: "",
     clinicalQuestion: "",
     adviceRecord: "",
+    transplantIndication: "",
   },
   {
     referralId: "HEM-20260722-0004",
@@ -99,6 +102,7 @@ export const MOCK_REFERRALS: Referral[] = [
     comorbidity: "",
     clinicalQuestion: "",
     adviceRecord: "",
+    transplantIndication: "",
   },
   {
     referralId: "HEM-20260730-0015",
@@ -122,6 +126,7 @@ export const MOCK_REFERRALS: Referral[] = [
     comorbidity: "",
     clinicalQuestion: "",
     adviceRecord: "",
+    transplantIndication: "",
   },
 
   /* ---------- กลุ่มที่ 2: Regimen consult ---------- */
@@ -149,6 +154,7 @@ export const MOCK_REFERRALS: Referral[] = [
     clinicalQuestion:
       "เริ่ม R-CHOP ที่ รพ. ต้นทางได้เลยหรือไม่ ต้องปรับขนาดยาตามการทำงานของไตหรือเปล่า และควรให้ G-CSF ป้องกันตั้งแต่ cycle แรกไหม",
     adviceRecord: "",
+    transplantIndication: "",
   },
   {
     referralId: "HEM-20260724-0006",
@@ -172,6 +178,7 @@ export const MOCK_REFERRALS: Referral[] = [
     comorbidity: "ไม่มี",
     clinicalQuestion:
       "ขอสูตร ATRA + ATO และแนวทางเฝ้าระวัง differentiation syndrome",
+    transplantIndication: "",
     adviceRecord:
       "ให้ ATRA 45 mg/m2/day ร่วมกับ ATO 0.15 mg/kg/day ต่อเนื่องจน CR เฝ้าระวัง differentiation syndrome และ QTc ทุกสัปดาห์ หากมีอาการให้ dexamethasone 10 mg IV q12h ทันที",
   },
@@ -199,6 +206,7 @@ export const MOCK_REFERRALS: Referral[] = [
     clinicalQuestion:
       "ขั้นต่อไปควรใช้ rituximab หรือส่งตัดม้าม ถ้าใช้ rituximab ให้ที่ รพ. ต้นทางได้ไหม ต้องเตรียมวัคซีนอะไรก่อน",
     adviceRecord: "",
+    transplantIndication: "",
   },
   {
     referralId: "HEM-20260730-0016",
@@ -224,6 +232,7 @@ export const MOCK_REFERRALS: Referral[] = [
     clinicalQuestion:
       "ควรเพิ่มขนาด imatinib เป็น 600-800 mg หรือเปลี่ยนเป็น 2nd generation TKI ถ้าเปลี่ยนควรใช้ตัวใด เมื่อคำนึงถึงความเสี่ยงหลอดเลือด",
     adviceRecord: "",
+    transplantIndication: "",
   },
 
   /* ---------- กลุ่มที่ 3: Chemo admission ---------- */
@@ -251,6 +260,7 @@ export const MOCK_REFERRALS: Referral[] = [
     clinicalQuestion:
       "ขอส่งตัวมารับ induction 7+3 ที่ศิริราช เนื่องจาก รพ. ต้นทางไม่มีห้องแยกและไม่มีเกล็ดเลือดสำรองเพียงพอ",
     adviceRecord: "",
+    transplantIndication: "",
   },
   {
     referralId: "HEM-20260728-0009",
@@ -274,6 +284,7 @@ export const MOCK_REFERRALS: Referral[] = [
     comorbidity: "",
     clinicalQuestion: "",
     adviceRecord: "",
+    transplantIndication: "",
   },
   {
     referralId: "HEM-20260729-0010",
@@ -299,6 +310,7 @@ export const MOCK_REFERRALS: Referral[] = [
     clinicalQuestion:
       "ขอส่งตัวมาให้ cycle ถัดไปที่ศิริราช และขอความเห็นเรื่องปรับ bortezomib เป็นสัปดาห์ละครั้งเพราะปลายประสาทอักเสบ",
     adviceRecord: "",
+    transplantIndication: "",
   },
   {
     referralId: "HEM-20260721-0011",
@@ -321,6 +333,7 @@ export const MOCK_REFERRALS: Referral[] = [
     treatmentSummary: "Prednisolone แล้วค่อยลดขนาด ปัจจุบัน 10 mg/day",
     comorbidity: "ไม่มี",
     clinicalQuestion: "ต้องส่งตัวมารักษาต่อที่ศิริราชหรือไม่",
+    transplantIndication: "",
     adviceRecord:
       "ระดับเกล็ดเลือดนี้ยังไม่มีข้อบ่งชี้ต้องส่งตัว ดูแลต่อที่ รพ. ต้นทางได้ ติดตาม CBC ทุก 2 สัปดาห์ หากต่ำกว่า 20,000 หรือมีเลือดออกจึงส่งปรึกษาอีกครั้ง",
   },
@@ -348,6 +361,7 @@ export const MOCK_REFERRALS: Referral[] = [
     comorbidity: "",
     clinicalQuestion: "",
     adviceRecord: "",
+    transplantIndication: "",
   },
   {
     referralId: "HEM-20260728-0013",
@@ -371,6 +385,7 @@ export const MOCK_REFERRALS: Referral[] = [
     comorbidity: "",
     clinicalQuestion: "",
     adviceRecord: "",
+    transplantIndication: "",
   },
   {
     referralId: "HEM-20260726-0014",
@@ -394,6 +409,7 @@ export const MOCK_REFERRALS: Referral[] = [
     comorbidity: "",
     clinicalQuestion: "",
     adviceRecord: "",
+    transplantIndication: "",
   },
 ];
 

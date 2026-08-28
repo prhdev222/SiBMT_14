@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-08-26 staffManage';
+const API_VERSION = '2026-08-28 indication';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -136,6 +136,7 @@ const BOOKING_COLUMNS = [
   'appointment_date', 'fellow_assigned', 'referrer_org', 'referrer_name',
   'referrer_phone', 'referrer_email', 'disease_group', 'diagnosis',
   'patient_age', 'patient_sex', 'urgency', 'note', 'manage_token',
+  'transplant_indication',
 ];
 
 function bookTransplantSlot_(payload) {
@@ -191,6 +192,9 @@ function bookTransplantSlot_(payload) {
       patient_sex: String(payload.patientSex || '').trim(),
       urgency: 'Routine',
       note: String(payload.note || '').trim(),
+      // ข้อบ่งชี้ที่แพทย์ต้นทางเลือก — เก็บเป็น id ไม่ใช่ข้อความ
+      // เพื่อให้แก้ถ้อยคำในตารางเกณฑ์ได้โดยไม่ทำให้เคสเก่าอ่านไม่ออก
+      transplant_indication: String(payload.transplantIndication || '').trim(),
       // ใช้พิสูจน์ว่าเป็นเจ้าของนัดตอนกดยกเลิกหรือเลื่อน (ดู ManageBooking.gs)
       manage_token: generateManageToken_(),
     };
@@ -228,6 +232,7 @@ function bookTransplantSlot_(payload) {
       patientSex: values.patient_sex,
       patientAge: values.patient_age,
       diagnosis: values.diagnosis,
+      indication: values.transplant_indication,
     };
   } finally {
     lock.releaseLock();

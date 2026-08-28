@@ -24,6 +24,8 @@ export interface AppointmentRow {
   referrerOrg: string;
   referrerPhone: string;
   diagnosis: string;
+  /** ข้อบ่งชี้การปลูกถ่ายที่แพทย์ต้นทางเลือกตอนจอง ว่างได้ถ้าจองก่อนมีช่องนี้ */
+  indicationTh: string;
   /** วันนัดผ่านมาแล้วหรือยัง — ใช้แยกกลุ่มแสดงผล ไม่ได้ห้ามเจ้าหน้าที่แก้ */
   isPast: boolean;
 }
@@ -38,10 +40,30 @@ const INITIAL: StaffManageState = { ok: false, message: "" };
 export function AppointmentList({
   appointments,
   days,
+  fellows,
 }: {
   appointments: AppointmentRow[];
   days: OpenDay[];
+  fellows: string[];
 }) {
+  const [fellowFilter, setFellowFilter] = useState("");
+  const [hidePast, setHidePast] = useState(true);
+
+  const shown = appointments.filter(
+    (a) =>
+      (!fellowFilter || a.fellowName === fellowFilter) &&
+      (!hidePast || !a.isPast),
+  );
+
+  /**
+   * นับรายผู้ป่วยต่อวัน ให้ fellow รู้ว่าวันไหนมีกี่ราย
+   *
+   * เป็นสิ่งที่ fellow ถามก่อนเสมอ — ไม่ได้อยากรู้ว่ามีเคสอะไรบ้าง
+   * แต่อยากรู้ว่าวันนั้นต้องเผื่อเวลาไว้เท่าไร
+   */
+  const perDay = new Map<string, number>();
+  for (const a of shown) perDay.set(a.clinicDate, (perDay.get(a.clinicDate) ?? 0) + 1);
+
   if (appointments.length === 0) {
     return (
       <div className="rounded-xl bg-white border border-zinc-200 p-8 text-center">
@@ -54,22 +76,72 @@ export function AppointmentList({
   }
 
   return (
-    <ul className="space-y-3">
-      {appointments.map((row) => (
-        <li key={row.referralId}>
-          <AppointmentCard row={row} days={days} />
-        </li>
-      ))}
-    </ul>
+    <div className="space-y-3">
+      <div className="rounded-xl bg-white border border-zinc-200 p-4 flex flex-wrap items-center gap-4">
+        <label className="text-sm">
+          <span className="block text-xs font-medium text-zinc-500 mb-1">
+            ดูเฉพาะแพทย์
+          </span>
+          <select
+            value={fellowFilter}
+            onChange={(e) => setFellowFilter(e.target.value)}
+            className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-900"
+          >
+            <option value="">ทุกคน</option>
+            {fellows.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex items-center gap-2 text-sm text-zinc-700 mt-4">
+          <input
+            type="checkbox"
+            checked={hidePast}
+            onChange={(e) => setHidePast(e.target.checked)}
+            className="h-4 w-4"
+          />
+          ซ่อนนัดที่ผ่านมาแล้ว
+        </label>
+
+        <p className="text-sm text-zinc-600 mt-4 ml-auto">
+          แสดง <span className="font-semibold text-zinc-900">{shown.length}</span> ราย
+          {fellowFilter && ` ของ ${fellowFilter}`}
+        </p>
+      </div>
+
+      {shown.length === 0 ? (
+        <p className="rounded-xl bg-white border border-zinc-200 p-6 text-center text-sm text-zinc-600">
+          ไม่มีนัดที่ตรงกับตัวกรอง
+        </p>
+      ) : (
+        <ul className="space-y-3">
+          {shown.map((row) => (
+            <li key={row.referralId}>
+              <AppointmentCard
+                row={row}
+                days={days}
+                sameDayCount={perDay.get(row.clinicDate) ?? 1}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
 function AppointmentCard({
   row,
   days,
+  sameDayCount,
 }: {
   row: AppointmentRow;
   days: OpenDay[];
+  /** จำนวนผู้ป่วยทั้งหมดของวันนั้นตามตัวกรองปัจจุบัน */
+  sameDayCount: number;
 }) {
   const [mode, setMode] = useState<"view" | "cancel" | "move">("view");
   const [cancelState, cancelAction, cancelling] = useActionState(
@@ -111,12 +183,22 @@ function AppointmentCard({
                   ผ่านมาแล้ว
                 </span>
               )}
+              {sameDayCount > 1 && (
+                <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                  วันนี้มี {sameDayCount} ราย
+                </span>
+              )}
             </p>
             <p className="text-sm text-zinc-600">
               {row.fellowName} · {row.referrerOrg}
             </p>
             {row.diagnosis && (
-              <p className="text-sm text-zinc-500 mt-0.5">{row.diagnosis}</p>
+              <p className="text-sm text-zinc-800 mt-1">{row.diagnosis}</p>
+            )}
+            {row.indicationTh && (
+              <p className="text-sm text-zinc-600 mt-0.5">
+                <span className="text-zinc-400">I/C:</span> {row.indicationTh}
+              </p>
             )}
           </div>
           {row.referrerPhone && (
