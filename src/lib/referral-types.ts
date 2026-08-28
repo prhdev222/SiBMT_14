@@ -117,6 +117,7 @@ export type Status =
   | "Readiness Visit Scheduled"
   | "Appointment Confirmed"
   | "Auto Replied"
+  | "Cancelled by Referrer"
   | "Rejected / Redirected"
   | "Closed";
 
@@ -130,6 +131,7 @@ export const STATUS_LABEL_TH: Record<Status, string> = {
   "Readiness Visit Scheduled": "นัดประเมินความพร้อมแล้ว",
   "Appointment Confirmed": "ยืนยันวันนัดแล้ว",
   "Auto Replied": "ระบบตอบกลับอัตโนมัติแล้ว",
+  "Cancelled by Referrer": "แพทย์ต้นทางยกเลิกนัดแล้ว",
   "Rejected / Redirected": "ไม่เข้าเกณฑ์ / ส่งต่อช่องทางอื่น",
   Closed: "ปิดเคสแล้ว",
 };
@@ -144,6 +146,7 @@ export const STATUS_COLOR: Record<Status, string> = {
   "Readiness Visit Scheduled": "bg-indigo-100 text-indigo-800",
   "Appointment Confirmed": "bg-green-100 text-green-800",
   "Auto Replied": "bg-green-100 text-green-800",
+  "Cancelled by Referrer": "bg-zinc-200 text-zinc-700",
   "Rejected / Redirected": "bg-zinc-200 text-zinc-700",
   Closed: "bg-zinc-200 text-zinc-700",
 };
@@ -161,6 +164,7 @@ export const STATUSES_BY_TYPE: Record<ReferralType, Status[]> = {
   // ความรับผิดชอบเรื่องความครบถ้วนของเอกสารเป็นของแพทย์ต้นทาง
   TRANSPLANT_APPOINTMENT: [
     "Appointment Confirmed",
+    "Cancelled by Referrer",
     "Rejected / Redirected",
     "Closed",
   ],
@@ -247,6 +251,27 @@ export function alertLevelFor(
   return "none";
 }
 
+/**
+ * สถานะที่ทำให้คิวของ fellow ว่างกลับคืนมา
+ *
+ * ⚠️ แยกจาก isTerminal() โดยเจตนา อย่ารวมกัน — "Appointment Confirmed"
+ * เป็นสถานะจบเหมือนกัน แต่ยัง **กินคิวอยู่** เพราะผู้ป่วยจะมาตามนัดจริง
+ * ถ้าเอา isTerminal() มาใช้นับคิว คิวที่จองแล้วจะกลายเป็นว่างทั้งหมด
+ * แล้วระบบจะรับจองเกินโควตาโดยไม่มีอะไรเตือน
+ *
+ * ⚠️ ต้องตรงกับ SLOT_RELEASING_STATUSES ใน apps-script/Config.gs
+ *    คนละ runtime แชร์ไฟล์กันไม่ได้ ถ้าแก้ที่นี่ต้องไปแก้ที่นั่นด้วย
+ *    ถ้าไม่ตรงกัน ปฏิทินกับตัวจองจะเห็นคิวคงเหลือไม่เท่ากัน
+ */
+export const SLOT_RELEASING_STATUSES: Status[] = [
+  "Rejected / Redirected",
+  "Cancelled by Referrer",
+];
+
+export function releasesSlot(status: Status): boolean {
+  return SLOT_RELEASING_STATUSES.includes(status);
+}
+
 /** เคสที่ถือว่าจบแล้ว ไม่ต้องนับ SLA ต่อ */
 export function isTerminal(status: Status): boolean {
   return (
@@ -255,7 +280,8 @@ export function isTerminal(status: Status): boolean {
     status === "Advice Sent" ||
     status === "Readiness Visit Scheduled" ||
     status === "Appointment Confirmed" ||
-    status === "Auto Replied"
+    status === "Auto Replied" ||
+    status === "Cancelled by Referrer"
   );
 }
 

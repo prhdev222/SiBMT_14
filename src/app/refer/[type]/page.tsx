@@ -205,20 +205,48 @@ export default async function ReferTypePage({
         </section>
         )}
 
-        <section className="rounded-xl bg-white border border-zinc-200 p-5 text-sm text-zinc-600">
-          <h2 className="font-semibold text-zinc-900 mb-2">ติดต่อเจ้าหน้าที่</h2>
-          <p className="font-medium text-zinc-800">{CONTACT.officeTh}</p>
-          <p>
-            โทร.{" "}
-            <a
-              href={`tel:${CONTACT.phone}`}
-              className="text-blue-600 hover:underline"
-            >
-              {CONTACT.phoneDisplay}
-            </a>{" "}
-            ({CONTACT.hoursTh})
-          </p>
-        </section>
+        {/*
+          เบอร์ธุรการแสดงเฉพาะกลุ่มที่ 1 และเฉพาะเรื่องวันที่ผู้ป่วยมาถึง
+
+          กลุ่มเดียวที่ผู้ป่วยเดินทางมาที่ OPD 700 จริงคือกลุ่มที่ 1 คำถามแบบ
+          "ไปที่ไหน" "มาสายทำอย่างไร" จึงมีเฉพาะกลุ่มนี้ กลุ่มอื่นไม่มีผู้ป่วย
+          มาที่ OPD 700 การใส่เบอร์ไว้จึงชวนให้โทรมาถามเรื่องที่ธุรการตอบไม่ได้
+
+          ⚠️ ห้ามเขียนว่าโทรมาเพื่อ "ยกเลิกหรือเลื่อนนัด" — ธุรการมองไม่เห็นว่า
+          fellow แต่ละคนเหลือคิวกี่คน ค่านั้นเกิดจากการเอาตารางออกตรวจ (ไฟล์ B)
+          มาหักลบกับเคสที่จองแล้ว (ไฟล์ A) การรับเรื่องทางโทรศัพท์จึงทำให้คิว
+          ที่คืนมาไม่ปรากฏในปฏิทินของแพทย์โรงพยาบาลอื่น ให้ใช้ /booking แทน
+        */}
+        {type === "TRANSPLANT_APPOINTMENT" && (
+          <section className="rounded-xl bg-white border border-zinc-200 p-5 text-sm text-zinc-600">
+            <h2 className="font-semibold text-zinc-900 mb-2">
+              สอบถามขั้นตอนวันที่ผู้ป่วยมาถึง
+            </h2>
+            <p className="text-zinc-600 mb-2">
+              เช่น ไปที่จุดใดก่อน ต้องเตรียมเอกสารอะไรยื่นหน้างาน
+              หรือผู้ป่วยมาสายต้องทำอย่างไร
+            </p>
+            <p className="font-medium text-zinc-800">{CONTACT.officeTh}</p>
+            <p>
+              โทร.{" "}
+              <a
+                href={`tel:${CONTACT.phone}`}
+                className="text-blue-600 hover:underline"
+              >
+                {CONTACT.phoneDisplay}
+              </a>{" "}
+              ({CONTACT.hoursTh})
+            </p>
+            <p className="mt-3 text-zinc-600">
+              ส่วนการ<strong className="text-zinc-800">เลื่อนหรือยกเลิกนัด</strong>{" "}
+              ทำเองได้ที่{" "}
+              <Link href="/booking" className="text-blue-600 hover:underline">
+                หน้าจัดการนัด
+              </Link>{" "}
+              ไม่ต้องโทรแจ้ง — คิวที่ยกเลิกจะว่างกลับเข้าปฏิทินทันที
+            </p>
+          </section>
+        )}
       </main>
     </div>
   );

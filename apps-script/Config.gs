@@ -74,9 +74,26 @@ const GROUP_NUMBER = {
   [TYPES.general]: 4,
 };
 
+/**
+ * สถานะที่ทำให้คิวของ fellow ว่างกลับคืนมา
+ *
+ * ⚠️ แยกจาก TERMINAL_STATUSES โดยเจตนา อย่ารวมกัน — 'Appointment Confirmed'
+ * เป็นสถานะจบเหมือนกัน แต่ยัง **กินคิวอยู่** เพราะผู้ป่วยจะมาตามนัดจริง
+ * ถ้าเอา TERMINAL_STATUSES มาใช้นับคิว คิวที่จองแล้วจะกลายเป็นว่างทั้งหมด
+ * แล้วระบบจะรับจองเกินโควตาโดยไม่มีอะไรเตือน
+ *
+ * ⚠️ ต้องตรงกับ SLOT_RELEASING_STATUSES ใน src/lib/referral-types.ts
+ *    คนละ runtime แชร์ไฟล์กันไม่ได้ ถ้าแก้ที่นี่ต้องไปแก้ที่นั่นด้วย
+ */
+const SLOT_RELEASING_STATUSES = [
+  'Rejected / Redirected',
+  'Cancelled by Referrer',
+];
+
 /** สถานะที่ถือว่าจบแล้ว หยุดนับ SLA — ตรงกับ isTerminal() ในโค้ดเว็บ */
 const TERMINAL_STATUSES = [
   'Advice Sent',
+  'Cancelled by Referrer',
   'Readiness Visit Scheduled',
   'Appointment Confirmed',
   'Auto Replied',

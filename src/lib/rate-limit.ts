@@ -28,10 +28,24 @@ interface RateLimitBinding {
  * — ไม่ปิดกั้นการพัฒนา แต่แปลว่าการทดสอบว่ากันได้จริงต้องทำบน production
  */
 export async function allowLoginAttempt(): Promise<boolean> {
-  const limiter = await getLimiter();
+  return allowAttempt("LOGIN_RATE_LIMIT", "login");
+}
+
+/**
+ * กันการไล่เดารหัสอ้างอิง + เบอร์โทรเพื่อเปิดนัดของคนอื่น
+ *
+ * หน้าจัดการนัดยกเลิกนัดได้จริง ซึ่งย้อนกลับไม่ได้ — ต่างจากการเช็คสถานะ
+ * ทาง LINE ที่เดาถูกแล้วได้แค่ข้อมูลไร้ประโยชน์
+ */
+export async function allowBookingLookup(): Promise<boolean> {
+  return allowAttempt("MANAGE_RATE_LIMIT", "manage");
+}
+
+async function allowAttempt(binding: string, prefix: string): Promise<boolean> {
+  const limiter = await getLimiter(binding);
   if (!limiter) return true;
 
-  const key = await clientIp();
+  const key = await clientIp(prefix);
 
   try {
     const { success } = await limiter.limit({ key });
@@ -44,15 +58,16 @@ export async function allowLoginAttempt(): Promise<boolean> {
   }
 }
 
-async function getLimiter(): Promise<RateLimitBinding | null> {
+async function getLimiter(binding: string): Promise<RateLimitBinding | null> {
   try {
     // import แบบ dynamic เพราะโมดูลนี้มีเฉพาะตอนรันบน Cloudflare
     // ถ้า import ไว้บนสุด `next dev` จะพังตั้งแต่โหลดไฟล์
     const { getCloudflareContext } = await import("@opennextjs/cloudflare");
-    const env = getCloudflareContext().env as unknown as {
-      LOGIN_RATE_LIMIT?: RateLimitBinding;
-    };
-    return env.LOGIN_RATE_LIMIT ?? null;
+    const env = getCloudflareContext().env as unknown as Record<
+      string,
+      RateLimitBinding | undefined
+    >;
+    return env[binding] ?? null;
   } catch {
     return null;
   }
@@ -67,7 +82,7 @@ async function getLimiter(): Promise<RateLimitBinding | null> {
  *
  * ถ้าไม่มีหัวข้อนี้ให้รวมทุกคนไว้ในถังเดียวกันแทนการปล่อยผ่าน
  */
-async function clientIp(): Promise<string> {
+async function clientIp(prefix: string): Promise<string> {
   const ip = (await headers()).get("cf-connecting-ip");
-  return ip ? `login:${ip}` : "login:unknown";
+  return `${prefix}:${ip ?? "unknown"}`;
 }

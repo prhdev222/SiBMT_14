@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-08-22 lineMultiTarget';
+const API_VERSION = '2026-08-26 manageBooking';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -74,6 +74,19 @@ function doPost(e) {
 
     if (body.action === 'saveAdvice') {
       return jsonResponse_({ ok: true, data: saveAdvice_(body.payload || {}) });
+    }
+
+    // จัดการนัดของกลุ่มที่ 1 โดยแพทย์ต้นทางเอง — ตัวจัดการอยู่ใน ManageBooking.gs
+    if (body.action === 'lookupBooking') {
+      return jsonResponse_({ ok: true, data: lookupBooking_(body.payload || {}) });
+    }
+
+    if (body.action === 'cancelBooking') {
+      return jsonResponse_({ ok: true, data: cancelBooking_(body.payload || {}) });
+    }
+
+    if (body.action === 'rescheduleBooking') {
+      return jsonResponse_({ ok: true, data: rescheduleBooking_(body.payload || {}) });
     }
 
     // ติดเวอร์ชันไปกับข้อความ error ด้วย เพราะสาเหตุที่พบเกือบทุกครั้งของคำสั่ง
@@ -122,7 +135,7 @@ const BOOKING_COLUMNS = [
   'referral_id', 'referral_type', 'status', 'consent_acknowledged_at',
   'appointment_date', 'fellow_assigned', 'referrer_org', 'referrer_name',
   'referrer_phone', 'referrer_email', 'disease_group', 'diagnosis',
-  'patient_age', 'patient_sex', 'urgency', 'note',
+  'patient_age', 'patient_sex', 'urgency', 'note', 'manage_token',
 ];
 
 function bookTransplantSlot_(payload) {
@@ -178,6 +191,8 @@ function bookTransplantSlot_(payload) {
       patient_sex: String(payload.patientSex || '').trim(),
       urgency: 'Routine',
       note: String(payload.note || '').trim(),
+      // ใช้พิสูจน์ว่าเป็นเจ้าของนัดตอนกดยกเลิกหรือเลื่อน (ดู ManageBooking.gs)
+      manage_token: generateManageToken_(),
     };
 
     // ชีตที่ Google Form สร้างตั้งชื่อคอลัมน์เวลาว่า Timestamp
@@ -207,6 +222,7 @@ function bookTransplantSlot_(payload) {
       clinicDate: clinicDate,
       fellowName: fellowName,
       remainingAfter: remaining - 1,
+      manageToken: values.manage_token,
       referrerEmail: values.referrer_email,
       referrerOrg: values.referrer_org,
       patientSex: values.patient_sex,
@@ -235,6 +251,9 @@ function bookTransplantSlot_(payload) {
     clinicDate: booking.clinicDate,
     fellowName: booking.fellowName,
     remainingAfter: booking.remainingAfter,
+    // ส่งกลับให้หน้ายืนยันทำลิงก์จัดการนัดได้ทันที ไม่ต้องรอเปิดอีเมล
+    // ผู้รับคือคนที่เพิ่งกดจองเอง จึงไม่ใช่การเปิดเผยให้ใครเพิ่ม
+    manageToken: booking.manageToken,
   };
 }
 
@@ -360,8 +379,13 @@ function sendBookingConfirmationEmail_(email, booking) {
     '2. แจ้งผู้ป่วยให้ทำบัตรโรงพยาบาลศิริราชให้เรียบร้อยก่อนวันนัด\n' +
     '   https://si-eservice2.mahidol.ac.th/medrecord/index.php\n\n' +
     '3. นำเอกสารตาม checklist มาให้ครบในวันนัด\n\n' +
-    'หากต้องการเลื่อนหรือยกเลิกนัด กรุณาโทร ' + CONTACT_PHONE + '\n' +
-    '(จันทร์-ศุกร์ 08:00-16:00 น.)\n\n' +
+    '--- เลื่อนหรือยกเลิกนัด ---\n\n' +
+    'กดลิงก์นี้เพื่อจัดการนัดด้วยตัวเอง ไม่ต้องโทรแจ้ง\n' +
+    buildManageUrl_(booking.referralId, booking.manageToken) + '\n\n' +
+    'คิวที่ยกเลิกจะว่างกลับเข้าระบบทันที ให้แพทย์ท่านอื่นจองต่อได้\n' +
+    'ทำได้ถึงวันก่อนวันนัดเท่านั้น\n\n' +
+    'หากลิงก์ใช้ไม่ได้ เปิด ' + SITE_URL + '/booking\n' +
+    'แล้วกรอกเลขที่อ้างอิงกับเบอร์ติดต่อกลับที่ให้ไว้ตอนจอง\n\n' +
     'กรุณาอย่าส่งชื่อ-สกุล หรือเลข HN ของผู้ป่วยทางอีเมลนี้\n\n' +
     '--\n' +
     'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช\n' +
@@ -411,7 +435,7 @@ function remainingSlots_(clinicDate, fellowName) {
 
   let booked = 0;
   readRows_(getSheet_(SHEETS.referrals)).forEach(function (r) {
-    if (String(r['status'] || '').trim() === 'Rejected / Redirected') return;
+    if (SLOT_RELEASING_STATUSES.indexOf(String(r['status'] || '').trim()) !== -1) return;
     const d = r['appointment_date'];
     const iso = d instanceof Date
       ? Utilities.formatDate(d, TIMEZONE, 'yyyy-MM-dd')
@@ -427,4 +451,78 @@ function remainingSlots_(clinicDate, fellowName) {
 function jsonResponse_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * อีเมลยืนยันการยกเลิกนัด
+ *
+ * ส่งเสมอเมื่อมีอีเมล เพราะการยกเลิกเป็นการกระทำที่ย้อนกลับไม่ได้
+ * ถ้ามีคนกดยกเลิกโดยที่เจ้าของนัดไม่ได้ตั้งใจ อีเมลฉบับนี้คือสิ่งเดียว
+ * ที่ทำให้รู้ตัวว่าเกิดอะไรขึ้นและเมื่อไร
+ */
+function sendCancellationEmail_(email, booking) {
+  const body =
+    'ยกเลิกนัดเรียบร้อยแล้ว\n\n' +
+    '  เลขที่อ้างอิง  ' + booking.referralId + '\n' +
+    '  วันที่เคยนัด   ' + formatThaiDate_(booking.clinicDate, true) + '\n' +
+    '  แพทย์          ' + booking.fellowName + '\n\n' +
+    'คิวนี้ว่างกลับเข้าระบบแล้ว แพทย์ท่านอื่นจองต่อได้ทันที\n\n' +
+    'หากต้องการนัดใหม่ กรุณาจองผ่าน\n' +
+    SITE_URL + '/refer/transplant\n\n' +
+    'หากท่านไม่ได้เป็นผู้ยกเลิกนัดนี้ กรุณาโทรแจ้ง ' + CONTACT_PHONE + '\n' +
+    '(จันทร์-ศุกร์ 08:00-16:00 น.) โดยด่วน\n\n' +
+    '--\n' +
+    'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช\n' +
+    'อีเมลนี้ส่งจากระบบอัตโนมัติ กรุณาอย่าตอบกลับ';
+
+  try {
+    MailApp.sendEmail({
+      to: email,
+      subject: 'ยกเลิกนัด ' + booking.referralId,
+      body: body,
+    });
+  } catch (err) {
+    console.error('ส่งอีเมลยกเลิกนัดไม่สำเร็จ (' + booking.referralId + '): ' + err);
+  }
+}
+
+/**
+ * อีเมลยืนยันการเลื่อนนัด — ต้องมีทั้งวันเก่าและวันใหม่
+ *
+ * ถ้าบอกแต่วันใหม่ คนอ่านจะไม่รู้ว่านี่คือนัดเดิมที่เลื่อน หรือเป็นนัดใหม่อีกใบ
+ * แล้วอาจพาผู้ป่วยมาทั้งสองวัน
+ */
+function sendRescheduleEmail_(email, booking) {
+  const referLine = 'ส่งพบ fellow transplant ชื่อ ' + booking.fellowName + ' ที่ OPD 700';
+
+  const body =
+    'เลื่อนนัดเรียบร้อยแล้ว\n\n' +
+    '  เลขที่อ้างอิง  ' + booking.referralId + '  (เลขเดิม ไม่ได้เปลี่ยน)\n' +
+    '  วันนัดเดิม     ' + formatThaiDate_(booking.previousDate, true) +
+      ' (' + booking.previousFellow + ')\n' +
+    '  วันนัดใหม่     ' + formatThaiDate_(booking.clinicDate, true) + '\n' +
+    '  เวลา           08:00 น.\n' +
+    '  สถานที่        OPD 700 โรงพยาบาลศิริราช\n' +
+    '  พบแพทย์        ' + booking.fellowName + ' (fellow transplant)\n\n' +
+    '⚠️ วันนัดเดิมถูกยกเลิกแล้ว กรุณาแจ้งผู้ป่วยให้ชัดเจนว่ามาวันใหม่เท่านั้น\n\n' +
+    '--- เขียนบนหัวกระดาษใบ refer ---\n\n' +
+    '     "' + referLine + '"\n\n' +
+    '   หากเขียนชื่อแพทย์ท่านเดิมไว้แล้ว กรุณาแก้ให้ตรงกับชื่อข้างบน\n\n' +
+    'เลื่อนหรือยกเลิกอีกครั้งได้ที่ลิงก์เดิมในอีเมลยืนยันนัดฉบับแรก\n' +
+    'หรือเปิด ' + SITE_URL + '/booking แล้วกรอกเลขที่อ้างอิงกับเบอร์ติดต่อกลับ\n\n' +
+    'กรุณาอย่าส่งชื่อ-สกุล หรือเลข HN ของผู้ป่วยทางอีเมลนี้\n\n' +
+    '--\n' +
+    'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช\n' +
+    'อีเมลนี้ส่งจากระบบอัตโนมัติ กรุณาอย่าตอบกลับ';
+
+  try {
+    MailApp.sendEmail({
+      to: email,
+      subject: 'เลื่อนนัด ' + booking.referralId + ' — ' +
+        formatThaiDate_(booking.clinicDate, true),
+      body: body,
+    });
+  } catch (err) {
+    console.error('ส่งอีเมลเลื่อนนัดไม่สำเร็จ (' + booking.referralId + '): ' + err);
+  }
 }

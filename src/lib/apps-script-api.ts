@@ -54,6 +54,8 @@ export interface BookingResult {
   clinicDate: string;
   fellowName: string;
   remainingAfter: number;
+  /** ใช้ทำลิงก์จัดการนัดบนหน้ายืนยัน — ดู apps-script/ManageBooking.gs */
+  manageToken: string;
 }
 
 export async function bookTransplantSlot(
@@ -129,4 +131,63 @@ async function callAppsScript<T>(
   if (!result.ok) throw new Error(result.error || "บันทึกไม่สำเร็จ");
 
   return result.data as T;
+}
+
+/* ------------------------------------------------------------------ */
+/* จัดการนัดกลุ่มที่ 1 โดยแพทย์ต้นทางเอง                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * ข้อมูลพิสูจน์ว่าเป็นเจ้าของนัด — ส่ง token หรือ phone อย่างน้อยหนึ่งอย่าง
+ *
+ * token มาจากลิงก์ในอีเมล ส่วน phone คือเบอร์ที่กรอกไว้ตอนจอง
+ * สำหรับคนที่หาอีเมลไม่เจอ (ดู apps-script/ManageBooking.gs)
+ */
+export interface BookingCredentials {
+  referralId: string;
+  token?: string;
+  phone?: string;
+}
+
+export interface BookingDetail {
+  referralId: string;
+  status: string;
+  clinicDate: string;
+  fellowName: string;
+  referrerOrg: string;
+  diagnosis: string;
+  /** ยังแก้ไขได้ไหม — false เมื่อถึงวันนัดแล้วหรือสถานะไม่ใช่ยืนยันนัด */
+  canChange: boolean;
+}
+
+export async function lookupBooking(
+  credentials: BookingCredentials,
+): Promise<BookingDetail> {
+  return callAppsScript("lookupBooking", credentials);
+}
+
+export interface CancelResult {
+  referralId: string;
+  clinicDate: string;
+  fellowName: string;
+}
+
+export async function cancelBooking(
+  credentials: BookingCredentials,
+): Promise<CancelResult> {
+  return callAppsScript("cancelBooking", credentials);
+}
+
+export interface RescheduleResult {
+  referralId: string;
+  clinicDate: string;
+  fellowName: string;
+  previousDate: string;
+  previousFellow: string;
+}
+
+export async function rescheduleBooking(
+  input: BookingCredentials & { clinicDate: string; fellowName: string },
+): Promise<RescheduleResult> {
+  return callAppsScript("rescheduleBooking", input);
 }

@@ -8,6 +8,7 @@
  */
 
 import type { Referral } from "./referral-types";
+import { releasesSlot } from "./referral-types";
 
 /** ค่าเริ่มต้นเมื่อไม่ได้ระบุ max_slots รายวัน */
 export const DEFAULT_SLOTS_PER_FELLOW = 2;
@@ -56,7 +57,7 @@ function countBookings(referrals: Referral[]): Map<string, number> {
 
   for (const r of referrals) {
     if (r.referralType !== "TRANSPLANT_APPOINTMENT") continue;
-    if (r.status === "Rejected / Redirected") continue;
+    if (releasesSlot(r.status)) continue;
     if (!r.appointmentDate || !r.fellowAssigned) continue;
 
     const key = `${r.appointmentDate}|${r.fellowAssigned.trim()}`;

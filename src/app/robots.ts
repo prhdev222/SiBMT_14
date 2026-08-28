@@ -13,7 +13,9 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      disallow: ["/dashboard", "/dashboard/", "/login"],
+      // /booking มีเลขที่อ้างอิงและ token อยู่ใน query string
+      // ถ้าถูกเก็บเข้าดัชนี ลิงก์จัดการนัดของแพทย์จะไปโผล่ในผลค้นหา
+      disallow: ["/dashboard", "/dashboard/", "/login", "/booking"],
     },
   };
 }

@@ -42,6 +42,7 @@ export function BookingFlow({ days }: { days: OpenDay[] }) {
         referralId={state.referralId!}
         clinicDate={state.clinicDate!}
         fellowName={state.fellowName!}
+        manageToken={state.manageToken ?? ""}
       />
     );
   }
@@ -262,10 +263,12 @@ function Confirmation({
   referralId,
   clinicDate,
   fellowName,
+  manageToken,
 }: {
   referralId: string;
   clinicDate: string;
   fellowName: string;
+  manageToken: string;
 }) {
   const referLine = `ส่งพบ fellow transplant ชื่อ ${fellowName} ที่ OPD 700`;
 
@@ -312,6 +315,30 @@ function Confirmation({
         >
           ดู checklist เอกสารทั้งหมด →
         </Link>
+      </div>
+
+      <div className="rounded-xl bg-white border border-zinc-200 p-5 text-sm">
+        <h2 className="font-semibold text-zinc-900">
+          ต้องเลื่อนหรือยกเลิกนัดภายหลัง
+        </h2>
+        <p className="text-zinc-600 mt-1">
+          ทำเองได้ ไม่ต้องโทรแจ้ง — คิวที่ยกเลิกจะว่างกลับเข้าปฏิทินทันที
+          ให้แพทย์ท่านอื่นจองต่อได้ ทำได้ถึงวันก่อนวันนัด
+        </p>
+        <Link
+          href={
+            manageToken
+              ? `/booking?id=${encodeURIComponent(referralId)}&t=${encodeURIComponent(manageToken)}`
+              : "/booking"
+          }
+          className="mt-3 inline-flex rounded-lg border border-zinc-300 px-4 py-2 font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
+        >
+          เปิดหน้าจัดการนัด
+        </Link>
+        <p className="text-xs text-zinc-500 mt-2">
+          ลิงก์เดียวกันนี้อยู่ในอีเมลยืนยันนัดด้วย
+          หากเปิดหน้านี้ไม่ทันให้ดูในอีเมลได้
+        </p>
       </div>
 
       <p className="text-sm text-zinc-500 text-center">

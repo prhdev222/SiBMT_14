@@ -286,3 +286,56 @@ function notifyConfigProblem_(detail) {
 }
 
 // formatThaiDate_ ย้ายไปอยู่ที่ Util.gs แล้ว ดูคำเตือนเรื่องชื่อซ้ำที่นั่น
+
+/**
+ * แจ้ง fellow ว่านัดถูกยกเลิก
+ *
+ * fellow ถูกแจ้งตอนมีคนจอง ถ้าไม่แจ้งตอนยกเลิกด้วย เขาจะเตรียมตัวรอผู้ป่วย
+ * ที่ไม่มาแล้ว และจะเข้าใจว่าผู้ป่วยผิดนัดทั้งที่แพทย์ต้นทางแจ้งล่วงหน้าแล้ว
+ *
+ * ไม่มีข้อมูลผู้ป่วยในข้อความนี้เลย — การยกเลิกไม่จำเป็นต้องรู้ว่าเป็นใคร
+ * รู้แค่ว่าคิวไหนว่างคืนมาก็พอ (แคบกว่าข้อความตอนจองโดยตั้งใจ)
+ */
+function notifyFellowOfCancellation_(booking) {
+  try {
+    pushLineMessage_(
+      '❌ นัดถูกยกเลิก\n' +
+      '────────────────\n' +
+      'แพทย์ผู้ตรวจ: ' + (booking.fellowName || '-') + '\n' +
+      'วันที่เคยนัด: ' + formatThaiDate_(booking.clinicDate) + '\n' +
+      'เลขที่อ้างอิง: ' + (booking.referralId || '-') + '\n' +
+      'ยกเลิกโดย: แพทย์ต้นทาง (' + (booking.referrerOrg || '-') + ')\n\n' +
+      'คิวนี้ว่างกลับเข้าปฏิทินแล้ว',
+      'fellow'
+    );
+  } catch (err) {
+    console.error('แจ้งยกเลิกให้ fellow ไม่สำเร็จ: ' + err);
+  }
+}
+
+/**
+ * แจ้ง fellow ว่านัดถูกเลื่อน
+ *
+ * ส่งข้อความเดียวที่บอกทั้งวันเก่าและวันใหม่ ไม่แยกเป็น "ยกเลิก" กับ "จองใหม่"
+ * สองฉบับ เพราะในกลุ่มจะอ่านแล้วเข้าใจว่าเป็นผู้ป่วยคนละคน
+ */
+function notifyFellowOfReschedule_(booking) {
+  try {
+    pushLineMessage_(
+      '🔄 เลื่อนนัด\n' +
+      '────────────────\n' +
+      'เลขที่อ้างอิง: ' + (booking.referralId || '-') + '\n' +
+      'จาก: ' + formatThaiDate_(booking.previousDate) +
+        ' (' + (booking.previousFellow || '-') + ')\n' +
+      'เป็น: ' + formatThaiDate_(booking.clinicDate) +
+        ' (' + (booking.fellowName || '-') + ') เวลา 08:00 น.\n' +
+      'ผู้ป่วย: ' + (booking.patientSex || '-') +
+        ' อายุ ' + (booking.patientAge || '-') + ' ปี\n' +
+      'การวินิจฉัย: ' + (booking.diagnosis || '-') + '\n\n' +
+      'รายละเอียดเพิ่มเติม: ' + DASHBOARD_URL,
+      'fellow'
+    );
+  } catch (err) {
+    console.error('แจ้งเลื่อนนัดให้ fellow ไม่สำเร็จ: ' + err);
+  }
+}

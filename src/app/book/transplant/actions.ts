@@ -20,6 +20,8 @@ export interface BookingState {
   referralId?: string;
   clinicDate?: string;
   fellowName?: string;
+  /** ใช้ทำลิงก์จัดการนัดบนหน้ายืนยัน — ลิงก์เดียวกับที่ส่งไปในอีเมล */
+  manageToken?: string;
 }
 
 const MAX_LENGTH = 200;
@@ -81,6 +83,7 @@ export async function bookAction(
       referralId: result.referralId,
       clinicDate: result.clinicDate,
       fellowName: result.fellowName,
+      manageToken: result.manageToken,
     };
   } catch (error) {
     return {
