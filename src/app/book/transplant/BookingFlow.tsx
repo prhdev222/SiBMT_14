@@ -142,9 +142,10 @@ export function BookingFlow({
           <Field name="referrerPhone" label="เบอร์ติดต่อกลับ" type="tel" required />
           <Field
             name="referrerEmail"
-            label="อีเมล (ไม่บังคับ)"
+            label="อีเมล"
+            required
             type="email"
-            hint="ใช้ส่งใบยืนยันนัด"
+            hint="ใช้ส่งใบยืนยันนัด ลิงก์เลื่อน/ยกเลิกนัด และติดต่อขอข้อมูลเพิ่ม"
           />
         </div>
       </fieldset>
