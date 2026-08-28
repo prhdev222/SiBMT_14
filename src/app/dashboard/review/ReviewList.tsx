@@ -1,15 +1,14 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useRef, useState } from "react";
 import { saveAdviceAction, type AdviceState } from "./actions";
+import { DocButtons } from "@/components/DocButtons";
+import type { ChemoRegimen } from "@/lib/referral-repository";
 import {
   STATUS_LABEL_TH,
   STATUS_COLOR,
-  URGENCY_LABEL_TH,
-  URGENCY_COLOR,
   alertLevelFor,
   type Status,
-  type Urgency,
 } from "@/lib/referral-types";
 
 export interface ReviewCase {
@@ -17,7 +16,6 @@ export interface ReviewCase {
   groupNumber: 1 | 2 | 3 | 4;
   groupTitle: string;
   status: Status;
-  urgency: Urgency;
   elapsedBusinessHours: number;
   submittedAt: string;
   referrerOrg: string;
@@ -56,12 +54,26 @@ const ANSWER_OPTIONS: {
   },
 ];
 
-export function ReviewList({ cases }: { cases: ReviewCase[] }) {
+export interface ReviewTools {
+  /** ชื่อผู้ใช้ที่ล็อกอิน — เติมให้ล่วงหน้าแต่แก้ได้ */
+  defaultAnsweredBy: string;
+  /** เบอร์วอร์ดจากชีต config — ไม่ต้องพิมพ์ใหม่ทุกครั้ง */
+  defaultWardPhone: string;
+  /** คลังสูตรยาจากชีต — ว่างได้ แล้วตัวช่วยแทรกสูตรยาจะไม่แสดง */
+  regimens: ChemoRegimen[];
+  /** ลิงก์ Pool_CMT_Regimens_Library.pdf จากชีต config — ว่างได้ */
+  regimenLibraryUrl: string;
+}
+
+export function ReviewList({
+  cases,
+  ...tools
+}: { cases: ReviewCase[] } & ReviewTools) {
   return (
     <ul className="space-y-3">
       {cases.map((item) => (
         <li key={item.referralId}>
-          <ReviewCard item={item} />
+          <ReviewCard item={item} {...tools} />
         </li>
       ))}
     </ul>
@@ -70,12 +82,19 @@ export function ReviewList({ cases }: { cases: ReviewCase[] }) {
 
 const INITIAL: AdviceState = { ok: false, message: "" };
 
-function ReviewCard({ item }: { item: ReviewCase }) {
+function ReviewCard({
+  item,
+  defaultAnsweredBy,
+  defaultWardPhone,
+  regimens,
+  regimenLibraryUrl,
+}: { item: ReviewCase } & ReviewTools) {
   const [state, formAction, pending] = useActionState(
     saveAdviceAction,
     INITIAL,
   );
   const [open, setOpen] = useState(false);
+  const adviceRef = useRef<HTMLTextAreaElement>(null);
 
   const alert = alertLevelFor(item.elapsedBusinessHours, item.status);
   const options = ANSWER_OPTIONS.filter(
@@ -143,16 +162,6 @@ function ReviewCard({ item }: { item: ReviewCase }) {
         <div className="border-t border-zinc-200 px-4 py-4 space-y-4">
           <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2 text-sm">
             <Row label="กลุ่มโรค" value={item.diseaseGroup} />
-            <Row
-              label="ความเร่งด่วน"
-              value={
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${URGENCY_COLOR[item.urgency]}`}
-                >
-                  {URGENCY_LABEL_TH[item.urgency]}
-                </span>
-              }
-            />
             <Row label="การวินิจฉัย" value={item.diagnosis} />
             <Row label="ระยะ / ความเสี่ยง" value={item.stage} />
             <Row label="โรคร่วม" value={item.comorbidity} />
@@ -207,6 +216,7 @@ function ReviewCard({ item }: { item: ReviewCase }) {
                     คำตอบถึงแพทย์ต้นทาง <span className="text-red-600">*</span>
                   </span>
                   <textarea
+                    ref={adviceRef}
                     name="advice"
                     required
                     rows={6}
@@ -215,9 +225,87 @@ function ReviewCard({ item }: { item: ReviewCase }) {
                   />
                   <span className="block text-xs text-zinc-500 mt-1">
                     ข้อความนี้จะถูกส่งอีเมลกลับแพทย์ต้นทางตามที่กรอกไว้
-                    และลงชื่อผู้ตอบให้อัตโนมัติ
                   </span>
                 </label>
+
+                <RegimenPicker
+                  regimens={regimens}
+                  onInsert={(snippet) => {
+                    const el = adviceRef.current;
+                    if (!el) return;
+
+                    // แทรกที่ตำแหน่งเคอร์เซอร์ ไม่ใช่ต่อท้ายเสมอ เพราะคำตอบส่วนใหญ่
+                    // พูดถึงสูตรยากลางประโยค เช่น "แนะนำให้ ___ ก่อน แล้วประเมินซ้ำ"
+                    const start = el.selectionStart ?? el.value.length;
+                    const end = el.selectionEnd ?? start;
+
+                    el.value =
+                      el.value.slice(0, start) + snippet + el.value.slice(end);
+                    el.focus();
+                    el.selectionStart = el.selectionEnd = start + snippet.length;
+                  }}
+                />
+
+                <DocButtons
+                  url={regimenLibraryUrl}
+                  label="คลังสูตรยาเคมีบำบัดฉบับเต็ม"
+                  hint="เปิดดูรายละเอียดขนาดยาและตารางการให้ หรือดาวน์โหลดไปพิมพ์"
+                />
+
+                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-zinc-800">
+                      ช่องทางให้แพทย์ต้นทางติดต่อกลับ
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      แนบไปกับอีเมลคำตอบ เผื่ออ่านแล้วยังไม่เข้าใจ
+                    </p>
+                  </div>
+
+                  <label className="block text-sm">
+                    <span className="block font-medium text-zinc-700 mb-1">
+                      ชื่อผู้ตอบ <span className="text-red-600">*</span>
+                    </span>
+                    <input
+                      name="answeredBy"
+                      required
+                      defaultValue={defaultAnsweredBy}
+                      placeholder="เช่น พญ. ชนิกา (R2 วอร์ดเคโม)"
+                      className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900"
+                    />
+                  </label>
+
+                  <label className="block text-sm">
+                    <span className="block font-medium text-zinc-700 mb-1">
+                      เบอร์วอร์ดเคมีบำบัด <span className="text-red-600">*</span>
+                    </span>
+                    <input
+                      name="wardPhone"
+                      required
+                      type="tel"
+                      defaultValue={defaultWardPhone}
+                      className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900"
+                    />
+                    <span className="block text-xs text-zinc-500 mt-1">
+                      ถ้าติดเรียนหรือไม่อยู่วอร์ด พยาบาลจะรับเรื่องไว้ให้ —
+                      เบอร์ที่มีคนรับแน่นอนมีค่ากว่าเบอร์ที่อาจไม่มีคนรับ
+                    </span>
+                  </label>
+
+                  <label className="block text-sm">
+                    <span className="block font-medium text-zinc-700 mb-1">
+                      เบอร์ติดต่อผู้ตอบโดยตรง (ไม่บังคับ)
+                    </span>
+                    <input
+                      name="directPhone"
+                      type="tel"
+                      className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900"
+                    />
+                    <span className="block text-xs text-zinc-500 mt-1">
+                      กรอกเฉพาะกรณีที่สะดวกให้ติดต่อโดยตรง เว้นว่างได้
+                    </span>
+                  </label>
+                </div>
 
                 <label className="block text-sm">
                   <span className="block font-medium text-zinc-700 mb-1">
@@ -281,6 +369,102 @@ function ReviewCard({ item }: { item: ReviewCase }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * ตัวช่วยแทรกชื่อสูตรยาลงในคำตอบ
+ *
+ * เป็นตัวช่วยพิมพ์เท่านั้น ไม่ได้บังคับให้เลือก — resident ยังพิมพ์สูตรที่ไม่มี
+ * ในคลังได้ตามปกติ ระบบจึงไม่ล็อกการตอบไว้กับรายการที่คนดูแลชีตนึกออก
+ */
+function RegimenPicker({
+  regimens,
+  onInsert,
+}: {
+  regimens: ChemoRegimen[];
+  onInsert: (snippet: string) => void;
+}) {
+  const [group, setGroup] = useState("");
+  const [abbr, setAbbr] = useState("");
+
+  // ชีตเรียงตามกลุ่มโรคอยู่แล้ว — ใช้ลำดับนั้น ไม่เรียงใหม่
+  // คนดูแลชีตจะได้ควบคุมลำดับที่เห็นในหน้าจอได้เอง
+  const groups = useMemo(() => {
+    const seen: string[] = [];
+    for (const r of regimens) {
+      if (!seen.includes(r.diseaseGroup)) seen.push(r.diseaseGroup);
+    }
+    return seen;
+  }, [regimens]);
+
+  const inGroup = useMemo(
+    () => regimens.filter((r) => r.diseaseGroup === group),
+    [regimens, group],
+  );
+
+  if (regimens.length === 0) return null;
+
+  const chosen = inGroup.find((r) => r.abbr === abbr);
+
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 space-y-2">
+      <div>
+        <p className="text-sm font-medium text-zinc-800">แทรกสูตรยาจากคลัง</p>
+        <p className="text-xs text-zinc-500">
+          ตัวช่วยพิมพ์เท่านั้น — พิมพ์สูตรอื่นที่ไม่มีในรายการได้ตามปกติ
+        </p>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        <select
+          aria-label="กลุ่มโรค"
+          value={group}
+          onChange={(e) => {
+            setGroup(e.target.value);
+            setAbbr("");
+          }}
+          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 bg-white"
+        >
+          <option value="">— เลือกกลุ่มโรค —</option>
+          {groups.map((g) => (
+            <option key={g} value={g}>
+              {g}
+            </option>
+          ))}
+        </select>
+
+        <select
+          aria-label="สูตรยา"
+          value={abbr}
+          onChange={(e) => setAbbr(e.target.value)}
+          disabled={!group}
+          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 bg-white disabled:bg-zinc-100"
+        >
+          <option value="">— เลือกสูตรยา —</option>
+          {inGroup.map((r) => (
+            <option key={r.abbr} value={r.abbr}>
+              {r.abbr}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {chosen && (
+        <p className="text-xs text-zinc-700 bg-white border border-zinc-200 rounded-lg px-3 py-2">
+          {chosen.components}
+        </p>
+      )}
+
+      <button
+        type="button"
+        onClick={() => chosen && onInsert(`${chosen.abbr} (${chosen.components})`)}
+        disabled={!chosen}
+        className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-800 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+      >
+        แทรกลงในคำตอบ
+      </button>
     </div>
   );
 }

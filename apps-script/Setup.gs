@@ -35,11 +35,29 @@ function setupSheets() {
   createIfMissing_(ss, SHEETS.indications, INDICATION_COLUMNS);
   seedIndications_(ss);
 
+  // คลังสูตรยาไม่ seed จากโค้ด — ให้วาง docs/chemo_regimens.tsv ลงไปครั้งเดียว
+  // ดูเหตุผลที่หัวข้อ REGIMEN_COLUMNS ด้านล่าง
+  createIfMissing_(ss, SHEETS.regimens, REGIMEN_COLUMNS);
+
   console.log('สร้างชีตและคอลัมน์เรียบร้อย');
   console.log('ต้องกรอกเพิ่ม:');
   console.log('  • ' + SHEETS.holidays + ' — วันหยุดนักขัตฤกษ์');
   console.log('  • ' + SHEETS.config + ' — ชื่อผู้รับผิดชอบ');
+  console.log('  • ' + SHEETS.regimens + ' — วาง docs/chemo_regimens.tsv (204 สูตร)');
 }
+
+/**
+ * คลังสูตรยาเคมีบำบัด — อ่านจากชีต แก้/เพิ่ม/ลดได้โดยไม่ต้อง deploy
+ *
+ * ตั้งใจไม่ seed จากโค้ด ต่างจาก seedIndications_()
+ * เกณฑ์ปลูกถ่ายมี 12 แถวและต้องมีค่าสำรองในโค้ดเสมอ เพราะถ้า dropdown ว่าง
+ * จะไม่มีใครจองคิวได้ ส่วนคลังสูตรยามี 204 แถวและเป็นแค่ปุ่มช่วยพิมพ์
+ * ถ้าชีตว่าง resident ยังพิมพ์สูตรยาเองได้ตามปกติ
+ *
+ * การเก็บ 204 แถวไว้ทั้งในโค้ดและในชีตจะทำให้สองที่ไม่ตรงกันทันทีที่แก้ในชีต
+ * จึงให้ชีตเป็นต้นฉบับเดียว แล้ววาง docs/chemo_regimens.tsv ตอนติดตั้ง
+ */
+const REGIMEN_COLUMNS = ['disease_group', 'abbr', 'components', 'active'];
 
 /**
  * ใส่ key ที่ระบบต้องใช้ลงชีต config พร้อมคำอธิบาย เว้นค่าให้ผู้ดูแลกรอกเอง
@@ -61,6 +79,17 @@ function seedConfigKeys_(ss) {
     ['template_library_owner', '', 'ผู้ดูแลคลังสูตรยาเคมีบำบัด (ใช้ทั้งกลุ่ม 2 และ 3)'],
     ['fellow_schedule_owner', '', 'ผู้กรอกตารางออกตรวจ fellow'],
     ['opd_phone', '02-419-9903', 'เบอร์ธุรการ OPD 700'],
+    ['chemo_ward_phone', '', 'เบอร์วอร์ดเคมีบำบัด — เติมอัตโนมัติในฟอร์มตอบคำปรึกษา'],
+
+    // ลิงก์เอกสาร PDF — เก็บเป็น config เพื่อให้เปลี่ยนไฟล์ฉบับใหม่ได้เองโดยไม่ต้อง deploy
+    // ⚠️ ไฟล์ต้องตั้งการแชร์เป็น "ผู้ที่มีลิงก์ → ผู้อ่าน" ไม่งั้นแพทย์ต้นทางเปิดไม่ได้
+    // ปลอดภัยเพราะเป็นเอกสารวิชาการ ไม่มีข้อมูลผู้ป่วย
+    ['regimen_library_url',
+     'https://drive.google.com/file/d/17XtsZ5a-RGKux7_ajWWomRf0HB0soTUI/view',
+     'ลิงก์ Pool_CMT_Regimens_Library.pdf — ปุ่มเปิด/พิมพ์ในหน้าตอบคำปรึกษา'],
+    ['bmt_indication_url',
+     'https://drive.google.com/file/d/18MC_J0H1K5-fqahUMZ_z4bRHIsLDv_Tq/view',
+     'ลิงก์ IndicationBMT.pdf — ปุ่มเปิด/พิมพ์ในหน้าจองคิวปลูกถ่าย'],
   ];
 
   const toAdd = defaults.filter(function (row) { return !existing[row[0]]; });

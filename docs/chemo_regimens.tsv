@@ -1,0 +1,205 @@
+disease_group	abbr	components	active
+Acute Lymphoblastic Leukemia (ALL)	ALL protocol phase I (adapted GMALL)	Vincristine + Doxorubicin + L-asparaginase + Prednisolone/Dexamethasone	yes
+Acute Lymphoblastic Leukemia (ALL)	B-cell ALL protocol induction cycle 1 (adapted MRC UKALL XII/ECOG E2993)	Doxorubicin + Vincristine + L-asparaginase + Dexamethasone + Rituximab + IT Cytarabine + IT Methotrexate	yes
+Acute Lymphoblastic Leukemia (ALL)	B-cell ALL protocol induction cycle 2 (adapted MRC UKALL XII/ECOG E2993)	Cyclophosphamide + Cytarabine + Mercaptopurine + L-asparaginase + Rituximab + IT Methotrexate	yes
+Acute Lymphoblastic Leukemia (ALL)	Blinatumomab (consolidation in B-ALL)	Blinatumomab	yes
+Acute Lymphoblastic Leukemia (ALL)	Blinatumumab + TKI	Blinatumumab + BCR::ABL1 TKI (Dasatinib/Imatinib) — consolidation Ph+ ALL	yes
+Acute Lymphoblastic Leukemia (ALL)	CAR T-cell therapy (tisagenlecleucel, brexucabtagene autoleucel, obecabtagene autoleucel)	Anti-CD19 CAR-T — relapsed/refractory B-ALL	yes
+Acute Lymphoblastic Leukemia (ALL)	Dasatinib/Nilotinib + Hyper-CVAD	2nd-gen TKI + Hyper-CVAD — Ph+ ALL frontline	yes
+Acute Lymphoblastic Leukemia (ALL)	Hyper-CVAD (Cycle 1, 3, 5, 7)	Cyclophosphamide + Mesna + Vincristine + Doxorubicin + Dexamethasone	yes
+Acute Lymphoblastic Leukemia (ALL)	Hyper-CVAD (Cycle 2, 4, 6, 8: Methotrexate-Cytarabine)	Methotrexate + Leucovorin + Cytarabine + Methylprednisolone + IT Methotrexate + IT Cytarabine	yes
+Acute Lymphoblastic Leukemia (ALL)	Inotuzumab ozogamicin (with mini-hyper-CVD)	Inotuzumab ozogamicin	yes
+Acute Lymphoblastic Leukemia (ALL)	Mini-hyper-CVD (Cycle 1, 3, 5, 7)	Cyclophosphamide + Vincristine + Dexamethasone	yes
+Acute Lymphoblastic Leukemia (ALL)	Mini-hyper-CVD (Cycle 2, 4, 6, 8: Methotrexate-Cytarabine)	Methotrexate + Leucovorin + Cytarabine + IT Methotrexate + IT Cytarabine	yes
+Acute Lymphoblastic Leukemia (ALL)	Nelarabine (after CMT induction in T-ALL)	Nelarabine	yes
+Acute Lymphoblastic Leukemia (ALL)	Ponatinib + Blinatumumab (chemotherapy-free)	Ponatinib + Blinatumumab — frontline Ph+ ALL	yes
+Acute Lymphoblastic Leukemia (ALL)	TPOG HR/VHR ALL phase I	Vincristine + Prednisolone + Doxorubicin + L-asparaginase + IT Methotrexate	yes
+Acute Lymphoblastic Leukemia (ALL)	TPOG VHL ALL phase III	Vincristine + Methotrexate + Leucovorin + Mercaptopurine + IT Methotrexate	yes
+Acute Lymphoblastic Leukemia (ALL)	TPOG VHR ALL phase II	Cyclophosphamide + Mesna + Cytarabine + Mercaptopurine + L-asparaginase + Vincristine + IT Methotrexate	yes
+Acute Myeloid Leukemia (AML) & MDS	7+3 regimen	Cytarabine + Idarubicin/Mitoxantrone/Daunorubicin/Doxorubicin	yes
+Acute Myeloid Leukemia (AML) & MDS	Azacytidine	Azacytidine	yes
+Acute Myeloid Leukemia (AML) & MDS	Azacytidine + Venetoclax	Azacytidine + Venetoclax	yes
+Acute Myeloid Leukemia (AML) & MDS	CPX-351 (Vyxeos)	Liposomal Daunorubicin + Cytarabine (5:1) — t-AML/AML-MRC	yes
+Acute Myeloid Leukemia (AML) & MDS	Decitabine	Decitabine	yes
+Acute Myeloid Leukemia (AML) & MDS	Decitabine + Venetoclax	Decitabine + Venetoclax	yes
+Acute Myeloid Leukemia (AML) & MDS	Gemtuzumab ozogamicin ± 7+3	Gemtuzumab ozogamicin (anti-CD33 ADC) ± 7+3	yes
+Acute Myeloid Leukemia (AML) & MDS	Gilteritinib (single agent)	Gilteritinib (FLT3 inhibitor) — relapsed/refractory FLT3-mutated AML	yes
+Acute Myeloid Leukemia (AML) & MDS	HDAC	Cytarabine (high-dose)	yes
+Acute Myeloid Leukemia (AML) & MDS	IDAC	Cytarabine (intermediate-dose)	yes
+Acute Myeloid Leukemia (AML) & MDS	Ivosidenib ± Azacitidine	Ivosidenib (IDH1 inhibitor) ± Azacitidine	yes
+Acute Myeloid Leukemia (AML) & MDS	LDAC	Cytarabine (low-dose)	yes
+Acute Myeloid Leukemia (AML) & MDS	LDAC + Venetoclax	Cytarabine (low-dose) + Venetoclax	yes
+Acute Myeloid Leukemia (AML) & MDS	Midostaurin + 7+3 → maintenance	Midostaurin (FLT3 inhibitor) + 7+3 backbone + maintenance	yes
+Acute Promyelocytic Leukemia (APL)	APML4: ATRA-CMT-ATO Consolidation	ATRA + ATO	yes
+Acute Promyelocytic Leukemia (APL)	APML4: ATRA-CMT-ATO Induction	ATRA + Idarubicin + ATO	yes
+Acute Promyelocytic Leukemia (APL)	APML4: ATRA-CMT-ATO Maintenance	ATRA + Methotrexate + Mercaptopurine	yes
+Acute Promyelocytic Leukemia (APL)	APOLLO: ATRA-ATO (+idarubicin in induction)	ATRA + Idarubicin + ATO	yes
+Acute Promyelocytic Leukemia (APL)	APOLLO: ATRA-ATO Consolidation	ATRA + ATO	yes
+Acute Promyelocytic Leukemia (APL)	ATO monotherapy	Arsenic trioxide	yes
+Acute Promyelocytic Leukemia (APL)	ATRA monotherapy	ATRA	yes
+Acute Promyelocytic Leukemia (APL)	ATRA-ATO Consolidation	ATRA + ATO	yes
+Acute Promyelocytic Leukemia (APL)	ATRA-ATO Induction	ATRA + ATO	yes
+Acute Promyelocytic Leukemia (APL)	ATRA-CMT Consolidation	ATRA + Idarubicin + Cytarabine + Mitoxantrone (risk-adapted, C1–C3)	yes
+Acute Promyelocytic Leukemia (APL)	ATRA-CMT Induction	ATRA + Idarubicin	yes
+Acute Promyelocytic Leukemia (APL)	ATRA-CMT Maintenance (2 years)	ATRA + Methotrexate + Mercaptopurine	yes
+Relapse/Refractory Acute Leukemia	ALL-REZ BFM protocol Phase F1	Vincristine + Methotrexate + Leucovorin + L-asparaginase + Dexamethasone + IT (Methotrexate + Cytarabine + Hydrocortisone)	yes
+Relapse/Refractory Acute Leukemia	ALL-REZ BFM protocol Phase F2	Vincristine + Cytarabine + L-asparaginase + Dexamethasone + IT (Methotrexate + Cytarabine + Hydrocortisone)	yes
+Relapse/Refractory Acute Leukemia	Azacitidine/Venetoclax + Gilteritinib (triplet)	Azacitidine + Venetoclax + Gilteritinib — FLT3-mutated R-R AML	yes
+Relapse/Refractory Acute Leukemia	Blinatumomab (relapse/refractory ALL)	Blinatumomab	yes
+Relapse/Refractory Acute Leukemia	FLAG	Fludarabine + Cytarabine + Filgrastim	yes
+Relapse/Refractory Acute Leukemia	FLAG-IDA	Fludarabine + Cytarabine + Idarubicin + Filgrastim	yes
+Relapse/Refractory Acute Leukemia	FLAG-IDA + Venetoclax	FLAG-IDA + Venetoclax	yes
+Relapse/Refractory Acute Leukemia	Inotuzumab ozogamicin (relapse/refractory ALL)	Inotuzumab ozogamicin	yes
+Relapse/Refractory Acute Leukemia	MEC	Mitoxantrone + Etoposide + Cytarabine	yes
+Relapse/Refractory Acute Leukemia	MEC + Venetoclax (±GO, ±Gilteritinib)	MEC + Venetoclax ± Gemtuzumab ozogamicin ± Gilteritinib	yes
+Relapse/Refractory Acute Leukemia	MECA	Mitoxantrone + Etoposide + Carboplatin + Cytarabine ± Prednisolone (ALL)	yes
+Relapse/Refractory Acute Leukemia	Nelarabine (relapsed/refractory T-ALL)	Nelarabine	yes
+Relapse/Refractory Acute Leukemia	S-HAM	Cytarabine + Mitoxantrone	yes
+Relapse/Refractory Acute Leukemia	TPOG 1305 protocol Phase I Induction	Dexamethasone + Mitoxantrone + Vincristine + L-asparaginase + IT Methotrexate	yes
+Relapse/Refractory Acute Leukemia	TPOG 1305 protocol Phase II Consolidation	Dexamethasone + Vincristine + Methotrexate + Leucovorin + L-asparaginase + Cyclophosphamide	yes
+Aplastic Anemia	ATG-CSA	ATG + Cyclosporin A + Prednisolone	yes
+Aplastic Anemia	ATG-CSA-Eltrombopag	ATG + Cyclosporin A + Eltrombopag + Prednisolone	yes
+Aplastic Anemia	CSA-Eltrombopag	Cyclosporin A + Eltrombopag	yes
+Hemophagocytic Lymphohistiocytosis (HLH)	HLH 2004 protocol Phase I (week 1–8)	Etoposide + Dexamethasone + Cyclosporine ± IVIG	yes
+Hemophagocytic Lymphohistiocytosis (HLH)	HLH 2004 protocol Phase II (week 9–40)	Etoposide + Dexamethasone + Cyclosporine + Co-trimoxazole	yes
+Classical Hodgkin Lymphoma	ABVD	Doxorubicin + Bleomycin + Vinblastine + Dacarbazine	yes
+Classical Hodgkin Lymphoma	B-B	Brentuximab vedotin + Bendamustine	yes
+Classical Hodgkin Lymphoma	BEGEV	Vinorelbine + Gemcitabine + Bendamustine	yes
+Classical Hodgkin Lymphoma	BrECADD	Brentuximab vedotin + Doxorubicin + Cyclophosphamide + Etoposide + Dacarbazine + Dexamethasone	yes
+Classical Hodgkin Lymphoma	Brentuximab vedotin (monotherapy)	Brentuximab vedotin	yes
+Classical Hodgkin Lymphoma	BV-AVD	Doxorubicin + Vinblastine + Dacarbazine + Brentuximab vedotin	yes
+Classical Hodgkin Lymphoma	BV-DTIC	Brentuximab vedotin + Dacarbazine	yes
+Classical Hodgkin Lymphoma	BV-N	Brentuximab vedotin + Nivolumab	yes
+Classical Hodgkin Lymphoma	BV-N-AD	Doxorubicin + Dacarbazine + Brentuximab vedotin + Nivolumab	yes
+Classical Hodgkin Lymphoma	COP-ABV	Vincristine + Cyclophosphamide + Prednisolone + Doxorubicin + Bleomycin + Vinblastine	yes
+Classical Hodgkin Lymphoma	GVD	Gemcitabine + Vinorelbine + Liposomal doxorubicin	yes
+Classical Hodgkin Lymphoma	IGEV	Vinorelbine + Gemcitabine + Ifosfamide + Prednisolone	yes
+Classical Hodgkin Lymphoma	Modified BEACOPP	Cyclophosphamide + Doxorubicin + Etoposide + Procarbazine + Prednisolone + Vincristine + Bleomycin	yes
+Classical Hodgkin Lymphoma	MOPP	Mechlorethamine + Vincristine + Procarbazine + Prednisolone	yes
+Classical Hodgkin Lymphoma	MOPP/ABV	Mechlorethamine + Vincristine + Procarbazine + Prednisolone + Doxorubicin + Bleomycin + Vinblastine	yes
+Classical Hodgkin Lymphoma	Nivolumab-AVD	Doxorubicin + Vinblastine + Dacarbazine + Nivolumab	yes
+Classical Hodgkin Lymphoma	Stanford V	Mechlorethamine + Doxorubicin + Vinblastine + Vincristine + Bleomycin + Etoposide + Prednisolone	yes
+Non-Hodgkin Lymphoma	BR	Bendamustine + Rituximab	yes
+Non-Hodgkin Lymphoma	Brexucabtagene autoleucel (CAR-T)	Anti-CD19 CAR-T — relapsed/refractory Mantle Cell Lymphoma	yes
+Non-Hodgkin Lymphoma	BTK inhibitor (Acalabrutinib/Ibrutinib/Zanubrutinib) monotherapy	BTK inhibitor — Mantle Cell Lymphoma relapsed/refractory	yes
+Non-Hodgkin Lymphoma	BV-CHP	Cyclophosphamide + Doxorubicin + Vincristine + Brentuximab vedotin + Prednisolone	yes
+Non-Hodgkin Lymphoma	BV-Len-Ritux	Brentuximab vedotin + Rituximab + Lenalidomide	yes
+Non-Hodgkin Lymphoma	CDOP	Cyclophosphamide + Liposomal doxorubicin + Vincristine + Prednisolone	yes
+Non-Hodgkin Lymphoma	CEOP	Cyclophosphamide + Etoposide + Vincristine + Prednisolone	yes
+Non-Hodgkin Lymphoma	CHOEP	Cyclophosphamide + Doxorubicin + Vincristine + Etoposide + Prednisolone	yes
+Non-Hodgkin Lymphoma	CHOP	Cyclophosphamide + Doxorubicin + Vincristine + Prednisolone	yes
+Non-Hodgkin Lymphoma	CNOP	Cyclophosphamide + Mitoxantrone + Vincristine + Prednisolone	yes
+Non-Hodgkin Lymphoma	CVP	Cyclophosphamide + Vincristine + Prednisolone	yes
+Non-Hodgkin Lymphoma	DA-EPOCH (Dose-adjusted)	Etoposide + Doxorubicin + Vincristine + Cyclophosphamide + Prednisolone	yes
+Non-Hodgkin Lymphoma	DHAP	Dexamethasone + Cytarabine + Cisplatin	yes
+Non-Hodgkin Lymphoma	DHAX	Dexamethasone + Cytarabine + Oxaliplatin	yes
+Non-Hodgkin Lymphoma	DICE	Dexamethasone/Prednisolone + Ifosfamide + Cisplatin + Etoposide	yes
+Non-Hodgkin Lymphoma	Epcoritamab	CD20xCD3 Bispecific antibody — relapsed/refractory B-cell lymphoma	yes
+Non-Hodgkin Lymphoma	ESHAP	Etoposide + Methylprednisolone + Cisplatin + Cytarabine	yes
+Non-Hodgkin Lymphoma	FLUDAP	Dexamethasone + Fludarabine + Cisplatin + Cytarabine	yes
+Non-Hodgkin Lymphoma	FND	Fludarabine + Mitoxantrone + Dexamethasone	yes
+Non-Hodgkin Lymphoma	GCVP	Gemcitabine + Cyclophosphamide + Vincristine + Prednisolone	yes
+Non-Hodgkin Lymphoma	GDP	Gemcitabine + Dexamethasone + Cisplatin	yes
+Non-Hodgkin Lymphoma	GemOx	Gemcitabine + Oxaliplatin	yes
+Non-Hodgkin Lymphoma	GIFOX	Gemcitabine + Oxaliplatin + Ifosfamide	yes
+Non-Hodgkin Lymphoma	Glofitamab	CD20xCD3 Bispecific antibody — ≥3rd line relapsed/refractory DLBCL	yes
+Non-Hodgkin Lymphoma	Ibrutinib + Lenalidomide (±R)	BTK inhibitor + Lenalidomide ± Rituximab — non-GCB DLBCL	yes
+Non-Hodgkin Lymphoma	ICE	Ifosfamide + Carboplatin + Etoposide	yes
+Non-Hodgkin Lymphoma	IMVP-16	Ifosfamide + Methotrexate + Etoposide	yes
+Non-Hodgkin Lymphoma	Loncastuximab tesirine	Anti-CD19 Antibody-Drug Conjugate — ≥3rd line DLBCL	yes
+Non-Hodgkin Lymphoma	MINE	Ifosfamide + Mitoxantrone + Etoposide	yes
+Non-Hodgkin Lymphoma	mini-CHOP	Cyclophosphamide + Doxorubicin + Vincristine + Prednisolone (reduced dose)	yes
+Non-Hodgkin Lymphoma	Pola-BR	Bendamustine + Rituximab + Polatuzumab vedotin	yes
+Non-Hodgkin Lymphoma	Pola-R-CHP	Rituximab + Polatuzumab vedotin + Cyclophosphamide + Doxorubicin + Prednisolone	yes
+Non-Hodgkin Lymphoma	Polatuzumab vedotin (monotherapy)	Polatuzumab vedotin	yes
+Non-Hodgkin Lymphoma	R-CHOP	Rituximab + Cyclophosphamide + Doxorubicin + Vincristine + Prednisolone	yes
+Non-Hodgkin Lymphoma	R2 regimen	Rituximab + Lenalidomide	yes
+Non-Hodgkin Lymphoma	RBAC500	Rituximab + Bendamustine + Cytarabine	yes
+Non-Hodgkin Lymphoma	Rituximab (monotherapy)	Rituximab	yes
+Non-Hodgkin Lymphoma	Venetoclax + BTK inhibitor ± Rituximab	Venetoclax + BTK inhibitor ± Rituximab — Mantle Cell Lymphoma	yes
+Non-Hodgkin Lymphoma	VR-CAP	Rituximab + Bortezomib + Doxorubicin + Cyclophosphamide	yes
+CNS Lymphoma (PCNSL)	HD-MTX	Vincristine + Dexamethasone + Methotrexate + Leucovorin + IT Cytarabine	yes
+CNS Lymphoma (PCNSL)	HD-MTX CNS prophylaxis	Methotrexate + Leucovorin	yes
+CNS Lymphoma (PCNSL)	HD-MTX with HD-Ara-C	Dexamethasone + Methotrexate + Leucovorin + Cytarabine	yes
+CNS Lymphoma (PCNSL)	MATRIx	Rituximab + Dexamethasone + Methotrexate + Leucovorin + Cytarabine + Thiotepa	yes
+CNS Lymphoma (PCNSL)	R-MPV	Rituximab + Methotrexate + Procarbazine + Vincristine — induction alternative	yes
+Burkitt Lymphoma	CODOX-M	Cyclophosphamide + Doxorubicin + Vincristine + Methotrexate + Leucovorin + IT (Cytarabine + Methotrexate)	yes
+Burkitt Lymphoma	Dose-adjusted (DA)-EPOCH	Etoposide + Doxorubicin + Vincristine + Cyclophosphamide + Prednisolone	yes
+Burkitt Lymphoma	IVAC	Ifosfamide + Etoposide + Cytarabine + IT Methotrexate	yes
+Chronic Lymphocytic Leukemia (CLL)	Alemtuzumab (monotherapy)	Alemtuzumab	yes
+Chronic Lymphocytic Leukemia (CLL)	Alemtuzumab + Fludarabine	Alemtuzumab + Fludarabine	yes
+Chronic Lymphocytic Leukemia (CLL)	BTK inhibitor (Ibrutinib/Acalabrutinib/Zanubrutinib) monotherapy	BTK inhibitor — 1st line preferred	yes
+Chronic Lymphocytic Leukemia (CLL)	CP	Chlorambucil + Prednisolone	yes
+Chronic Lymphocytic Leukemia (CLL)	FC	Fludarabine + Cyclophosphamide	yes
+Chronic Lymphocytic Leukemia (CLL)	Fludarabine (monotherapy)	Fludarabine	yes
+Chronic Lymphocytic Leukemia (CLL)	Pirtobrutinib (CLL)	Non-covalent BTK inhibitor — post-covalent BTKi failure	yes
+Chronic Lymphocytic Leukemia (CLL)	R-FC	Rituximab + Fludarabine + Cyclophosphamide	yes
+Chronic Lymphocytic Leukemia (CLL)	Venetoclax + Obinutuzumab (fixed duration)	Venetoclax + Obinutuzumab — 1st line	yes
+Chronic Lymphocytic Leukemia (CLL)	Venetoclax + Rituximab	Venetoclax + Rituximab — relapsed/refractory	yes
+NK/T-cell Lymphoma	AspaMetDex	Methotrexate + Leucovorin + L-asparaginase + Dexamethasone	yes
+NK/T-cell Lymphoma	DDGP	Dexamethasone + Cisplatin + Gemcitabine + L-asparaginase	yes
+NK/T-cell Lymphoma	DeVIC	Dexamethasone + Etoposide + Ifosfamide + Carboplatin	yes
+NK/T-cell Lymphoma	GELAD	Gemcitabine + Etoposide + L-asparaginase + Dexamethasone	yes
+NK/T-cell Lymphoma	GELOX	Gemcitabine + Oxaliplatin + L-asparaginase	yes
+NK/T-cell Lymphoma	Nivolumab + ICE	Nivolumab + Ifosfamide + Carboplatin + Etoposide — relapsed/refractory	yes
+NK/T-cell Lymphoma	P-GEMOX	Pegaspargase + Gemcitabine + Oxaliplatin	yes
+NK/T-cell Lymphoma	SMILE	Methotrexate + Leucovorin + Dexamethasone + Ifosfamide + Etoposide + L-asparaginase	yes
+NK/T-cell Lymphoma	VIDL	Ifosfamide + Etoposide + Dexamethasone + L-asparaginase	yes
+NK/T-cell Lymphoma	VIPD	Ifosfamide + Cisplatin + Etoposide + Dexamethasone	yes
+Multiple Myeloma	Bela-Pd	Belantamab mafodotin + Pomalidomide + Dexamethasone	yes
+Multiple Myeloma	Bela-Rd	Belantamab mafodotin + Lenalidomide + Dexamethasone	yes
+Multiple Myeloma	Bela-Vd	Belantamab mafodotin + Bortezomib + Dexamethasone	yes
+Multiple Myeloma	Belantamab mafodotin (monotherapy)	Belantamab mafodotin	yes
+Multiple Myeloma	Bortezomib (monotherapy)	Bortezomib	yes
+Multiple Myeloma	Ciltacabtagene autoleucel (Cilta-cel)	BCMA CAR-T	yes
+Multiple Myeloma	CTD	Cyclophosphamide + Thalidomide + Dexamethasone	yes
+Multiple Myeloma	CVAD	Cyclophosphamide + Vincristine + Doxorubicin + Dexamethasone	yes
+Multiple Myeloma	CyDex	Cyclophosphamide + Dexamethasone	yes
+Multiple Myeloma	Dara-CyBorD	Daratumumab + Bortezomib + Cyclophosphamide + Dexamethasone	yes
+Multiple Myeloma	Dara-Dex	Daratumumab + Dexamethasone	yes
+Multiple Myeloma	Dara-KCd	Daratumumab + Carfilzomib + Cyclophosphamide + Dexamethasone	yes
+Multiple Myeloma	Dara-Kd	Daratumumab + Carfilzomib + Dexamethasone	yes
+Multiple Myeloma	Dara-Kd (DKd)	Daratumumab + Carfilzomib + Dexamethasone	yes
+Multiple Myeloma	Dara-KRd	Daratumumab + Carfilzomib + Lenalidomide + Dexamethasone	yes
+Multiple Myeloma	Dara-Pd	Daratumumab + Pomalidomide + Dexamethasone	yes
+Multiple Myeloma	Dara-Pd (DPd)	Daratumumab + Pomalidomide + Dexamethasone	yes
+Multiple Myeloma	Dara-Rd	Daratumumab + Lenalidomide + Dexamethasone	yes
+Multiple Myeloma	Dara-Vd	Daratumumab + Bortezomib + Dexamethasone	yes
+Multiple Myeloma	Dara-VMP	Daratumumab + Bortezomib + Melphalan + Prednisolone	yes
+Multiple Myeloma	Dara-VRd (modified)	Daratumumab + Bortezomib + Lenalidomide + Dexamethasone	yes
+Multiple Myeloma	Dara-VTd	Daratumumab + Bortezomib + Thalidomide + Dexamethasone	yes
+Multiple Myeloma	DCEP	Dexamethasone + Cyclophosphamide + Etoposide + Cisplatin	yes
+Multiple Myeloma	DT-PACE	Cisplatin + Cyclophosphamide + Etoposide + Doxorubicin + Dexamethasone + Thalidomide	yes
+Multiple Myeloma	EDAP	Etoposide + Dexamethasone + Cytarabine + Cisplatin	yes
+Multiple Myeloma	KCd	Carfilzomib + Cyclophosphamide + Dexamethasone	yes
+Multiple Myeloma	Kd	Carfilzomib + Dexamethasone	yes
+Multiple Myeloma	KPd	Carfilzomib + Pomalidomide + Dexamethasone	yes
+Multiple Myeloma	KRd	Carfilzomib + Lenalidomide + Dexamethasone	yes
+Multiple Myeloma	Linvoseltamab	BCMAxCD3 Bispecific Antibody	yes
+Multiple Myeloma	mCBAD	Cyclophosphamide + Mesna + Bortezomib + Doxorubicin + Dexamethasone	yes
+Multiple Myeloma	Melflufen-Dex	Melphalan flufenamide + Dexamethasone	yes
+Multiple Myeloma	Modified VAD	Vincristine + Doxorubicin + Dexamethasone	yes
+Multiple Myeloma	MP	Melphalan + Prednisolone	yes
+Multiple Myeloma	MPR	Melphalan + Prednisolone + Lenalidomide	yes
+Multiple Myeloma	MPT	Melphalan + Prednisolone + Thalidomide	yes
+Multiple Myeloma	PACE	Cisplatin + Doxorubicin + Cyclophosphamide + Etoposide	yes
+Multiple Myeloma	PAD	Bortezomib + Doxorubicin + Dexamethasone	yes
+Multiple Myeloma	PCd	Pomalidomide + Cyclophosphamide + Dexamethasone	yes
+Multiple Myeloma	Pd	Pomalidomide + Dexamethasone	yes
+Multiple Myeloma	PVd	Pomalidomide + Bortezomib + Dexamethasone	yes
+Multiple Myeloma	Rd	Lenalidomide + Dexamethasone	yes
+Multiple Myeloma	RVd-LITE	Bortezomib + Lenalidomide + Dexamethasone (lite dosing)	yes
+Multiple Myeloma	Td	Thalidomide + Dexamethasone	yes
+Multiple Myeloma	Tec-Dara	Teclistamab + Daratumumab	yes
+Multiple Myeloma	Teclistamab	BCMAxCD3 Bispecific Antibody (step-up dosing)	yes
+Multiple Myeloma	VAD	Vincristine + Doxorubicin + Dexamethasone	yes
+Multiple Myeloma	VCD	Bortezomib + Cyclophosphamide + Dexamethasone	yes
+Multiple Myeloma	VCD-mod	Bortezomib + Cyclophosphamide + Dexamethasone (modified schedule)	yes
+Multiple Myeloma	VD	Bortezomib + Dexamethasone	yes
+Multiple Myeloma	VDT-PACE	Bortezomib + Dexamethasone + Thalidomide + Cisplatin + Doxorubicin + Cyclophosphamide + Etoposide	yes
+Multiple Myeloma	Ven-Dex	Venetoclax + Dexamethasone	yes
+Multiple Myeloma	Ven-Vd	Venetoclax + Bortezomib + Dexamethasone	yes
+Multiple Myeloma	VMP	Melphalan + Prednisolone + Bortezomib	yes
+Multiple Myeloma	VRd	Bortezomib + Lenalidomide + Dexamethasone	yes
+Multiple Myeloma	VTD	Bortezomib + Thalidomide + Dexamethasone	yes
+Multiple Myeloma	VTP	Thalidomide + Prednisolone + Bortezomib	yes

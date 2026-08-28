@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import {
+  loadConfigValues,
   loadFellowSchedule,
   loadReferrals,
   loadTransplantIndications,
@@ -21,10 +22,11 @@ export const metadata: Metadata = {
 const BOOKING_HORIZON_WEEKS = 8;
 
 export default async function BookTransplantPage() {
-  const [{ referrals }, source, indications] = await Promise.all([
+  const [{ referrals }, source, indications, config] = await Promise.all([
     loadReferrals(),
     loadFellowSchedule(),
     loadTransplantIndications(),
+    loadConfigValues(),
   ]);
 
   const today = new Date();
@@ -78,7 +80,11 @@ export default async function BookTransplantPage() {
             body={`ยังไม่มีวันออกตรวจที่ว่างในช่วง ${BOOKING_HORIZON_WEEKS} สัปดาห์ข้างหน้า กรุณาโทรติดต่อเจ้าหน้าที่เพื่อนัดหมาย`}
           />
         ) : (
-          <BookingFlow days={openDays} indications={indications} />
+          <BookingFlow
+            days={openDays}
+            indications={indications}
+            indicationUrl={config["bmt_indication_url"] ?? ""}
+          />
         )}
       </main>
     </div>

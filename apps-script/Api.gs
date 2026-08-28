@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-08-28 indicationSheet';
+const API_VERSION = '2026-08-29 adviceContact';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -121,6 +121,18 @@ function isAuthorized_(token) {
   }
   return diff === 0;
 }
+
+/**
+ * คอลัมน์ที่เก็บว่าใครเป็นคนตอบและติดต่อกลับได้ที่ไหน
+ *
+ * แยกเป็นคอลัมน์ ไม่ต่อท้ายในเนื้อคำตอบ เพื่อให้ค้นย้อนหลังได้ว่าใครตอบเคสไหน
+ * และเพื่อให้ตอน anonymize รู้ว่าต้องลบช่องไหน (เป็นข้อมูลบุคลากร ไม่ใช่ผู้ป่วย
+ * แต่ก็ไม่ควรติดไปกับคลังคำตอบที่เก็บถาวร)
+ */
+const ADVICE_CONTACT_COLUMNS = [
+  'advice_record', 'status', 'closed_at',
+  'advice_by', 'advice_ward_phone', 'advice_direct_phone',
+];
 
 /**
  * จองคิว fellow ให้เคสกลุ่มที่ 1 — สร้างแถวใหม่ในชีต referrals พร้อมวันนัด
@@ -301,11 +313,22 @@ function saveAdvice_(payload) {
       );
     }
 
+    // ช่องติดต่อกลับของผู้ตอบ — สร้างคอลัมน์ให้ก่อนถ้ายังไม่มี
+    // ชีตนี้เกิดจาก Google Form คอลัมน์ที่โค้ดเพิ่มทีหลังจึงต้องสร้างเอง
+    ensureColumns_(sheet, ADVICE_CONTACT_COLUMNS);
+    const map2 = headerMap_(sheet);
+
     const now = new Date();
-    setCell_(sheet, map, match._row, 'advice_record', advice);
-    setCell_(sheet, map, match._row, 'status', status);
+    setCell_(sheet, map2, match._row, 'advice_record', advice);
+    setCell_(sheet, map2, match._row, 'status', status);
+    setCell_(sheet, map2, match._row, 'advice_by',
+      String(payload.answeredBy || '').trim());
+    setCell_(sheet, map2, match._row, 'advice_ward_phone',
+      String(payload.wardPhone || '').trim());
+    setCell_(sheet, map2, match._row, 'advice_direct_phone',
+      String(payload.directPhone || '').trim());
     if (TERMINAL_STATUSES.indexOf(status) !== -1) {
-      setCell_(sheet, map, match._row, 'closed_at', now);
+      setCell_(sheet, map2, match._row, 'closed_at', now);
     }
 
     // ส่งคำตอบกลับทันที ไม่ต้องรอให้ใครคัดลอกไปส่งเอง
@@ -315,6 +338,9 @@ function saveAdvice_(payload) {
       emailed = sendAdviceEmail_(email, {
         referralId: referralId,
         advice: advice,
+        answeredBy: String(payload.answeredBy || '').trim(),
+        wardPhone: String(payload.wardPhone || '').trim(),
+        directPhone: String(payload.directPhone || '').trim(),
         question: String(match['clinical_question'] || '').trim(),
       });
     }
@@ -332,8 +358,7 @@ function sendAdviceEmail_(email, data) {
     'เลขที่อ้างอิง: ' + data.referralId + '\n\n' +
     (data.question ? '--- คำถามของท่าน ---\n' + data.question + '\n\n' : '') +
     '--- คำตอบ ---\n' + data.advice + '\n\n' +
-    'หากมีข้อสงสัยเพิ่มเติม กรุณาโทร ' + CONTACT_PHONE + '\n' +
-    '(จันทร์-ศุกร์ 08:00-16:00 น.) พร้อมแจ้งเลขที่อ้างอิงข้างต้น\n\n' +
+    buildAdviceContactBlock_(data) +
     'กรุณาอย่าส่งชื่อ-สกุล หรือเลข HN ของผู้ป่วยทางอีเมลนี้\n\n' +
     '--\n' +
     'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช\n' +
@@ -530,4 +555,33 @@ function sendRescheduleEmail_(email, booking) {
   } catch (err) {
     console.error('ส่งอีเมลเลื่อนนัดไม่สำเร็จ (' + booking.referralId + '): ' + err);
   }
+}
+
+/**
+ * บล็อก "ติดต่อกลับ" ท้ายอีเมลคำตอบ
+ *
+ * ⚠️ เบอร์วอร์ดมาก่อนเบอร์ส่วนตัวเสมอ และเบอร์ส่วนตัวมีก็ต่อเมื่อผู้ตอบยอมให้
+ *
+ * resident อยู่ที่วอร์ดเป็นส่วนใหญ่ แต่ติดเรียนได้ตลอด สายที่โทรเข้าวอร์ดจึงมี
+ * พยาบาลรับเรื่องไว้ให้เสมอ ต่างจากเบอร์ส่วนตัวที่ถ้าไม่รับก็จบ
+ * — เบอร์ที่ "มีคนรับแน่นอน" มีค่ากว่าเบอร์ที่ "ตรงถึงตัวแต่อาจไม่รับ"
+ */
+function buildAdviceContactBlock_(data) {
+  let out = '--- ติดต่อกลับหากยังไม่เข้าใจ ---\n\n';
+
+  if (data.answeredBy) out += 'ผู้ตอบ: ' + data.answeredBy + '\n';
+
+  if (data.wardPhone) {
+    out += 'วอร์ดเคมีบำบัด: ' + data.wardPhone + '\n' +
+      '  (หากแพทย์ผู้ตอบติดภารกิจ พยาบาลจะรับเรื่องไว้แล้วให้ติดต่อกลับ)\n';
+  }
+  if (data.directPhone) {
+    out += 'ติดต่อแพทย์ผู้ตอบโดยตรง: ' + data.directPhone + '\n';
+  }
+
+  out += '\nหรือโทรธุรการ ' + CONTACT_PHONE +
+    ' (จันทร์-ศุกร์ 08:00-16:00 น.)\n' +
+    'พร้อมแจ้งเลขที่อ้างอิงข้างต้น\n\n';
+
+  return out;
 }

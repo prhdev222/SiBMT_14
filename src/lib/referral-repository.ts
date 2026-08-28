@@ -43,6 +43,7 @@ const FELLOW_SCHEDULE_SHEET = "fellow_schedule";
 const FELLOWS_SHEET = "fellows";
 const CONFIG_SHEET = "config";
 const INDICATIONS_SHEET = "transplant_indications";
+const REGIMENS_SHEET = "chemo_regimens";
 
 export interface ReferralSource {
   referrals: Referral[];
@@ -223,6 +224,37 @@ export async function loadTransplantIndications(): Promise<
     return parsed.length > 0 ? parsed : TRANSPLANT_INDICATIONS;
   } catch {
     return TRANSPLANT_INDICATIONS;
+  }
+}
+
+export interface ChemoRegimen {
+  diseaseGroup: string;
+  abbr: string;
+  components: string;
+}
+
+/**
+ * คลังสูตรยาเคมีบำบัด — ปุ่มช่วยพิมพ์ในหน้าตอบคำปรึกษา
+ *
+ * คืนรายการว่างได้โดยไม่เป็นไร ต่างจาก loadTransplantIndications()
+ * ที่ต้องมีค่าสำรองในโค้ด เพราะ dropdown ว่างที่นั่นแปลว่าไม่มีใครจองคิวได้
+ * ส่วนที่นี่ถ้าไม่มีตัวเลือก resident ยังพิมพ์สูตรยาเองได้ตามปกติ
+ * — จึงไม่เก็บสำเนา 204 แถวไว้ในโค้ดให้ไม่ตรงกับชีต
+ */
+export async function loadRegimens(): Promise<ChemoRegimen[]> {
+  if (!readCredentials()) return [];
+
+  try {
+    const rows = await readSheetRows(REGIMENS_SHEET);
+    return rows
+      .filter((row) => text(row["abbr"]) && isActive(row))
+      .map((row) => ({
+        diseaseGroup: text(row["disease_group"]) || "อื่น ๆ",
+        abbr: text(row["abbr"]),
+        components: text(row["components"]),
+      }));
+  } catch {
+    return [];
   }
 }
 

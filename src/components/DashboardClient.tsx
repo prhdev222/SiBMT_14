@@ -12,18 +12,13 @@ import {
   STATUSES,
   STATUS_COLOR,
   STATUS_LABEL_TH,
-  URGENCY_COLOR,
-  URGENCY_LABEL_TH,
   alertLevelFor,
   type AlertLevel,
   type DiseaseGroup,
   type Referral,
   type ReferralType,
   type Status,
-  type Urgency,
 } from "@/lib/referral-types";
-
-const URGENCY_OPTIONS = Object.keys(URGENCY_LABEL_TH) as Urgency[];
 
 /** ระดับแจ้งเตือนคำนวณจากเวลาที่ค้าง ไม่ได้เก็บไว้ในข้อมูล */
 function alertOf(r: Referral): AlertLevel {
@@ -39,7 +34,6 @@ function toCsv(rows: Referral[]): string {
     "referrer_org",
     "referrer_phone",
     "disease_group",
-    "urgency",
     "status",
     "assigned_to",
     "elapsed_business_hours",
@@ -56,7 +50,6 @@ function toCsv(rows: Referral[]): string {
       r.referrerOrg,
       r.referrerPhone,
       r.diseaseGroup ?? "",
-      r.urgency,
       r.status,
       r.assignedTo ?? "",
       r.elapsedBusinessHours,
@@ -86,7 +79,6 @@ export function DashboardClient({ referrals }: { referrals: Referral[] }) {
   const [referralType, setReferralType] = useState<ReferralType | "all">("all");
   const [status, setStatus] = useState<Status | "all">("all");
   const [diseaseGroup, setDiseaseGroup] = useState<DiseaseGroup | "all">("all");
-  const [urgency, setUrgency] = useState<Urgency | "all">("all");
   const [assignedTo, setAssignedTo] = useState<string>("all");
   const [alertOnly, setAlertOnly] = useState(false);
   const [selected, setSelected] = useState<Referral | null>(null);
@@ -105,7 +97,6 @@ export function DashboardClient({ referrals }: { referrals: Referral[] }) {
       if (status !== "all" && r.status !== status) return false;
       if (diseaseGroup !== "all" && r.diseaseGroup !== diseaseGroup)
         return false;
-      if (urgency !== "all" && r.urgency !== urgency) return false;
       if (assignedTo !== "all") {
         if (assignedTo === "unassigned" && r.assignedTo !== null) return false;
         if (assignedTo !== "unassigned" && r.assignedTo !== assignedTo)
@@ -120,7 +111,6 @@ export function DashboardClient({ referrals }: { referrals: Referral[] }) {
     referralType,
     status,
     diseaseGroup,
-    urgency,
     assignedTo,
     alertOnly,
   ]);
@@ -260,18 +250,6 @@ export function DashboardClient({ referrals }: { referrals: Referral[] }) {
           ))}
         </select>
         <select
-          value={urgency}
-          onChange={(e) => setUrgency(e.target.value as Urgency | "all")}
-          className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
-        >
-          <option value="all">ความเร่งด่วนทั้งหมด</option>
-          {URGENCY_OPTIONS.map((u) => (
-            <option key={u} value={u}>
-              {URGENCY_LABEL_TH[u]}
-            </option>
-          ))}
-        </select>
-        <select
           value={assignedTo}
           onChange={(e) => setAssignedTo(e.target.value)}
           className="sm:col-span-2 rounded-md border border-zinc-300 px-3 py-2 text-sm"
@@ -314,7 +292,6 @@ export function DashboardClient({ referrals }: { referrals: Referral[] }) {
               <th className="px-4 py-3 font-medium">กลุ่ม</th>
               <th className="px-4 py-3 font-medium">วันที่ส่ง</th>
               <th className="px-4 py-3 font-medium">หน่วยงานผู้ส่ง</th>
-              <th className="px-4 py-3 font-medium">ความเร่งด่วน</th>
               <th className="px-4 py-3 font-medium">สถานะ</th>
               <th className="px-4 py-3 font-medium">ผู้รับผิดชอบ</th>
               <th className="px-4 py-3 font-medium">แจ้งเตือน</th>
@@ -351,12 +328,6 @@ export function DashboardClient({ referrals }: { referrals: Referral[] }) {
                   <td className="px-4 py-3 text-zinc-600">{r.referrerOrg}</td>
                   <td className="px-4 py-3">
                     <Badge
-                      label={URGENCY_LABEL_TH[r.urgency]}
-                      colorClass={URGENCY_COLOR[r.urgency]}
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge
                       label={STATUS_LABEL_TH[r.status]}
                       colorClass={STATUS_COLOR[r.status]}
                     />
@@ -379,7 +350,7 @@ export function DashboardClient({ referrals }: { referrals: Referral[] }) {
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-zinc-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-zinc-400">
                   ไม่พบข้อมูลตามเงื่อนไขที่เลือก
                 </td>
               </tr>
@@ -426,10 +397,6 @@ export function DashboardClient({ referrals }: { referrals: Referral[] }) {
                   ? DISEASE_GROUP_LABEL_TH[selected.diseaseGroup]
                   : "ยังไม่ระบุ"
               }
-            />
-            <Detail
-              label="ความเร่งด่วน"
-              value={URGENCY_LABEL_TH[selected.urgency]}
             />
             <Detail label="สถานะ" value={STATUS_LABEL_TH[selected.status]} />
             <Detail

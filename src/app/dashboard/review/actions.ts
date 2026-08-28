@@ -21,21 +21,38 @@ export async function saveAdviceAction(
   _previous: AdviceState,
   formData: FormData,
 ): Promise<AdviceState> {
-  const session = await requireSession();
+  // ยังต้องเรียกเพื่อกันคนที่ไม่ได้ล็อกอิน — ชื่อผู้ตอบมาจากช่องที่กรอกเอง
+  // ไม่ใช่จาก username เพราะบัญชีอาจใช้ร่วมกันในวอร์ด
+  await requireSession();
 
   const referralId = String(formData.get("referralId") ?? "").trim();
   const advice = String(formData.get("advice") ?? "").trim();
   const status = String(formData.get("status") ?? "Advice Sent").trim();
+  const answeredBy = String(formData.get("answeredBy") ?? "").trim();
+  const wardPhone = String(formData.get("wardPhone") ?? "").trim();
+  const directPhone = String(formData.get("directPhone") ?? "").trim();
 
   if (!referralId) return { ok: false, message: "ไม่พบเลขที่อ้างอิงของเคส" };
   if (!advice) return { ok: false, message: "กรุณาพิมพ์คำตอบก่อนบันทึก" };
+  if (!answeredBy) return { ok: false, message: "กรุณากรอกชื่อผู้ตอบ" };
+  // เบอร์วอร์ดบังคับ เพราะเป็นเบอร์เดียวที่รับประกันว่ามีคนรับสาย
+  // resident ติดเรียนได้ตลอด แต่พยาบาลที่วอร์ดรับเรื่องไว้ให้ได้เสมอ
+  if (!wardPhone) return { ok: false, message: "กรุณากรอกเบอร์วอร์ดเคมีบำบัด" };
 
   try {
-    // ต่อท้ายคำตอบด้วยชื่อผู้ตอบ — ชีตไม่มีคอลัมน์ผู้ตอบ และการรู้ว่าใครตอบ
-    // สำคัญกว่าความสวยงามของข้อความเมื่อต้องย้อนกลับมาดูทีหลัง
-    const signed = `${advice}\n\n— ตอบโดย ${session.username}`;
-
-    const result = await saveAdvice({ referralId, advice: signed, status });
+    // ไม่ต่อท้ายชื่อในเนื้อคำตอบแล้ว — มีคอลัมน์ advice_by แยกต่างหาก
+    // และอีเมลมีบล็อก "ติดต่อกลับ" ของตัวเอง การใส่ซ้ำทำให้อ่านสับสน
+    //
+    // username ที่ล็อกอินยังถูกบันทึกใน status_log อยู่ ถ้าวันหลังต้องตรวจสอบว่า
+    // ชื่อที่กรอกกับบัญชีที่ใช้ตอบตรงกันหรือไม่ ยังย้อนดูได้
+    const result = await saveAdvice({
+      referralId,
+      advice,
+      status,
+      answeredBy,
+      wardPhone,
+      directPhone,
+    });
 
     return {
       ok: true,

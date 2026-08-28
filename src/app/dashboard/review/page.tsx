@@ -1,6 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { loadReferrals } from "@/lib/referral-repository";
+import {
+  loadConfigValues,
+  loadReferrals,
+  loadRegimens,
+} from "@/lib/referral-repository";
 import { isBookingConfigured } from "@/lib/apps-script-api";
 import { requireSession } from "@/lib/session";
 import { SessionBar } from "@/components/SessionBar";
@@ -29,7 +33,13 @@ function needsAnswer(referral: Referral): boolean {
 
 export default async function ReviewPage() {
   const session = await requireSession("/dashboard/review");
-  const { referrals, isSampleData } = await loadReferrals();
+  // อ่านขนานกัน — ทั้งสามชีตอยู่คนละแท็บและไม่ขึ้นต่อกัน
+  // คลังสูตรยา 200 กว่าแถวจึงแทบไม่เพิ่มเวลารอ เพราะไปพร้อมกับสองอันแรก
+  const [{ referrals, isSampleData }, config, regimens] = await Promise.all([
+    loadReferrals(),
+    loadConfigValues(),
+    loadRegimens(),
+  ]);
 
   // ค้างนานสุดขึ้นก่อน — เคสที่รอมานานที่สุดคือเคสที่ควรได้รับความสนใจก่อน
   const open = referrals
@@ -101,7 +111,6 @@ export default async function ReviewPage() {
                 groupNumber: REFERRAL_TYPE_META[r.referralType].groupNumber,
                 groupTitle: REFERRAL_TYPE_META[r.referralType].titleTh,
                 status: r.status,
-                urgency: r.urgency,
                 elapsedBusinessHours: r.elapsedBusinessHours,
                 submittedAt: r.submittedAt,
                 referrerOrg: r.referrerOrg,
@@ -115,6 +124,10 @@ export default async function ReviewPage() {
                 adviceRecord: r.adviceRecord,
                 note: r.note,
               }))}
+              defaultAnsweredBy={session.username}
+              defaultWardPhone={config["chemo_ward_phone"] ?? ""}
+              regimens={regimens}
+              regimenLibraryUrl={config["regimen_library_url"] ?? ""}
             />
           </>
         )}

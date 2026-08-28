@@ -70,6 +70,12 @@ export interface AdviceInput {
   referralId: string;
   advice: string;
   status: string;
+  /** ชื่อผู้ตอบที่แพทย์ต้นทางจะเห็นในอีเมล */
+  answeredBy: string;
+  /** เบอร์วอร์ดเคมีบำบัด — บังคับ เพราะเป็นเบอร์ที่มีคนรับแน่นอน */
+  wardPhone: string;
+  /** เบอร์ตรงของผู้ตอบ — ไม่บังคับ บางคนไม่สะดวกให้ */
+  directPhone: string;
 }
 
 export interface AdviceResult {
