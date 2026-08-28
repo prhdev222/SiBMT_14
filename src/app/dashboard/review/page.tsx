@@ -120,7 +120,7 @@ export default async function ReviewPage() {
         )}
 
         <p className="text-xs text-zinc-500 text-center pt-2">
-          ติดต่อธุรการ OPD 700 โทร {CONTACT.phoneDisplay} ({CONTACT.hoursTh})
+          ติดต่อ OPD 700 โทร {CONTACT.phoneDisplay} ({CONTACT.hoursTh})
         </p>
       </main>
     </div>

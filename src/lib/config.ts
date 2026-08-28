@@ -8,7 +8,7 @@
 import type { ReferralType } from "./referral-types";
 
 export const CONTACT = {
-  officeTh: "ธุรการ OPD 700 โลหิตวิทยา โรงพยาบาลศิริราช",
+  officeTh: "OPD 700 โลหิตวิทยา โรงพยาบาลศิริราช",
   phone: "024199903",
   phoneDisplay: "02-419-9903",
   hoursTh: "ในเวลาราชการ จันทร์–ศุกร์ 08:00–16:00 น.",

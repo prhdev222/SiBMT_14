@@ -86,7 +86,7 @@ function Unavailable({ title, body }: { title: string; body: string }) {
       <h2 className="font-semibold text-zinc-900 text-base">{title}</h2>
       <p className="text-zinc-600 mt-2">{body}</p>
       <p className="text-zinc-600 mt-3">
-        ธุรการ OPD 700 โทร{" "}
+        OPD 700 โทร{" "}
         <a href={`tel:${CONTACT.phone}`} className="text-blue-600 hover:underline">
           {CONTACT.phoneDisplay}
         </a>{" "}

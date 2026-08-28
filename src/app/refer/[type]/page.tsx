@@ -224,7 +224,6 @@ export default async function ReferTypePage({
             </h2>
             <p className="text-zinc-600 mb-2">
               เช่น ไปที่จุดใดก่อน ต้องเตรียมเอกสารอะไรยื่นหน้างาน
-              หรือผู้ป่วยมาสายต้องทำอย่างไร
             </p>
             <p className="font-medium text-zinc-800">{CONTACT.officeTh}</p>
             <p>
