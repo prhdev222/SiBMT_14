@@ -15,6 +15,7 @@ const SHEETS = {
   statusLog: 'status_log',
   holidays: 'holidays',            // วันหยุด: คอลัมน์ A = วันที่
   config: 'config',                // ชื่อผู้รับผิดชอบและข้อความ แก้ได้โดยไม่ต้องแตะโค้ด
+  indications: 'transplant_indications', // เกณฑ์ปลูกถ่าย แก้ได้เมื่อแนวทางเปลี่ยน
 };
 
 /**

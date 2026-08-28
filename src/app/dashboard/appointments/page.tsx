@@ -1,6 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { loadFellowSchedule, loadReferrals } from "@/lib/referral-repository";
+import {
+  loadFellowSchedule,
+  loadReferrals,
+  loadTransplantIndications,
+} from "@/lib/referral-repository";
 import { buildSchedule } from "@/lib/fellow-schedule";
 import { isBookingConfigured } from "@/lib/apps-script-api";
 import { requireSession } from "@/lib/session";
@@ -21,10 +25,15 @@ const HORIZON_WEEKS = 8;
 
 export default async function AppointmentsPage() {
   const session = await requireSession("/dashboard/appointments");
-  const [{ referrals, isSampleData }, source] = await Promise.all([
+  const [{ referrals, isSampleData }, source, indications] = await Promise.all([
     loadReferrals(),
     loadFellowSchedule(),
+    loadTransplantIndications(),
   ]);
+
+  // แปลง id เป็นชื่อโรคจากรายการที่อ่านจากชีต ไม่ใช่จากค่าที่ฝังในโค้ด
+  // ไม่งั้นข้อบ่งชี้ที่อาจารย์เพิ่มเองในชีตจะแสดงเป็น id ดิบ ๆ
+  const indicationName = new Map(indications.map((i) => [i.id, i.diseaseTh]));
 
   const todayIso = toIso(new Date());
 
@@ -49,7 +58,9 @@ export default async function AppointmentsPage() {
       referrerOrg: r.referrerOrg,
       referrerPhone: r.referrerPhone,
       diagnosis: r.diagnosis,
-      indicationTh: indicationLabel(r.transplantIndication),
+      indicationTh:
+        indicationName.get(r.transplantIndication) ??
+        indicationLabel(r.transplantIndication),
       isPast: (r.appointmentDate ?? "") < todayIso,
     }));
 

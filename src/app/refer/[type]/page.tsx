@@ -2,15 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
-  REFERRAL_TYPES,
   REFERRAL_TYPE_BY_SLUG,
   REFERRAL_TYPE_META,
 } from "@/lib/referral-types";
 import { CHECKLIST_BY_TYPE, type ChecklistItem } from "@/lib/document-checklist";
 import {
-  INDICATIONS_BY_TYPE,
   TRANSPLANT_TYPE_LABEL_TH,
+  type TransplantIndication,
 } from "@/lib/transplant-indications";
+import { loadTransplantIndications } from "@/lib/referral-repository";
 import {
   BATCH_NOTIFICATION,
   CONTACT,
@@ -19,11 +19,16 @@ import {
   LINE_OA,
 } from "@/lib/config";
 
-export function generateStaticParams() {
-  return REFERRAL_TYPES.map((type) => ({
-    type: REFERRAL_TYPE_META[type].href.replace("/refer/", ""),
-  }));
-}
+/**
+ * เรนเดอร์ตอนมีคนเปิด ไม่ prerender ตอน build
+ *
+ * เพราะตารางเกณฑ์ปลูกถ่ายอ่านจากชีต เพื่อให้อาจารย์แก้ได้เองโดยไม่ต้อง deploy
+ * ถ้า prerender ไว้ เกณฑ์ที่แก้ในชีตจะไม่ขึ้นจนกว่าจะ deploy ใหม่
+ * ซึ่งทำให้การย้ายไปไว้ในชีตไม่มีประโยชน์อะไรเลย
+ *
+ * มีแค่กลุ่มที่ 1 ที่อ่านชีต อีกสามกลุ่มจึงเรนเดอร์เร็วเท่าเดิม
+ */
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -66,6 +71,9 @@ export default async function ReferTypePage({
    *
    * กลุ่ม 4 ไม่ส่งข้อมูลเข้าระบบนี้เลย จึงไม่เกี่ยวข้องตั้งแต่ต้น
    */
+  const indications =
+    type === "TRANSPLANT_APPOINTMENT" ? await loadTransplantIndications() : [];
+
   const showConsentCard =
     type === "REGIMEN_CONSULT" || type === "CHEMO_ADMISSION";
 
@@ -174,7 +182,9 @@ export default async function ReferTypePage({
         </section>
         )}
 
-        {type === "TRANSPLANT_APPOINTMENT" && <IndicationCriteriaCard />}
+        {type === "TRANSPLANT_APPOINTMENT" && (
+          <IndicationCriteriaCard indications={indications} />
+        )}
 
         {/* กลุ่มที่ 1 จองคิวเองได้ กลุ่มที่ 4 ไปใช้ระบบนัดหมายของโรงพยาบาล */}
         {type === "GENERAL_OPD" ? (
@@ -398,7 +408,16 @@ function HospitalAppointmentCard() {
  *
  * ⚠️ ไม่ใช่ด่านกั้น ระบบรับจองต่อแม้เกณฑ์ไม่ครบ (มติอาจารย์ 2 ส.ค. 2569)
  */
-function IndicationCriteriaCard() {
+function IndicationCriteriaCard({
+  indications,
+}: {
+  indications: TransplantIndication[];
+}) {
+  const byType = {
+    AUTOLOGOUS: indications.filter((i) => i.type === "AUTOLOGOUS"),
+    ALLOGENEIC: indications.filter((i) => i.type === "ALLOGENEIC"),
+  };
+
   return (
     <section className="rounded-xl bg-white border border-zinc-200 p-5">
       <h2 className="font-semibold text-zinc-900">
@@ -431,7 +450,7 @@ function IndicationCriteriaCard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {INDICATIONS_BY_TYPE[groupType].map((item) => (
+                  {byType[groupType].map((item) => (
                     <tr key={item.id} className="align-top">
                       <td className="border-b border-zinc-100 py-2 pr-3 font-medium text-zinc-900">
                         {item.diseaseTh}

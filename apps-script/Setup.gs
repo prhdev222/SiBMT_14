@@ -32,6 +32,9 @@ function setupSheets() {
   createIfMissing_(ss, SHEETS.config, ['key', 'value', 'description']);
   seedConfigKeys_(ss);
 
+  createIfMissing_(ss, SHEETS.indications, INDICATION_COLUMNS);
+  seedIndications_(ss);
+
   console.log('สร้างชีตและคอลัมน์เรียบร้อย');
   console.log('ต้องกรอกเพิ่ม:');
   console.log('  • ' + SHEETS.holidays + ' — วันหยุดนักขัตฤกษ์');
@@ -64,6 +67,57 @@ function seedConfigKeys_(ss) {
   if (toAdd.length === 0) return;
 
   sheet.getRange(sheet.getLastRow() + 1, 1, toAdd.length, 3).setValues(toAdd);
+}
+
+/**
+ * เกณฑ์การส่งต่อเพื่อปลูกถ่าย — เติมค่าตั้งต้นจาก docs/I:CBMT.pdf
+ *
+ * ใส่ไว้ในชีตแทนการฝังในโค้ด เพราะเกณฑ์เปลี่ยนตามแนวทางการรักษา
+ * ซึ่งเป็นเรื่องทางคลินิก ไม่ใช่เรื่องของโปรแกรม (SRS NFR-005)
+ * อาจารย์แก้เองได้โดยไม่ต้องรอ deploy
+ *
+ * ไม่เขียนทับของเดิม — รันซ้ำได้ปลอดภัย
+ */
+const INDICATION_COLUMNS = [
+  'id', 'type', 'disease', 'disease_status', 'age', 'active',
+];
+
+function seedIndications_(ss) {
+  const sheet = ss.getSheetByName(SHEETS.indications);
+  const existing = {};
+  readRows_(sheet).forEach(function (r) {
+    if (r['id']) existing[String(r['id']).trim()] = true;
+  });
+
+  const defaults = [
+    ['AUTO_MM', 'AUTOLOGOUS', 'Multiple myeloma',
+     'ประเมินโรคมีการตอบสนองตั้งแต่ PR ขึ้นไป ให้ CMT อย่างน้อย 2 รอบ (after 2 cycle of induction)',
+     'ต่ำกว่า 70 ปี (อายุ 65–70 ปี ประเมินแล้ว fit และไม่มีโรคประจำตัว)', 'yes'],
+    ['AUTO_LYMPHOMA_RR', 'AUTOLOGOUS', 'Relapse/refractory lymphoma (chemosensitive)',
+     'ประเมินโรคมีการตอบสนองตั้งแต่ PR ขึ้นไป ให้ CMT อย่างน้อย 2 รอบ (after 2 cycle of salvage)',
+     'ต่ำกว่า 65 ปี', 'yes'],
+    ['AUTO_PCNSL', 'AUTOLOGOUS', 'PCNSL (chemosensitive)',
+     'ประเมินโรคมีการตอบสนองตั้งแต่ PR ขึ้นไป (after interim)', 'ต่ำกว่า 65 ปี', 'yes'],
+    ['AUTO_PTCL', 'AUTOLOGOUS', 'PTCL (chemosensitive)',
+     'ประเมินโรคมีการตอบสนองตั้งแต่ PR ขึ้นไป (after interim)', '', 'yes'],
+
+    ['ALLO_AML', 'ALLOGENEIC', 'AML (intermediate and adverse risk)', 'CR', 'ต่ำกว่า 65 ปี', 'yes'],
+    ['ALLO_ALL_PH_NEG', 'ALLOGENEIC', 'ALL Ph negative (high risk)', 'CR', 'ต่ำกว่า 65 ปี', 'yes'],
+    ['ALLO_ALL_PH_POS', 'ALLOGENEIC', 'ALL Ph positive', 'CR', 'ต่ำกว่า 65 ปี', 'yes'],
+    ['ALLO_RR_AML_ALL', 'ALLOGENEIC', 'Relapse/refractory AML and ALL', 'CR', 'ต่ำกว่า 65 ปี', 'yes'],
+    ['ALLO_MDS', 'ALLOGENEIC', 'MDS (high and very high risk)', '', 'ต่ำกว่า 65 ปี', 'yes'],
+    ['ALLO_PMF', 'ALLOGENEIC', 'PMF (int-2, high risk)', '', 'ต่ำกว่า 65 ปี', 'yes'],
+    ['ALLO_CML', 'ALLOGENEIC', 'CML triple refractory หรือ T315I mutation', '', 'ต่ำกว่า 65 ปี', 'yes'],
+    ['ALLO_SAA', 'ALLOGENEIC', 'Severe aplastic anemia', '',
+     'MUD อายุน้อยกว่า 18 ปี, MSD อายุน้อยกว่า 50 ปี', 'yes'],
+  ];
+
+  const toAdd = defaults.filter(function (row) { return !existing[row[0]]; });
+  if (toAdd.length === 0) return;
+
+  sheet.getRange(sheet.getLastRow() + 1, 1, toAdd.length, INDICATION_COLUMNS.length)
+    .setValues(toAdd);
+  console.log('เติมเกณฑ์ปลูกถ่าย ' + toAdd.length + ' รายการ');
 }
 
 function createIfMissing_(ss, name, headers) {

@@ -5,11 +5,10 @@ import Link from "next/link";
 import { bookAction, type BookingState } from "./actions";
 import { DISEASE_GROUPS } from "@/lib/referral-types";
 import {
-  INDICATIONS_BY_TYPE,
   INDICATION_OTHER,
   INDICATION_OTHER_LABEL_TH,
   TRANSPLANT_TYPE_LABEL_TH,
-  findIndication,
+  type TransplantIndication,
 } from "@/lib/transplant-indications";
 import { formatTimeRange } from "@/lib/fellow-schedule";
 
@@ -37,7 +36,14 @@ interface OpenDay {
 
 const INITIAL: BookingState = { ok: false, message: "" };
 
-export function BookingFlow({ days }: { days: OpenDay[] }) {
+export function BookingFlow({
+  days,
+  indications,
+}: {
+  days: OpenDay[];
+  /** อ่านจากชีต transplant_indications เพื่อให้แก้เกณฑ์ได้โดยไม่ต้อง deploy */
+  indications: TransplantIndication[];
+}) {
   const [state, formAction, pending] = useActionState(bookAction, INITIAL);
   const [picked, setPicked] = useState<{ date: string; fellow: OpenFellow } | null>(
     null,
@@ -192,7 +198,7 @@ export function BookingFlow({ days }: { days: OpenDay[] }) {
           hint="เช่น AML, relapsed after 1st CR"
         />
 
-        <IndicationPicker />
+        <IndicationPicker indications={indications} />
         <Field name="note" label="หมายเหตุ (ไม่บังคับ)" />
       </fieldset>
 
@@ -241,9 +247,17 @@ export function BookingFlow({ days }: { days: OpenDay[] }) {
  * เหตุผลที่ต้องแสดงตรงนี้คือ **จังหวะ** — แพทย์กำลังตัดสินใจส่งผู้ป่วยอยู่พอดี
  * ถ้าเอาไปไว้หน้าอื่นหรือในเอกสารแนบ จะไม่มีใครเปิดดูตอนที่มันมีประโยชน์
  */
-function IndicationPicker() {
+function IndicationPicker({
+  indications,
+}: {
+  indications: TransplantIndication[];
+}) {
   const [selected, setSelected] = useState("");
-  const detail = findIndication(selected);
+  const detail = indications.find((i) => i.id === selected) ?? null;
+  const byType = {
+    AUTOLOGOUS: indications.filter((i) => i.type === "AUTOLOGOUS"),
+    ALLOGENEIC: indications.filter((i) => i.type === "ALLOGENEIC"),
+  };
 
   return (
     <div className="space-y-2">
@@ -263,7 +277,7 @@ function IndicationPicker() {
           </option>
           {(["AUTOLOGOUS", "ALLOGENEIC"] as const).map((type) => (
             <optgroup key={type} label={TRANSPLANT_TYPE_LABEL_TH[type]}>
-              {INDICATIONS_BY_TYPE[type].map((item) => (
+              {byType[type].map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.diseaseTh}
                 </option>

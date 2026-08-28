@@ -1,6 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { loadFellowSchedule, loadReferrals } from "@/lib/referral-repository";
+import {
+  loadFellowSchedule,
+  loadReferrals,
+  loadTransplantIndications,
+} from "@/lib/referral-repository";
 import { buildSchedule } from "@/lib/fellow-schedule";
 import { isBookingConfigured } from "@/lib/apps-script-api";
 import { CONTACT } from "@/lib/config";
@@ -17,9 +21,10 @@ export const metadata: Metadata = {
 const BOOKING_HORIZON_WEEKS = 8;
 
 export default async function BookTransplantPage() {
-  const [{ referrals }, source] = await Promise.all([
+  const [{ referrals }, source, indications] = await Promise.all([
     loadReferrals(),
     loadFellowSchedule(),
+    loadTransplantIndications(),
   ]);
 
   const today = new Date();
@@ -73,7 +78,7 @@ export default async function BookTransplantPage() {
             body={`ยังไม่มีวันออกตรวจที่ว่างในช่วง ${BOOKING_HORIZON_WEEKS} สัปดาห์ข้างหน้า กรุณาโทรติดต่อเจ้าหน้าที่เพื่อนัดหมาย`}
           />
         ) : (
-          <BookingFlow days={openDays} />
+          <BookingFlow days={openDays} indications={indications} />
         )}
       </main>
     </div>

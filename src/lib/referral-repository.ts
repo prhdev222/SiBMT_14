@@ -14,6 +14,10 @@ import {
 } from "./google-sheets";
 import { MOCK_FELLOW_SCHEDULE, MOCK_REFERRALS } from "./mock-referrals";
 import {
+  TRANSPLANT_INDICATIONS,
+  type TransplantIndication,
+} from "./transplant-indications";
+import {
   DEFAULT_SLOTS_PER_FELLOW,
   type FellowClinicDay,
 } from "./fellow-schedule";
@@ -38,6 +42,7 @@ const REFERRALS_SHEET = "referrals";
 const FELLOW_SCHEDULE_SHEET = "fellow_schedule";
 const FELLOWS_SHEET = "fellows";
 const CONFIG_SHEET = "config";
+const INDICATIONS_SHEET = "transplant_indications";
 
 export interface ReferralSource {
   referrals: Referral[];
@@ -189,6 +194,44 @@ export async function loadFellows(): Promise<string[]> {
  * ชื่อคนเปลี่ยนบ่อย (แพทย์แอดมิน ผู้สำรอง fellow) จึงต้องแก้ในชีตได้
  * ไม่ใช่ฝังใน config.ts ที่ต้องให้โปรแกรมเมอร์แก้แล้ว deploy ใหม่
  */
+/**
+ * เกณฑ์การส่งต่อเพื่อปลูกถ่าย — อ่านจากชีตเพื่อให้แก้ได้โดยไม่ต้อง deploy
+ *
+ * ⚠️ ถ้าอ่านชีตไม่ได้หรือชีตว่าง จะใช้ค่าที่ฝังในโค้ดแทน ไม่ใช่คืนรายการว่าง
+ *
+ * ถ้าคืนว่าง dropdown ในหน้าจองคิวจะไม่มีตัวเลือกเลย แล้วไม่มีใครจองได้
+ * — ปัญหาเล็กที่ชีต (พิมพ์ชื่อแท็บผิด, ลบแถวเผลอ) จะกลายเป็นระบบหยุดทำงาน
+ * ค่าที่ฝังในโค้ดคือฉบับเดียวกับ docs/I:CBMT.pdf จึงใช้แทนกันได้ปลอดภัย
+ */
+export async function loadTransplantIndications(): Promise<
+  TransplantIndication[]
+> {
+  if (!readCredentials()) return TRANSPLANT_INDICATIONS;
+
+  try {
+    const rows = await readSheetRows(INDICATIONS_SHEET);
+    const parsed = rows
+      .filter((row) => text(row["id"]) && isActive(row))
+      .map((row) => ({
+        id: text(row["id"]),
+        type: text(row["type"]) === "AUTOLOGOUS" ? "AUTOLOGOUS" : "ALLOGENEIC",
+        diseaseTh: text(row["disease"]),
+        statusTh: text(row["disease_status"]),
+        ageTh: text(row["age"]),
+      })) as TransplantIndication[];
+
+    return parsed.length > 0 ? parsed : TRANSPLANT_INDICATIONS;
+  } catch {
+    return TRANSPLANT_INDICATIONS;
+  }
+}
+
+/** ว่างไว้ = ใช้งานอยู่ — ต้องพิมพ์ no ชัดเจนถึงจะถือว่าเลิกใช้ */
+function isActive(row: Record<string, string>): boolean {
+  const value = text(row["active"]).toLowerCase();
+  return value !== "no" && value !== "false" && value !== "ไม่";
+}
+
 export async function loadConfigValues(): Promise<Record<string, string>> {
   if (!readCredentials()) return {};
 
