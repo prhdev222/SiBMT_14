@@ -147,6 +147,14 @@ export interface BookingCredentials {
   referralId: string;
   token?: string;
   phone?: string;
+  /**
+   * ชื่อผู้ใช้ของเจ้าหน้าที่ที่ล็อกอินแล้ว — ใช้แทน token/phone
+   *
+   * ⚠️ ใส่ค่านี้ได้เฉพาะหลัง requireSession() ผ่านแล้วเท่านั้น
+   * Apps Script เชื่อค่านี้โดยไม่ตรวจอะไรต่อ เพราะตรวจไปแล้วที่ฝั่งเว็บ
+   * และคำสั่งทุกคำสั่งต้องมี BOOKING_API_TOKEN อยู่แล้ว
+   */
+  staffUser?: string;
 }
 
 export interface BookingDetail {

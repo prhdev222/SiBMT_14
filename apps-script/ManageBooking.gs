@@ -101,6 +101,14 @@ function timingSafeEquals_(a, b) {
  * @returns {boolean}
  */
 function isBookingOwner_(row, payload) {
+  // เจ้าหน้าที่ที่ล็อกอินแล้วทำแทนได้ — ใช้เมื่อแพทย์ต้นทางหาอีเมลไม่เจอ
+  // และจำรหัสอ้างอิงไม่ได้ ซึ่งเป็นกรณีที่หน้าสาธารณะช่วยไม่ได้เลย
+  //
+  // ⚠️ ค่านี้เชื่อถือได้เพราะเว็บใส่ให้ก็ต่อเมื่อ requireSession() ผ่านแล้ว
+  // และคำสั่งทุกคำสั่งต้องมี BOOKING_API_TOKEN อยู่แล้ว คนนอกจึงส่งเข้ามาไม่ได้
+  // (โมเดลความเชื่อถือเดียวกับ saveAdvice ที่ผู้ล็อกอินตอบเคสใดก็ได้)
+  if (String(payload.staffUser || '').trim()) return true;
+
   const storedToken = String(row['manage_token'] || '').trim();
   const givenToken = String(payload.token || '').trim();
 
@@ -125,7 +133,12 @@ function isBookingOwner_(row, payload) {
  * และผู้ป่วยอาจเดินทางมาถึงโรงพยาบาลแล้ว การปล่อยให้กดยกเลิกตอนนั้น
  * จะทำให้ชีตบอกว่าไม่มีนัด ทั้งที่มีคนนั่งรออยู่หน้าห้องตรวจ
  */
-function canStillChange_(clinicDate) {
+function canStillChange_(clinicDate, payload) {
+  // เจ้าหน้าที่ข้ามกำหนดนี้ได้ — เส้นตายนี้มีไว้กันการใช้หน้าสาธารณะผิดจังหวะ
+  // ไม่ใช่กฎทางคลินิก สายที่โทรมาเช้าวันนัดว่า "ผู้ป่วยมาไม่ได้แล้ว" คือกรณีที่
+  // ต้องยกเลิกให้ได้มากที่สุด เพราะคิวนั้นยังพอมีคนใช้ต่อได้ในวันเดียวกัน
+  if (payload && String(payload.staffUser || '').trim()) return true;
+
   const today = Utilities.formatDate(new Date(), TIMEZONE, 'yyyy-MM-dd');
   return String(clinicDate || '') > today;
 }
@@ -167,7 +180,7 @@ function lookupBooking_(payload) {
     fellowName: String(row['fellow_assigned'] || '').trim(),
     referrerOrg: String(row['referrer_org'] || '').trim(),
     diagnosis: String(row['diagnosis'] || '').trim(),
-    canChange: canStillChange_(clinicDate) &&
+    canChange: canStillChange_(clinicDate, payload) &&
       String(row['status'] || '').trim() === 'Appointment Confirmed',
   };
 }
@@ -200,14 +213,18 @@ function cancelBooking_(payload) {
     }
 
     const clinicDate = toIsoDate_(row['appointment_date']);
-    if (!canStillChange_(clinicDate)) throw new Error(tooLateMessage_(clinicDate));
+    if (!canStillChange_(clinicDate, payload)) throw new Error(tooLateMessage_(clinicDate));
 
     setCell_(sheet, map, row._row, 'status', 'Cancelled by Referrer');
     setCell_(sheet, map, row._row, 'closed_at', new Date());
 
+    const actor = String(payload.staffUser || '').trim();
     logStatusChange_(
-      row['referral_id'], status, 'Cancelled by Referrer', 'referrer',
-      'ยกเลิกเองผ่านหน้าจัดการนัด'
+      row['referral_id'], status, 'Cancelled by Referrer',
+      actor || 'referrer',
+      actor
+        ? 'เจ้าหน้าที่ยกเลิกให้ทางโทรศัพท์'
+        : 'ยกเลิกเองผ่านหน้าจัดการนัด'
     );
 
     cancelled = {
@@ -264,7 +281,7 @@ function rescheduleBooking_(payload) {
 
     const oldDate = toIsoDate_(row['appointment_date']);
     const oldFellow = String(row['fellow_assigned'] || '').trim();
-    if (!canStillChange_(oldDate)) throw new Error(tooLateMessage_(oldDate));
+    if (!canStillChange_(oldDate, payload)) throw new Error(tooLateMessage_(oldDate));
 
     const newDate = String(payload.clinicDate || '').trim();
     const newFellow = String(payload.fellowName || '').trim();
@@ -272,7 +289,7 @@ function rescheduleBooking_(payload) {
       throw new Error('รูปแบบวันที่ใหม่ไม่ถูกต้อง');
     }
     if (!newFellow) throw new Error('ไม่ได้ระบุชื่อ fellow ของวันใหม่');
-    if (!canStillChange_(newDate)) {
+    if (!canStillChange_(newDate, payload)) {
       throw new Error('เลือกวันนัดใหม่เป็นวันนี้หรือวันที่ผ่านมาแล้วไม่ได้');
     }
     if (newDate === oldDate && newFellow === oldFellow) {
@@ -292,8 +309,10 @@ function rescheduleBooking_(payload) {
     setCell_(sheet, map, row._row, 'appointment_date', newDate);
     setCell_(sheet, map, row._row, 'fellow_assigned', newFellow);
 
+    const actor = String(payload.staffUser || '').trim();
     logStatusChange_(
-      row['referral_id'], status, status, 'referrer',
+      row['referral_id'], status, status, actor || 'referrer',
+      (actor ? 'เจ้าหน้าที่เลื่อนให้ — ' : '') +
       'เลื่อนนัดจาก ' + oldDate + ' (' + oldFellow + ') เป็น ' +
       newDate + ' (' + newFellow + ')'
     );
