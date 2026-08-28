@@ -10,6 +10,24 @@ import { ScheduleEditor } from "./ScheduleEditor";
 
 const WEEKDAY_LABELS = ["จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส.", "อา."];
 
+/**
+ * เคสที่นัดไว้ในวันหนึ่ง — แสดงเมื่อกดเลือกวันในปฏิทิน
+ *
+ * มีไว้ให้ fellow เปิดดูก่อนถึงวันออกตรวจว่าจะมีใครมาบ้าง เป็นโรคอะไร
+ * และโทรถามข้อมูลการรักษาจากแพทย์ต้นทางได้ล่วงหน้า — ไม่ใช่มารู้หน้างาน
+ *
+ * ไม่มีชื่อและ HN ของผู้ป่วยเพราะระบบไม่ได้เก็บไว้ตั้งแต่ต้น
+ */
+export interface DayBooking {
+  referralId: string;
+  fellowName: string;
+  diagnosis: string;
+  indicationTh: string;
+  referrerOrg: string;
+  referrerName: string;
+  referrerPhone: string;
+}
+
 /** สร้างช่องปฏิทินทั้งเดือน โดยเริ่มสัปดาห์ที่วันจันทร์ */
 function buildCells(yearMonth: string, days: ScheduleDay[]) {
   const [year, month] = yearMonth.split("-").map(Number);
@@ -38,15 +56,19 @@ export function ScheduleCalendar({
   days,
   fellows,
   canEdit,
+  bookings,
 }: {
   yearMonth: string;
   days: ScheduleDay[];
   fellows: string[];
   canEdit: boolean;
+  /** เคสที่นัดไว้ แยกตามวันที่ (yyyy-MM-dd) */
+  bookings: Record<string, DayBooking[]>;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const cells = buildCells(yearMonth, days);
   const selectedDay = selected ? days.find((d) => d.date === selected) : undefined;
+  const selectedBookings = selected ? (bookings[selected] ?? []) : [];
 
   return (
     <div className="space-y-4">
@@ -159,11 +181,14 @@ export function ScheduleCalendar({
         </div>
       </div>
 
-      {canEdit && !selected && (
+      {!selected && (
         <p className="text-xs text-zinc-500">
-          คลิกวันที่ในปฏิทินเพื่อเพิ่มหรือลบวันออกตรวจ
+          คลิกวันที่ในปฏิทินเพื่อดูเคสที่นัดไว้
+          {canEdit && " และเพิ่มหรือลบวันออกตรวจ"}
         </p>
       )}
+
+      {selected && <DayBookings date={selected} bookings={selectedBookings} />}
 
       {canEdit && selected && (
         <ScheduleEditor
@@ -174,6 +199,91 @@ export function ScheduleCalendar({
           onClose={() => setSelected(null)}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * รายชื่อเคสของวันที่เลือก
+ *
+ * เรียงตามชื่อ fellow เพื่อให้คนที่เปิดดูของตัวเองกวาดตาหาได้เร็ว
+ * ในวันที่มี fellow ออกตรวจพร้อมกันหลายคน
+ */
+function DayBookings({
+  date,
+  bookings,
+}: {
+  date: string;
+  bookings: DayBooking[];
+}) {
+  const [y, m, d] = date.split("-").map(Number);
+  const title = `${d}/${m}/${y + 543}`;
+
+  if (bookings.length === 0) {
+    return (
+      <div className="rounded-xl bg-white border border-zinc-200 p-4">
+        <h3 className="font-semibold text-zinc-900 text-sm">
+          เคสที่นัดไว้ {title}
+        </h3>
+        <p className="text-sm text-zinc-500 mt-1">
+          ยังไม่มีผู้ป่วยจองคิววันนี้
+        </p>
+      </div>
+    );
+  }
+
+  const sorted = [...bookings].sort((a, b) =>
+    a.fellowName.localeCompare(b.fellowName, "th"),
+  );
+
+  return (
+    <div className="rounded-xl bg-white border border-zinc-200 overflow-hidden">
+      <div className="px-4 py-3 border-b border-zinc-200 bg-zinc-50">
+        <h3 className="font-semibold text-zinc-900 text-sm">
+          เคสที่นัดไว้ {title} — {bookings.length} ราย
+        </h3>
+        <p className="text-xs text-zinc-500 mt-0.5">
+          โทรถามข้อมูลการรักษาจากแพทย์ต้นทางได้ก่อนวันตรวจ
+        </p>
+      </div>
+
+      <ul className="divide-y divide-zinc-100">
+        {sorted.map((b) => (
+          <li key={b.referralId} className="px-4 py-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-zinc-900">
+                  {b.fellowName}
+                </p>
+                <p className="font-mono text-xs text-zinc-500">
+                  {b.referralId}
+                </p>
+                {b.diagnosis && (
+                  <p className="text-sm text-zinc-800 mt-1">{b.diagnosis}</p>
+                )}
+                {b.indicationTh && (
+                  <p className="text-sm text-zinc-600">
+                    <span className="text-zinc-400">I/C:</span> {b.indicationTh}
+                  </p>
+                )}
+                <p className="text-sm text-zinc-600 mt-1">
+                  {b.referrerOrg}
+                  {b.referrerName && ` · ${b.referrerName}`}
+                </p>
+              </div>
+
+              {b.referrerPhone && (
+                <a
+                  href={`tel:${b.referrerPhone}`}
+                  className="shrink-0 rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors whitespace-nowrap"
+                >
+                  โทร {b.referrerPhone}
+                </a>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

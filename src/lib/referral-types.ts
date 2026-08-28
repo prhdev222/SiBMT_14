@@ -333,6 +333,8 @@ export interface Referral {
   diseaseGroup: DiseaseGroup | null;
   submittedAt: string;
   referrerOrg: string;
+  /** ชื่อแพทย์ผู้ส่ง — ใช้ตอนโทรกลับ จะได้ขอสายถูกคน */
+  referrerName: string;
   referrerPhone: string;
   urgency: Urgency;
   status: Status;

@@ -3,6 +3,7 @@ import {
   loadFellowSchedule,
   loadFellows,
   loadReferrals,
+  loadTransplantIndications,
   type FellowScheduleSource,
 } from "@/lib/referral-repository";
 import { canWriteSchedule } from "@/lib/google-sheets";
@@ -15,7 +16,8 @@ import {
   monthsAvailable,
   type ScheduleDay,
 } from "@/lib/fellow-schedule";
-import { ScheduleCalendar } from "./ScheduleCalendar";
+import { ScheduleCalendar, type DayBooking } from "./ScheduleCalendar";
+import { indicationLabel } from "@/lib/transplant-indications";
 
 export const dynamic = "force-dynamic";
 
@@ -51,10 +53,11 @@ export default async function SchedulePage({
   const session = await requireSession("/dashboard/schedule");
 
   const { month } = await searchParams;
-  const [{ referrals }, source, fellows] = await Promise.all([
+  const [{ referrals }, source, fellows, indications] = await Promise.all([
     loadReferrals(),
     loadFellowSchedule(),
     loadFellows(),
+    loadTransplantIndications(),
   ]);
 
   const canEdit = canWriteSchedule();
@@ -67,6 +70,32 @@ export default async function SchedulePage({
         ? currentMonth()
         : months[0];
   const daysThisMonth = selected ? filterMonth(schedule, selected) : [];
+
+  /**
+   * เคสที่นัดไว้ แยกตามวันที่ — ส่งให้ปฏิทินไว้แสดงตอนกดเลือกวัน
+   *
+   * เอาเฉพาะที่ยังยืนยันนัดอยู่ เคสที่ยกเลิกแล้วไม่ต้องแสดง เพราะคิวคืนไปแล้ว
+   * และ fellow ไม่ต้องเตรียมตัวสำหรับคนที่ไม่มา
+   */
+  const indicationName = new Map(indications.map((i) => [i.id, i.diseaseTh]));
+  const bookings: Record<string, DayBooking[]> = {};
+  for (const r of referrals) {
+    if (r.referralType !== "TRANSPLANT_APPOINTMENT") continue;
+    if (r.status !== "Appointment Confirmed") continue;
+    if (!r.appointmentDate) continue;
+
+    (bookings[r.appointmentDate] ??= []).push({
+      referralId: r.referralId,
+      fellowName: r.fellowAssigned ?? "—",
+      diagnosis: r.diagnosis,
+      indicationTh:
+        indicationName.get(r.transplantIndication) ??
+        indicationLabel(r.transplantIndication),
+      referrerOrg: r.referrerOrg,
+      referrerName: r.referrerName,
+      referrerPhone: r.referrerPhone,
+    });
+  }
 
   return (
     <div className="flex flex-col flex-1 bg-zinc-50">
@@ -120,6 +149,7 @@ export default async function SchedulePage({
               yearMonth={selected!}
               days={daysThisMonth}
               fellows={fellows}
+              bookings={bookings}
               canEdit={canEdit}
             />
             <Summary days={daysThisMonth} />

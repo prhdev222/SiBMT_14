@@ -265,6 +265,7 @@ function toReferral(row: Record<string, string>): Referral | null {
     diseaseGroup: parseDiseaseGroup(row["disease_group"]),
     submittedAt: formatSubmittedAt(row["submitted_at"] || row["Timestamp"]),
     referrerOrg: text(row["referrer_org"]) || "—",
+    referrerName: text(row["referrer_name"]),
     referrerPhone: text(row["referrer_phone"]) || "—",
     urgency: parseUrgency(row["urgency"]),
     status,
