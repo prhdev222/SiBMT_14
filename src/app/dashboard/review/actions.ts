@@ -69,6 +69,9 @@ export async function saveAdviceAction(
   const directPhone = String(formData.get("directPhone") ?? "").trim();
   const attending = String(formData.get("attending") ?? "").trim();
   const approved = formData.get("attendingApproved") === "on";
+  const visitDate = String(formData.get("visitDate") ?? "").trim();
+  const visitTime = String(formData.get("visitTime") ?? "").trim();
+  const visitDoctor = String(formData.get("visitDoctor") ?? "").trim();
 
   if (!referralId) return { ok: false, message: "ไม่พบเลขที่อ้างอิงของเคส" };
   if (!advice) return { ok: false, message: "กรุณาพิมพ์คำตอบก่อนบันทึก" };
@@ -94,6 +97,18 @@ export async function saveAdviceAction(
       ok: false,
       message: `ไม่พบชื่อ "${attending}" ในรายชื่ออาจารย์ กรุณาโหลดหน้าใหม่`,
     };
+  }
+
+  // เลือกนัดตรวจแล้วต้องกรอกให้ครบทั้งสามช่อง — ครึ่ง ๆ กลาง ๆ ใช้ไม่ได้
+  // แพทย์ต้นทางต้องคัดลอกบรรทัดนี้ไปเขียนบนหัวกระดาษใบ refer
+  // ถ้าขาดข้อใดข้อหนึ่ง ธุรการ OPD 700 จะคัดกรองผู้ป่วยรายนี้ไม่ได้
+  if (status === "Readiness Visit Scheduled") {
+    if (!visitDate || !visitTime || !visitDoctor) {
+      return {
+        ok: false,
+        message: "กรุณากรอกวันที่ เวลา และชื่อแพทย์ที่นัดให้ครบ",
+      };
+    }
   }
 
   // ตรวจไฟล์ที่ฝั่งเซิร์ฟเวอร์ด้วย — accept กับ maxlength ในฟอร์มเป็นแค่ตัวช่วย
@@ -141,6 +156,10 @@ export async function saveAdviceAction(
       fileMimeType,
       fileBase64,
       attending,
+      // ส่งเฉพาะเมื่อเลือกสถานะนัดตรวจ — สถานะอื่นกรอกช่องนี้ไว้ก็ไม่นับ
+      visitDate: status === "Readiness Visit Scheduled" ? visitDate : "",
+      visitTime: status === "Readiness Visit Scheduled" ? visitTime : "",
+      visitDoctor: status === "Readiness Visit Scheduled" ? visitDoctor : "",
     });
 
     // บอกให้ชัดว่าไฟล์ไปด้วยหรือไม่ — ถ้าเงียบไว้ resident จะไม่รู้ว่าลืมแนบ

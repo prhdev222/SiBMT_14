@@ -98,6 +98,7 @@ function ReviewCard({
     INITIAL,
   );
   const [open, setOpen] = useState(false);
+  const [status, setStatus] = useState<Status>("Advice Sent");
   const adviceRef = useRef<HTMLTextAreaElement>(null);
 
   const alert = alertLevelFor(item.elapsedBusinessHours, item.status);
@@ -333,7 +334,8 @@ function ReviewCard({
                   </span>
                   <select
                     name="status"
-                    defaultValue="Advice Sent"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as Status)}
                     className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900"
                   >
                     {options.map((o) => (
@@ -343,6 +345,8 @@ function ReviewCard({
                     ))}
                   </select>
                 </label>
+
+                {status === "Readiness Visit Scheduled" && <OpdVisitFields />}
               </fieldset>
 
               {state.message && (
@@ -472,6 +476,78 @@ function AttendingApproval({ attendings }: { attendings: string[] }) {
           <span className="text-red-600">*</span>
         </span>
       </label>
+    </div>
+  );
+}
+
+/**
+ * รายละเอียดนัดตรวจ OPD โลหิตวิทยา — โผล่เมื่อเลือกสถานะนัดตรวจ (กลุ่ม 3)
+ *
+ * ⚠️ ไม่เกี่ยวกับคิว fellow ปลูกถ่ายของกลุ่ม 1 เลย
+ * resident เป็นคนพิมพ์วันนัดเอง ไม่ได้ดึงจากตารางเวรและไม่ได้จองคิวใคร
+ * (countBookings() ใน fellow-schedule.ts นับเฉพาะ TRANSPLANT_APPOINTMENT
+ * วันนัดตรงนี้จึงไม่ไปกินโควตา และไม่โผล่ในหน้าผู้ป่วยของ fellow ปลูกถ่าย)
+ *
+ * ทั้งสามช่องบังคับ เพราะปลายทางคือบรรทัดที่แพทย์ต้นทางต้องคัดลอก
+ * ไปเขียนบนหัวกระดาษใบ refer — ธุรการ OPD 700 คัดกรองจากหัวกระดาษ ไม่ได้เปิดอีเมลดู
+ * ขาดข้อใดข้อหนึ่งแล้วผู้ป่วยจะถือใบที่ไม่มีใครรู้ว่านัดกับใครมา
+ */
+function OpdVisitFields() {
+  return (
+    <div className="rounded-lg border border-green-200 bg-green-50/60 p-3 space-y-3">
+      <div>
+        <p className="text-sm font-medium text-zinc-800">
+          รายละเอียดนัดตรวจ OPD โลหิตวิทยา
+        </p>
+        <p className="text-xs text-zinc-600">
+          พิมพ์เอง ไม่ได้ดึงจากตารางเวร —
+          จะถูกส่งไปในอีเมลพร้อมบรรทัดสำเร็จรูปให้เขียนบนหัวกระดาษใบ refer
+        </p>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        <label className="block text-sm">
+          <span className="block font-medium text-zinc-700 mb-1">
+            วันที่นัด <span className="text-red-600">*</span>
+          </span>
+          <input
+            type="date"
+            name="visitDate"
+            required
+            className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 bg-white"
+          />
+        </label>
+
+        <label className="block text-sm">
+          <span className="block font-medium text-zinc-700 mb-1">
+            เวลา <span className="text-red-600">*</span>
+          </span>
+          <input
+            type="time"
+            name="visitTime"
+            required
+            defaultValue="08:00"
+            className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 bg-white"
+          />
+        </label>
+      </div>
+
+      <label className="block text-sm">
+        <span className="block font-medium text-zinc-700 mb-1">
+          นัดพบแพทย์ <span className="text-red-600">*</span>
+        </span>
+        <input
+          name="visitDoctor"
+          required
+          placeholder="เช่น พญ. … (OPD 700 โลหิตวิทยา)"
+          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 bg-white"
+        />
+      </label>
+
+      <p className="text-xs text-zinc-600">
+        วันนัดนี้เป็นการมาประเมินความพร้อมก่อน ยังไม่ใช่วัน admit —
+        ข้อความในอีเมลจะระบุไว้ให้แล้ว
+      </p>
     </div>
   );
 }

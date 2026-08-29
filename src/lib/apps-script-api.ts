@@ -94,6 +94,17 @@ export interface AdviceInput {
    * ที่ resident เซ็นชื่ออาจารย์กำกับ
    */
   attending: string;
+  /**
+   * นัดมาประเมินความพร้อมที่ OPD 700 — เฉพาะกลุ่ม 3 ที่เลือกสถานะนัดตรวจ
+   *
+   * ต้องครบทั้งสามค่าถึงจะถือว่านัดจริง ไม่ครบ Apps Script จะข้ามไปเงียบ ๆ
+   * เพราะอีเมลที่เขียนว่า "วันที่ ... เวลา ..." โดยเว้นว่างไว้
+   * แพทย์ต้นทางเอาไปเขียนบนใบ refer ไม่ได้
+   */
+  visitDate: string;
+  /** HH:mm */
+  visitTime: string;
+  visitDoctor: string;
 }
 
 export interface AdviceResult {

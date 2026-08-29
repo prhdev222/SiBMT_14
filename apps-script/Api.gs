@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-08-29 attendingApproval';
+const API_VERSION = '2026-08-29 opdVisit';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -134,6 +134,7 @@ const ADVICE_CONTACT_COLUMNS = [
   'advice_by', 'advice_ward_phone', 'advice_direct_phone',
   'advice_file_name', 'advice_file_url',
   'advice_attending', 'advice_approved_at',
+  'appointment_date', 'appointment_note',
 ];
 
 /**
@@ -342,6 +343,45 @@ function uploadAdviceAttachment_(payload, referralId) {
   return { name: name, url: file.getUrl(), id: file.getId() };
 }
 
+/**
+ * อ่านรายละเอียดนัดตรวจ OPD จาก payload — คืน null เมื่อไม่ได้นัด
+ *
+ * ต้องครบทั้งสามค่าถึงจะถือว่านัดจริง กรอกมาไม่ครบให้ถือว่าไม่ได้นัด
+ * ดีกว่าส่งอีเมลที่เขียนว่า "วันที่ ... เวลา ..." โดยมีช่องว่าง
+ * ซึ่งแพทย์ต้นทางจะเอาไปเขียนบนใบ refer ไม่ได้
+ */
+function adviceVisit_(payload) {
+  const date = String(payload.visitDate || '').trim();
+  const time = String(payload.visitTime || '').trim();
+  const doctor = String(payload.visitDoctor || '').trim();
+  if (!date || !time || !doctor) return null;
+  return { date: date, time: time, doctor: doctor };
+}
+
+/**
+ * บล็อกนัดตรวจในอีเมล — จัดรูปแบบเดียวกับอีเมลยืนยันนัดของกลุ่ม 1
+ *
+ * มีบรรทัดที่ให้ "เขียนบนหัวกระดาษใบ refer" เพราะธุรการ OPD 700 คัดกรอง
+ * จากหัวกระดาษ ไม่ได้เปิดอีเมลดู — ผู้ป่วยที่ถือใบเปล่ามาจะไม่มีใครรู้ว่านัดใคร
+ */
+function buildVisitBlock_(visit) {
+  if (!visit) return '';
+
+  const referLine = 'นัด ' + formatThaiDate_(visit.date, true) + ' เวลา ' +
+    visit.time + ' น. พบ ' + visit.doctor + ' (OPD 700 อายุรศาสตร์โลหิตวิทยา)';
+
+  return '--- นัดมาประเมินความพร้อมที่ OPD 700 ---\n\n' +
+    '  วันที่    ' + formatThaiDate_(visit.date, true) + '\n' +
+    '  เวลา      ' + visit.time + ' น.\n' +
+    '  สถานที่   OPD 700 โรงพยาบาลศิริราช\n' +
+    '  พบแพทย์   ' + visit.doctor + '\n\n' +
+    '--- เขียนบนหัวกระดาษใบ refer ---\n\n' +
+    '     "' + referLine + '"\n\n' +
+    '   ธุรการ OPD 700 คัดกรองจากหัวกระดาษ ไม่ได้เปิดอีเมลดู\n' +
+    '   ถ้าไม่เขียน ผู้ป่วยจะไม่มีใครทราบว่านัดกับแพทย์ท่านใด\n\n' +
+    '   วันนัดนี้เป็นการมาประเมินความพร้อมก่อน ยังไม่ใช่วัน admit\n\n';
+}
+
 /** บล็อกไฟล์แนบในอีเมล — ไม่มีไฟล์ก็ไม่ขึ้นอะไรเลย */
 function buildAttachmentBlock_(data) {
   if (!data.fileUrl) return '';
@@ -409,6 +449,18 @@ function saveAdvice_(payload) {
     setCell_(sheet, map2, match._row, 'advice_attending',
       String(payload.attending || '').trim());
     setCell_(sheet, map2, match._row, 'advice_approved_at', now);
+
+    // นัดประเมินความพร้อมที่ OPD 700 — เฉพาะกลุ่ม 3 ที่เลือกสถานะนัดตรวจ
+    //
+    // เขียนลง appointment_date เหมือนกลุ่ม 1 ได้อย่างปลอดภัย เพราะ countBookings()
+    // ใน src/lib/fellow-schedule.ts นับเฉพาะ TRANSPLANT_APPOINTMENT
+    // วันนัดของกลุ่มนี้จึงไม่ไปกินโควตาคิว fellow
+    const visit = adviceVisit_(payload);
+    if (visit) {
+      setCell_(sheet, map2, match._row, 'appointment_date', visit.date);
+      setCell_(sheet, map2, match._row, 'appointment_note',
+        visit.time + ' น. พบ ' + visit.doctor + ' (OPD 700)');
+    }
     if (TERMINAL_STATUSES.indexOf(status) !== -1) {
       setCell_(sheet, map2, match._row, 'closed_at', now);
     }
@@ -427,6 +479,7 @@ function saveAdvice_(payload) {
         fileName: attachment ? attachment.name : '',
         fileUrl: attachment ? attachment.url : '',
         attending: String(payload.attending || '').trim(),
+        visit: visit,
       });
     }
 
@@ -448,6 +501,7 @@ function sendAdviceEmail_(email, data) {
     'เลขที่อ้างอิง: ' + data.referralId + '\n\n' +
     (data.question ? '--- คำถามของท่าน ---\n' + data.question + '\n\n' : '') +
     '--- คำตอบ ---\n' + data.advice + '\n\n' +
+    buildVisitBlock_(data.visit) +
     buildAttachmentBlock_(data) +
     buildAdviceContactBlock_(data) +
     'กรุณาอย่าส่งชื่อ-สกุล หรือเลข HN ของผู้ป่วยทางอีเมลนี้\n\n' +
