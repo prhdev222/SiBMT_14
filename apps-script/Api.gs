@@ -627,6 +627,76 @@ function remainingSlots_(clinicDate, fellowName) {
   return quota - booked;
 }
 
+/**
+ * ส่งข้อความจากแพทย์ต้นทางถึงแพทย์แอดมินกลาง
+ *
+ * ⚠️ ไม่เขียนอะไรลงชีต โดยเจตนา
+ *
+ * นี่ไม่ใช่เคส ไม่มีเลขที่อ้างอิงของตัวเอง และไม่ควรมี — ถ้าเก็บเป็นแถว
+ * มันจะกลายเป็นคิวที่สองที่ไม่มี SLA และไม่มีใครถือ ซึ่งเป็นสิ่งที่ระบบนี้
+ * ตั้งใจกำจัด ช่องทางนี้มีไว้แค่ "แจ้งให้คนรู้" แล้วให้คนไปจัดการต่อ
+ * คำถามทางคลินิกต้องเข้ากลุ่มที่ 2 ซึ่งมีเลขที่อ้างอิงและกรอบเวลาจริง
+ *
+ * ⚠️ ห้ามมีข้อมูลผู้ป่วยในข้อความ — หน้าเว็บเตือนไว้แล้ว และปลายทางคือ LINE
+ * ซึ่งตาม PDPA-003 ห้ามมีข้อมูลผู้ป่วยเด็ดขาด
+ */
+function contactAdmin_(payload) {
+  const name = String(payload.name || '').trim();
+  const org = String(payload.org || '').trim();
+  const contact = String(payload.contact || '').trim();
+  const referralId = String(payload.referralId || '').trim();
+  const message = String(payload.message || '').trim();
+
+  if (!name || !org || !contact || !message) {
+    throw new Error('กรุณากรอกชื่อ โรงพยาบาล ช่องทางติดต่อกลับ และข้อความให้ครบ');
+  }
+
+  const body =
+    '📨 แพทย์ต้นทางติดต่อแอดมินกลาง\n\n' +
+    'จาก: ' + name + ' (' + org + ')\n' +
+    'ติดต่อกลับ: ' + contact + '\n' +
+    (referralId ? 'อ้างถึงเคส: ' + referralId + '\n' : '') +
+    '\n' + message.slice(0, 1500);
+
+  // LINE ก่อน เพราะแอดมินเห็นเร็วกว่าอีเมล แต่ทั้งคู่ล้มได้โดยไม่ทำให้ทั้งคำสั่งพัง
+  // ถ้าโยน error หน้าเว็บจะบอกว่าส่งไม่สำเร็จทั้งที่อาจส่งไปแล้วทางหนึ่ง
+  let delivered = false;
+  try {
+    pushLineMessage_(body, 'red');
+    delivered = true;
+  } catch (err) {
+    console.error('ส่ง LINE ถึงแอดมินไม่สำเร็จ: ' + err);
+  }
+
+  // แอดมินกลางมีได้หลายคน — ใส่คั่นด้วยจุลภาคในชีต แบบเดียวกับ LINE_TARGET_ADMIN
+  //
+  // ส่งฉบับเดียวถึงทุกคนพร้อมกัน ไม่ใช่แยกฉบับ เพื่อให้ทุกคนเห็นว่าใครได้รับด้วย
+  // — จะได้ตกลงกันเองได้ว่าใครรับเรื่องนี้ ไม่ใช่ต่างคนต่างคิดว่าอีกคนทำแล้ว
+  const recipients = parseEmailList_(readConfigValue_('central_admin_email'));
+  if (recipients.length > 0) {
+    try {
+      MailApp.sendEmail({
+        to: recipients.join(','),
+        subject: 'ติดต่อแอดมินกลาง — ' + org,
+        body: body + '\n\n--\nส่งจากหน้า "ติดต่อแพทย์แอดมินกลาง" ' + SITE_URL,
+        replyTo: contact.indexOf('@') !== -1 ? contact : undefined,
+      });
+      delivered = true;
+    } catch (err) {
+      console.error('ส่งอีเมลถึงแอดมินไม่สำเร็จ: ' + err);
+    }
+  }
+
+  if (!delivered) {
+    throw new Error(
+      'ส่งข้อความไม่สำเร็จ ยังไม่ได้ตั้งค่าช่องทางแจ้งเตือนแอดมิน ' +
+      'กรุณาโทรติดต่อเจ้าหน้าที่แทน'
+    );
+  }
+
+  return { delivered: true };
+}
+
 function jsonResponse_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);

@@ -230,3 +230,21 @@ function readConfigValue_(key) {
   }
   return '';
 }
+
+/**
+ * แยกรายชื่ออีเมลที่คั่นด้วยจุลภาค — ใช้กับ config ที่มีผู้รับได้หลายคน
+ *
+ * ตัดช่องว่างและตัวซ้ำออก และทิ้งค่าที่ไม่มี @ เพราะ MailApp จะโยน error
+ * ทั้งฉบับถ้ามีที่อยู่ผิดรูปแบบปนอยู่แม้แค่ตัวเดียว — แอดมินคนอื่นก็จะไม่ได้รับไปด้วย
+ */
+function parseEmailList_(raw) {
+  const seen = {};
+  return String(raw || '')
+    .split(',')
+    .map(function (s) { return s.trim(); })
+    .filter(function (s) {
+      if (!s || s.indexOf('@') === -1 || seen[s]) return false;
+      seen[s] = true;
+      return true;
+    });
+}
