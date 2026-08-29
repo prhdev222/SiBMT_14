@@ -382,12 +382,26 @@ function HospitalAppointmentCard() {
         ))}
       </ol>
 
+      {/*
+        ไม่ให้เบอร์ OPD 700 ที่นี่ — กลุ่มนี้ไปที่ OPD อายุรศาสตร์โดยตรง
+        เบอร์คลินิกโลหิตวิทยาจะพาผู้ป่วยไปหาหน่วยงานที่ไม่เห็นคิวของตัวเอง
+        ดู HOSPITAL_APPOINTMENT.contactPhone ใน config.ts
+      */}
       <p className="mt-4 text-sm text-zinc-600">
         ผู้ป่วยจะได้รับใบนัดหมายภายใน {HOSPITAL_APPOINTMENT.waitingDaysTh}{" "}
-        หากไม่ได้รับ ติดต่อสอบถามได้ทางแชท LINE นั้น หรือโทร{" "}
-        <a href={`tel:${CONTACT.phone}`} className="text-blue-600 hover:underline">
-          {CONTACT.phoneDisplay}
-        </a>
+        หากไม่ได้รับ ติดต่อสอบถามได้ทางแชท LINE นั้น
+        {HOSPITAL_APPOINTMENT.contactPhone && (
+          <>
+            {" "}
+            หรือโทร{" "}
+            <a
+              href={`tel:${HOSPITAL_APPOINTMENT.contactPhone}`}
+              className="text-blue-600 hover:underline"
+            >
+              {HOSPITAL_APPOINTMENT.contactPhone}
+            </a>
+          </>
+        )}
       </p>
 
       <p className="mt-3 text-xs text-zinc-500">
