@@ -373,11 +373,26 @@ function HospitalAppointmentCard() {
 
       <ol className="mt-4 space-y-2 text-sm text-zinc-700">
         {HOSPITAL_APPOINTMENT.stepsTh.map((step, index) => (
-          <li key={step} className="flex gap-3">
+          <li key={step.text} className="flex gap-3">
             <span className="shrink-0 grid h-6 w-6 place-items-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-600 tabular-nums">
               {index + 1}
             </span>
-            <span className="pt-0.5">{step}</span>
+            <span className="pt-0.5">
+              {step.text}
+              {step.link && (
+                <>
+                  {" "}
+                  <a
+                    href={step.link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline whitespace-nowrap"
+                  >
+                    {step.link.labelTh} ↗
+                  </a>
+                </>
+              )}
+            </span>
           </li>
         ))}
       </ol>
