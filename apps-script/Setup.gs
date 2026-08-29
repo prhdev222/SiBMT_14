@@ -189,6 +189,11 @@ function setupTriggers() {
   ScriptApp.newTrigger('buildMonthlyStats').timeBased().onMonthDay(1).atHour(3)
     .inTimezone(TIMEZONE).create();
 
+  // กวาดไฟล์แนบที่เก่าเกินกำหนด — กันไฟล์ของเคสที่ไม่มีวันปิดค้างตลอดกาล
+  // ดูเหตุผลเต็มที่ sweepOldAttachments() ใน Retention.gs
+  ScriptApp.newTrigger('sweepOldAttachments').timeBased().onMonthDay(1).atHour(4)
+    .inTimezone(TIMEZONE).create();
+
   console.log('ตั้ง trigger เรียบร้อย ' + ScriptApp.getProjectTriggers().length + ' รายการ');
 }
 

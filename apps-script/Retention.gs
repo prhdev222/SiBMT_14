@@ -80,6 +80,42 @@ function trashAttachments_(rows) {
   if (trashed > 0) console.log('ทิ้งไฟล์แนบลงถังขยะแล้ว ' + trashed + ' ไฟล์');
 }
 
+/**
+ * กวาดไฟล์แนบที่เก่าเกินกำหนด ไม่ว่าเคสจะปิดหรือไม่
+ *
+ * ⚠️ ทำไมต้องมีทั้งที่ trashAttachments_() ลบให้อยู่แล้ว
+ *
+ * anonymizeExpired() มองหาเคสจาก closed_at ซึ่งจะถูกเขียนเมื่อสถานะเป็น
+ * TERMINAL_STATUSES เท่านั้น เคสที่ตอบว่า "Incomplete" (ขอข้อมูลเพิ่ม)
+ * แล้วแพทย์ต้นทางเงียบหายไป จะไม่มี closed_at ตลอดกาล
+ * แถวนั้นจึงไม่มีวันครบกำหนด และไฟล์แนบจะค้างใน Drive ตลอดไป
+ *
+ * ตัวนี้จึงตัดจากวันที่อัปโหลดตรง ๆ เป็นเพดานที่ไม่มีทางรั่ว
+ * ลิงก์ที่ส่งไปมีค่าตอนแพทย์ต้นทางอ่านคำตอบ ไม่ใช่หนึ่งปีให้หลัง
+ */
+function sweepOldAttachments() {
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - RETENTION_MONTHS);
+
+  const files = attachmentFolder_().getFiles();
+  let trashed = 0;
+
+  while (files.hasNext()) {
+    const file = files.next();
+    if (file.getDateCreated() < cutoff) {
+      try {
+        file.setTrashed(true);
+        trashed++;
+      } catch (err) {
+        console.warn('ทิ้งไฟล์ ' + file.getName() + ' ไม่สำเร็จ: ' + err);
+      }
+    }
+  }
+
+  console.log('กวาดไฟล์แนบที่เก่ากว่า ' + RETENTION_MONTHS + ' เดือน: ' +
+    trashed + ' ไฟล์');
+}
+
 function ensureLibraryHeader_(library) {
   if (library.getLastRow() >= 1 && library.getLastColumn() >= ADVICE_LIBRARY_COLUMNS.length) return;
   library
