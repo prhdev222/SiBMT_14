@@ -20,6 +20,7 @@ export interface ReviewCase {
   submittedAt: string;
   referrerOrg: string;
   referrerPhone: string;
+  insuranceScheme: string;
   diseaseGroup: string | null;
   diagnosis: string;
   stage: string;
@@ -165,6 +166,18 @@ function ReviewCard({
             <Row label="การวินิจฉัย" value={item.diagnosis} />
             <Row label="ระยะ / ความเสี่ยง" value={item.stage} />
             <Row label="โรคร่วม" value={item.comorbidity} />
+            {/*
+              สิทธิการรักษาอยู่ในกลุ่มเดียวกับข้อมูลคลินิก ไม่ใช่ข้อมูลติดต่อ
+              เพราะมันเปลี่ยนคำตอบ — ยานอกบัญชียาหลักแนะนำไปก็ให้ไม่ได้
+            */}
+            <Row
+              label="สิทธิการรักษา"
+              value={
+                item.insuranceScheme || (
+                  <span className="text-zinc-400">ไม่ได้ระบุ</span>
+                )
+              }
+            />
             <Row label="ส่งข้อมูลเมื่อ" value={item.submittedAt} />
             <Row
               label="ติดต่อกลับ"

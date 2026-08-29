@@ -197,6 +197,9 @@ const FORM_COLUMNS_REQUIRED = [
 /** คอลัมน์จากฟอร์มที่มีเฉพาะบางกลุ่ม — ไม่บังคับว่าต้องมีครบ */
 const FORM_COLUMNS_OPTIONAL = [
   'consent_raw',
+  // สิทธิการรักษา — ถามทุกกลุ่ม แต่อยู่ใน OPTIONAL เพราะคำถามยังไม่ได้เพิ่มในฟอร์ม
+  // ย้ายไป FORM_COLUMNS_REQUIRED ได้เมื่อเพิ่มคำถามและยืนยันตำแหน่งคอลัมน์แล้ว
+  'insurance_scheme',
   // กลุ่ม 2
   'diagnosis_g2', 'disease_group_g2', 'stage_g2', 'treatment_summary_g2',
   'key_labs', 'clinical_question_g2', 'comorbidity_g2',

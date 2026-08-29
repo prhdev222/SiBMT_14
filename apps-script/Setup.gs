@@ -766,6 +766,7 @@ const REVIEW_VISIBLE_COLUMNS = {
   'referrer_phone': 'เบอร์ติดต่อกลับ',
   'patient_age': 'อายุผู้ป่วย (ปี)',
   'patient_sex': 'เพศ',
+  'insurance_scheme': 'สิทธิการรักษา — สูตรที่เบิกได้จริงอาจไม่ใช่สูตรที่ดีที่สุด',
   'diagnosis': 'การวินิจฉัย',
   'disease_group': 'กลุ่มโรค',
   'stage': 'Stage / risk group',

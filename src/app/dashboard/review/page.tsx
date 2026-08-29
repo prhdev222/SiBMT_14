@@ -115,6 +115,7 @@ export default async function ReviewPage() {
                 submittedAt: r.submittedAt,
                 referrerOrg: r.referrerOrg,
                 referrerPhone: r.referrerPhone,
+                insuranceScheme: r.insuranceScheme,
                 diseaseGroup: r.diseaseGroup,
                 diagnosis: r.diagnosis,
                 stage: r.stage,
