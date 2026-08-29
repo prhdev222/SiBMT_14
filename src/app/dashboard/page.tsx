@@ -45,6 +45,12 @@ export default async function DashboardPage() {
               ตอบคำปรึกษา
             </Link>
             <Link
+              href="/dashboard/opd"
+              className="text-sm font-medium text-blue-600 hover:underline whitespace-nowrap"
+            >
+              นัดตรวจ OPD
+            </Link>
+            <Link
               href="/dashboard/schedule"
               className="text-sm font-medium text-blue-600 hover:underline whitespace-nowrap"
             >

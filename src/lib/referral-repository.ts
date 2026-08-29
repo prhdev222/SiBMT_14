@@ -320,6 +320,7 @@ function toReferral(row: Record<string, string>): Referral | null {
     referrerName: text(row["referrer_name"]),
     referrerPhone: text(row["referrer_phone"]) || "—",
     insuranceScheme: text(row["insurance_scheme"]),
+    appointmentNote: text(row["appointment_note"]),
     urgency: parseUrgency(row["urgency"]),
     status,
     assignedTo: text(row["assigned_to"]) || null,
