@@ -209,3 +209,24 @@ function logStatusChange_(referralId, oldStatus, newStatus, changedBy, note) {
   if (!sheet) return;
   sheet.appendRow([new Date(), referralId, oldStatus, newStatus, changedBy, note || '']);
 }
+
+/**
+ * อ่านค่าหนึ่งค่าจากชีต config — คืนสตริงว่างเมื่อไม่มี key นั้นหรืออ่านไม่ได้
+ *
+ * ไม่โยน error เพราะผู้เรียกทุกรายมีทางเลือกสำรองอยู่แล้ว
+ * ค่าที่ยังไม่ได้กรอกในชีตไม่ควรทำให้คำสั่งทั้งคำสั่งล้ม
+ */
+function readConfigValue_(key) {
+  try {
+    const sheet = getSheet_(SHEETS.config);
+    const rows = readRows_(sheet);
+    for (let i = 0; i < rows.length; i++) {
+      if (String(rows[i]['key'] || '').trim() === key) {
+        return String(rows[i]['value'] || '').trim();
+      }
+    }
+  } catch (err) {
+    console.warn('อ่าน config "' + key + '" ไม่สำเร็จ: ' + err);
+  }
+  return '';
+}

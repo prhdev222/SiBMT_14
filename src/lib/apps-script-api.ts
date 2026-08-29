@@ -238,3 +238,29 @@ export async function rescheduleBooking(
 ): Promise<RescheduleResult> {
   return callAppsScript("rescheduleBooking", input);
 }
+
+/* ------------------------------------------------------------------ */
+/* ติดต่อแพทย์แอดมินกลาง                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * ข้อความจากแพทย์ต้นทางถึงแอดมินกลาง — ไม่ถูกเก็บเป็นเคส
+ *
+ * ⚠️ ปลายทางคือ LINE ห้ามมีข้อมูลผู้ป่วยในข้อความเด็ดขาด (PDPA-003)
+ * หน้าเว็บเตือนไว้แล้ว แต่ระบบบังคับไม่ได้ จึงต้องพึ่งคำเตือนที่เห็นตอนพิมพ์
+ */
+export interface AdminContactInput {
+  name: string;
+  org: string;
+  /** เบอร์หรืออีเมลที่ให้ติดต่อกลับ */
+  contact: string;
+  /** เลขที่อ้างอิงของเคสที่ถามถึง — ไม่บังคับ */
+  referralId: string;
+  message: string;
+}
+
+export async function contactAdmin(
+  payload: AdminContactInput,
+): Promise<{ delivered: boolean }> {
+  return callAppsScript("contactAdmin", payload);
+}

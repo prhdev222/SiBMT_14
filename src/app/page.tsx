@@ -3,7 +3,7 @@ import {
   REFERRAL_TYPES_ORDERED,
   REFERRAL_TYPE_META,
 } from "@/lib/referral-types";
-import { CONTACT, LINE_OA } from "@/lib/config";
+import { LINE_OA } from "@/lib/config";
 
 export default function Home() {
   return (
@@ -65,21 +65,16 @@ export default function Home() {
               );
             })}
 
-            {/* ปุ่มที่ 5 — กันเคสเลือกกลุ่มผิดแล้วหลุดออกจากระบบติดตาม
-                และรองรับคำถามก่อนตัดสินใจ refer ตามที่อาจารย์เสนอ 29 ก.ค. 2569 */}
-            <a
-              href="#contact"
-              className="rounded-xl bg-white border border-dashed border-zinc-400 p-4 text-center hover:bg-zinc-100 transition-colors"
-            >
-              <p className="font-semibold text-zinc-800">
-                ไม่แน่ใจว่าเข้ากลุ่มไหน หรืออยากสอบถามก่อนส่งตัว
-              </p>
-              <p className="text-sm text-zinc-600 mt-0.5">
-                เช่น ไม่แน่ใจว่าควร refer หรือไม่
-                หรืออยากทราบว่าขณะนี้ศิริราชมีการศึกษาวิจัย (clinical trial)
-                ที่เหมาะกับผู้ป่วยหรือไม่
-              </p>
-            </a>
+            {/*
+              เดิมมีปุ่มที่ 5 "ไม่แน่ใจว่าเข้ากลุ่มไหน หรืออยากสอบถามก่อนส่งตัว"
+              ที่พาไปหาเจ้าหน้าที่ ตัดออกแล้วย้ายจุดประสงค์ไปอยู่ในกลุ่มที่ 2 แทน
+              (มติ 29 ส.ค. 2569)
+
+              ปุ่มนั้นสร้างช่องทางที่ไม่มีเลขที่อ้างอิง ไม่มี SLA และไม่มีใครถือเคส
+              คำถามจิปาถะจึงไปกองที่ธุรการซึ่งตอบเรื่องคลินิกไม่ได้ แล้ววนกลับมาหา
+              แพทย์อยู่ดี — ซึ่งเป็นภาระเดิมที่ระบบนี้ตั้งใจจะลด
+              พอคำถามเข้ากลุ่มที่ 2 มันจะได้เลขที่อ้างอิง เข้าคิว และมีคนตอบตามกรอบเวลา
+            */}
           </div>
         </section>
 
@@ -129,19 +124,26 @@ export default function Home() {
           id="contact"
           className="rounded-xl bg-white border border-zinc-200 p-5 text-sm text-zinc-600"
         >
-          <h2 className="font-semibold text-zinc-900 mb-2">ติดต่อเจ้าหน้าที่</h2>
+          <h2 className="font-semibold text-zinc-900 mb-2">
+            ติดต่อแพทย์แอดมินกลาง
+          </h2>
+          {/*
+            เดิมชี้ไปที่ธุรการ OPD 700 ซึ่งตอบเรื่องคลินิกและเรื่องระบบไม่ได้
+            คำถามจึงวนกลับมาหาแพทย์อยู่ดี (มติ 29 ส.ค. 2569)
+            สองเรื่องที่เหลืออยู่ตรงนี้เป็นปัญหาของระบบ ไม่ใช่คำถามทางคลินิก
+            จึงส่งตรงถึงแพทย์แอดมินกลาง ส่วนคำถามคลินิกย้ายไปกลุ่มที่ 2 หมดแล้ว
+          */}
           <p>
-            หากส่งข้อมูลไม่ได้ ไม่แน่ใจว่าเข้ากลุ่มไหน หรือต้องการสอบถามสถานะ
-            referral กรุณาติดต่อ:
+            หากส่งข้อมูลเข้าระบบไม่ได้
+            หรือต้องการสอบถามสถานะเคสที่เกินกรอบเวลาตอบกลับแล้ว
+            ข้อความจะถูกส่งถึงแพทย์แอดมินกลางโดยตรง
           </p>
-          <p className="mt-2 font-medium text-zinc-800">{CONTACT.officeTh}</p>
-          <p className="text-zinc-700">
-            โทร.{" "}
-            <a href={`tel:${CONTACT.phone}`} className="text-blue-600 hover:underline">
-              {CONTACT.phoneDisplay}
-            </a>{" "}
-            ({CONTACT.hoursTh})
-          </p>
+          <Link
+            href="/contact"
+            className="mt-3 inline-flex rounded-lg bg-zinc-800 px-4 py-2 text-white font-semibold hover:bg-zinc-900 transition-colors"
+          >
+            เขียนข้อความถึงแพทย์แอดมินกลาง
+          </Link>
         </section>
 
         {/* ทางเข้าสำหรับบุคลากร */}

@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-08-29 opdVisit';
+const API_VERSION = '2026-08-29 contactAdmin';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -83,6 +83,10 @@ function doPost(e) {
 
     if (body.action === 'cancelBooking') {
       return jsonResponse_({ ok: true, data: cancelBooking_(body.payload || {}) });
+    }
+
+    if (body.action === 'contactAdmin') {
+      return jsonResponse_({ ok: true, data: contactAdmin_(body.payload || {}) });
     }
 
     if (body.action === 'rescheduleBooking') {

@@ -85,6 +85,7 @@ function seedConfigKeys_(ss) {
   const defaults = [
     ['central_admin_name', '', 'แพทย์แอดมินกลาง — ผู้รับ Red Alert เมื่อเคสค้างครบ 3 วันทำการ'],
     ['central_admin_contact', '', 'เบอร์หรือ LINE ID ของแพทย์แอดมินกลาง'],
+    ['central_admin_email', '', 'อีเมลแอดมินกลาง — รับข้อความจากหน้า "ติดต่อแพทย์แอดมินกลาง" (เว้นว่างได้ถ้าใช้ LINE อย่างเดียว)'],
     ['central_admin_backup_name', '', 'ผู้สำรองของแอดมินกลาง — ต้องมีก่อนเปิดใช้จริง'],
     ['central_admin_backup_contact', '', 'ช่องทางติดต่อผู้สำรอง'],
     ['system_owner', 'สาขาวิชาโลหิตวิทยา', 'เจ้าของระบบในนามหน่วยงาน'],

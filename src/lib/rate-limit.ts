@@ -41,6 +41,16 @@ export async function allowBookingLookup(): Promise<boolean> {
   return allowAttempt("MANAGE_RATE_LIMIT", "manage");
 }
 
+/**
+ * กันสแปมที่หน้าติดต่อแอดมิน — เป็น endpoint สาธารณะที่ push เข้า LINE ของแอดมิน
+ *
+ * ใช้ตัวนับเดียวกับหน้าจัดการนัด แต่คนละ prefix จึงนับแยกกัน
+ * ถ้าไม่กัน ใครก็ยิงข้อความรัวเข้ากลุ่ม LINE ของทีมได้ทั้งวัน
+ */
+export async function allowAdminContact(): Promise<boolean> {
+  return allowAttempt("MANAGE_RATE_LIMIT", "contact");
+}
+
 async function allowAttempt(binding: string, prefix: string): Promise<boolean> {
   const limiter = await getLimiter(binding);
   if (!limiter) return true;
