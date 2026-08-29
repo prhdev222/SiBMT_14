@@ -17,6 +17,7 @@ const SHEETS = {
   config: 'config',                // ชื่อผู้รับผิดชอบและข้อความ แก้ได้โดยไม่ต้องแตะโค้ด
   indications: 'transplant_indications', // เกณฑ์ปลูกถ่าย แก้ได้เมื่อแนวทางเปลี่ยน
   regimens: 'chemo_regimens',      // คลังสูตรยา แก้/เพิ่ม/ลดได้เมื่อแนวทางเปลี่ยน
+  attendings: 'attendings',        // รายชื่ออาจารย์ผู้ให้คำปรึกษา หมุนเวียนทุกปี
 };
 
 /**

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { saveAdvice } from "@/lib/apps-script-api";
+import { loadAttendings } from "@/lib/referral-repository";
 import { requireSession } from "@/lib/session";
 
 /**
@@ -66,6 +67,8 @@ export async function saveAdviceAction(
   const answeredBy = String(formData.get("answeredBy") ?? "").trim();
   const wardPhone = String(formData.get("wardPhone") ?? "").trim();
   const directPhone = String(formData.get("directPhone") ?? "").trim();
+  const attending = String(formData.get("attending") ?? "").trim();
+  const approved = formData.get("attendingApproved") === "on";
 
   if (!referralId) return { ok: false, message: "ไม่พบเลขที่อ้างอิงของเคส" };
   if (!advice) return { ok: false, message: "กรุณาพิมพ์คำตอบก่อนบันทึก" };
@@ -73,6 +76,25 @@ export async function saveAdviceAction(
   // เบอร์วอร์ดบังคับ เพราะเป็นเบอร์เดียวที่รับประกันว่ามีคนรับสาย
   // resident ติดเรียนได้ตลอด แต่พยาบาลที่วอร์ดรับเรื่องไว้ให้ได้เสมอ
   if (!wardPhone) return { ok: false, message: "กรุณากรอกเบอร์วอร์ดเคมีบำบัด" };
+  if (!attending)
+    return { ok: false, message: "กรุณาระบุอาจารย์ผู้ให้คำปรึกษา" };
+  // ประตูบานเดียวที่กั้นไม่ให้คำตอบออกไปโดยยังไม่ผ่านอาจารย์
+  // ตรวจซ้ำที่เซิร์ฟเวอร์เพราะ required ใน HTML ปิดได้ด้วย devtools
+  if (!approved)
+    return {
+      ok: false,
+      message: "ต้องยืนยันว่าอาจารย์ให้ความเห็นแล้วก่อนส่งคำตอบ",
+    };
+
+  // ชื่อที่ไม่อยู่ในรายชื่ออาจารย์ทำให้คำรับรองไร้ความหมาย — ตรวจที่เซิร์ฟเวอร์
+  // ข้ามการตรวจเมื่อแท็บยังว่าง เพราะตอนนั้นฟอร์มให้พิมพ์ชื่อเอง
+  const attendings = await loadAttendings();
+  if (attendings.length > 0 && !attendings.includes(attending)) {
+    return {
+      ok: false,
+      message: `ไม่พบชื่อ "${attending}" ในรายชื่ออาจารย์ กรุณาโหลดหน้าใหม่`,
+    };
+  }
 
   // ตรวจไฟล์ที่ฝั่งเซิร์ฟเวอร์ด้วย — accept กับ maxlength ในฟอร์มเป็นแค่ตัวช่วย
   // ผู้ใช้ปิดได้ด้วย devtools และเราจะเอาไฟล์นี้ไปเปิดสาธารณะบน Drive
@@ -118,6 +140,7 @@ export async function saveAdviceAction(
       fileName,
       fileMimeType,
       fileBase64,
+      attending,
     });
 
     // บอกให้ชัดว่าไฟล์ไปด้วยหรือไม่ — ถ้าเงียบไว้ resident จะไม่รู้ว่าลืมแนบ

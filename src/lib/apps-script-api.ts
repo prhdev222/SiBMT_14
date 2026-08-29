@@ -86,6 +86,14 @@ export interface AdviceInput {
    * ทำให้ payload ใหญ่ขึ้นราวหนึ่งในสาม — เผื่อไว้แล้วใน bodySizeLimit
    */
   fileBase64: string;
+  /**
+   * อาจารย์ผู้ให้คำปรึกษาที่ resident ระบุ
+   *
+   * ⚠️ เป็น "คำรับรอง" ไม่ใช่การอนุมัติจริง — ระบบพิสูจน์ไม่ได้ว่าอาจารย์เห็นคำตอบนี้
+   * ค่าที่ได้จึงเชื่อถือได้เท่าที่ resident รับรอง เหมือนใบ consult กระดาษ
+   * ที่ resident เซ็นชื่ออาจารย์กำกับ
+   */
+  attending: string;
 }
 
 export interface AdviceResult {

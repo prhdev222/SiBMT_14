@@ -39,12 +39,24 @@ function setupSheets() {
   // ดูเหตุผลที่หัวข้อ REGIMEN_COLUMNS ด้านล่าง
   createIfMissing_(ss, SHEETS.regimens, REGIMEN_COLUMNS);
 
+  createIfMissing_(ss, SHEETS.attendings, ATTENDING_COLUMNS);
+
   console.log('สร้างชีตและคอลัมน์เรียบร้อย');
   console.log('ต้องกรอกเพิ่ม:');
   console.log('  • ' + SHEETS.holidays + ' — วันหยุดนักขัตฤกษ์');
   console.log('  • ' + SHEETS.config + ' — ชื่อผู้รับผิดชอบ');
   console.log('  • ' + SHEETS.regimens + ' — วาง docs/chemo_regimens.tsv (204 สูตร)');
+  console.log('  • ' + SHEETS.attendings + ' — พิมพ์ชื่ออาจารย์ผู้ให้คำปรึกษา');
 }
+
+/**
+ * รายชื่ออาจารย์ผู้ให้คำปรึกษา — resident เลือกจากรายการนี้ตอนตอบ
+ *
+ * ไม่ seed จากโค้ด เพราะเป็นรายชื่อคนจริงที่หมุนเวียนทุกปี
+ * ถ้าแท็บว่าง ระบบจะให้พิมพ์ชื่อเองแทนการล็อกไม่ให้ตอบ —
+ * แท็บที่ยังไม่ได้กรอกไม่ควรทำให้ทั้งระบบตอบคำปรึกษาไม่ได้
+ */
+const ATTENDING_COLUMNS = ['name', 'active', 'note'];
 
 /**
  * คลังสูตรยาเคมีบำบัด — อ่านจากชีต แก้/เพิ่ม/ลดได้โดยไม่ต้อง deploy

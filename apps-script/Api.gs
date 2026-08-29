@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-08-29 adviceAttachment';
+const API_VERSION = '2026-08-29 attendingApproval';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -133,6 +133,7 @@ const ADVICE_CONTACT_COLUMNS = [
   'advice_record', 'status', 'closed_at',
   'advice_by', 'advice_ward_phone', 'advice_direct_phone',
   'advice_file_name', 'advice_file_url',
+  'advice_attending', 'advice_approved_at',
 ];
 
 /**
@@ -403,6 +404,11 @@ function saveAdvice_(payload) {
       setCell_(sheet, map2, match._row, 'advice_file_name', attachment.name);
       setCell_(sheet, map2, match._row, 'advice_file_url', attachment.url);
     }
+    // ชื่ออาจารย์และเวลาที่ resident รับรอง — เก็บแยกคอลัมน์เพื่อให้ค้นย้อนหลังได้
+    // ว่าเคสไหนอาจารย์ท่านใดเป็นผู้ให้ความเห็น
+    setCell_(sheet, map2, match._row, 'advice_attending',
+      String(payload.attending || '').trim());
+    setCell_(sheet, map2, match._row, 'advice_approved_at', now);
     if (TERMINAL_STATUSES.indexOf(status) !== -1) {
       setCell_(sheet, map2, match._row, 'closed_at', now);
     }
@@ -420,6 +426,7 @@ function saveAdvice_(payload) {
         question: String(match['clinical_question'] || '').trim(),
         fileName: attachment ? attachment.name : '',
         fileUrl: attachment ? attachment.url : '',
+        attending: String(payload.attending || '').trim(),
       });
     }
 
@@ -654,6 +661,9 @@ function buildAdviceContactBlock_(data) {
   let out = '--- ติดต่อกลับหากยังไม่เข้าใจ ---\n\n';
 
   if (data.answeredBy) out += 'ผู้ตอบ: ' + data.answeredBy + '\n';
+  if (data.attending) {
+    out += 'อาจารย์ผู้ให้คำปรึกษา: ' + data.attending + '\n';
+  }
 
   if (data.wardPhone) {
     out += 'วอร์ดเคมีบำบัด: ' + data.wardPhone + '\n' +

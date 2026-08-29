@@ -44,6 +44,7 @@ const FELLOWS_SHEET = "fellows";
 const CONFIG_SHEET = "config";
 const INDICATIONS_SHEET = "transplant_indications";
 const REGIMENS_SHEET = "chemo_regimens";
+const ATTENDINGS_SHEET = "attendings";
 
 export interface ReferralSource {
   referrals: Referral[];
@@ -253,6 +254,25 @@ export async function loadRegimens(): Promise<ChemoRegimen[]> {
         abbr: text(row["abbr"]),
         components: text(row["components"]),
       }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * รายชื่ออาจารย์ผู้ให้คำปรึกษา — resident เลือกตอนตอบคำปรึกษา
+ *
+ * คืนรายการว่างได้ ฟอร์มตอบจะสลับไปให้พิมพ์ชื่อเองแทน
+ * แท็บที่ยังไม่ได้กรอกไม่ควรทำให้ทั้งระบบตอบคำปรึกษาไม่ได้
+ */
+export async function loadAttendings(): Promise<string[]> {
+  if (!readCredentials()) return [];
+
+  try {
+    const rows = await readSheetRows(ATTENDINGS_SHEET);
+    return rows
+      .filter((row) => text(row["name"]) && isActive(row))
+      .map((row) => text(row["name"]));
   } catch {
     return [];
   }

@@ -64,6 +64,8 @@ export interface ReviewTools {
   regimens: ChemoRegimen[];
   /** ลิงก์ Pool_CMT_Regimens_Library.pdf จากชีต config — ว่างได้ */
   regimenLibraryUrl: string;
+  /** รายชื่ออาจารย์จากชีต — ว่างได้ แล้วจะให้พิมพ์ชื่อเองแทน */
+  attendings: string[];
 }
 
 export function ReviewList({
@@ -89,6 +91,7 @@ function ReviewCard({
   defaultWardPhone,
   regimens,
   regimenLibraryUrl,
+  attendings,
 }: { item: ReviewCase } & ReviewTools) {
   const [state, formAction, pending] = useActionState(
     saveAdviceAction,
@@ -322,6 +325,8 @@ function ReviewCard({
                   </label>
                 </div>
 
+                <AttendingApproval attendings={attendings} />
+
                 <label className="block text-sm">
                   <span className="block font-medium text-zinc-700 mb-1">
                     ผลการพิจารณา
@@ -389,6 +394,84 @@ function ReviewCard({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * เลือกอาจารย์ผู้ให้คำปรึกษา แล้วยืนยันว่าท่านให้ความเห็นแล้ว
+ *
+ * ⚠️ เป็น "คำรับรองของ resident" ไม่ใช่การอนุมัติจริง
+ * ระบบพิสูจน์ไม่ได้ว่าอาจารย์เห็นคำตอบนี้ เพราะคนที่กดคือ resident เอง
+ * — โมเดลเดียวกับใบ consult กระดาษที่ resident เซ็นชื่ออาจารย์กำกับ
+ * ถ้าวันหนึ่งต้องการการอนุมัติจริง ต้องให้อาจารย์ล็อกอินมากดเอง
+ * ซึ่งเปลี่ยนเป็นงานสองขั้นและเคสจะค้างถ้าอาจารย์ไม่ว่าง
+ *
+ * ที่ได้จริงคือความรับผิดชอบที่ตามรอยได้ — แพทย์ต้นทางเห็นชื่อทั้งสองฝ่าย
+ * และชีตเก็บไว้ว่าเคสไหนอาจารย์ท่านใดเป็นผู้ให้ความเห็น
+ */
+function AttendingApproval({ attendings }: { attendings: string[] }) {
+  return (
+    <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-3 space-y-3">
+      <div>
+        <p className="text-sm font-medium text-zinc-800">
+          อาจารย์ผู้ให้คำปรึกษา
+        </p>
+        <p className="text-xs text-zinc-600">
+          แพทย์ต้นทางจะเห็นทั้งชื่อผู้ตอบและชื่ออาจารย์ในอีเมล
+        </p>
+      </div>
+
+      {attendings.length > 0 ? (
+        <select
+          name="attending"
+          required
+          defaultValue=""
+          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 bg-white"
+        >
+          <option value="" disabled>
+            — เลือกอาจารย์ —
+          </option>
+          {attendings.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <>
+          {/*
+            แท็บ attendings ยังว่าง — ให้พิมพ์เองแทนการล็อกไม่ให้ตอบ
+            รายชื่อที่ยังไม่ได้กรอกไม่ควรทำให้ทั้งระบบตอบคำปรึกษาไม่ได้
+          */}
+          <input
+            name="attending"
+            required
+            placeholder="เช่น ศ.นพ. …"
+            className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900"
+          />
+          <p className="text-xs text-amber-800">
+            ยังไม่มีรายชื่ออาจารย์ในระบบ — กรอกชื่อในแท็บ{" "}
+            <code>attendings</code> ของ Google Sheet แล้วจะเลือกจากรายการได้
+          </p>
+        </>
+      )}
+
+      <label className="flex gap-2.5 items-start text-sm cursor-pointer">
+        <input
+          type="checkbox"
+          name="attendingApproved"
+          required
+          className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600"
+        />
+        <span className="text-zinc-800">
+          ข้าพเจ้ายืนยันว่า{" "}
+          <span className="font-semibold">
+            อาจารย์ท่านนี้ได้ให้ความเห็นและเห็นชอบคำตอบนี้แล้ว
+          </span>{" "}
+          <span className="text-red-600">*</span>
+        </span>
+      </label>
     </div>
   );
 }

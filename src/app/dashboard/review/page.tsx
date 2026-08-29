@@ -4,6 +4,7 @@ import {
   loadConfigValues,
   loadReferrals,
   loadRegimens,
+  loadAttendings,
 } from "@/lib/referral-repository";
 import { isBookingConfigured } from "@/lib/apps-script-api";
 import { requireSession } from "@/lib/session";
@@ -35,11 +36,13 @@ export default async function ReviewPage() {
   const session = await requireSession("/dashboard/review");
   // อ่านขนานกัน — ทั้งสามชีตอยู่คนละแท็บและไม่ขึ้นต่อกัน
   // คลังสูตรยา 200 กว่าแถวจึงแทบไม่เพิ่มเวลารอ เพราะไปพร้อมกับสองอันแรก
-  const [{ referrals, isSampleData }, config, regimens] = await Promise.all([
-    loadReferrals(),
-    loadConfigValues(),
-    loadRegimens(),
-  ]);
+  const [{ referrals, isSampleData }, config, regimens, attendings] =
+    await Promise.all([
+      loadReferrals(),
+      loadConfigValues(),
+      loadRegimens(),
+      loadAttendings(),
+    ]);
 
   // ค้างนานสุดขึ้นก่อน — เคสที่รอมานานที่สุดคือเคสที่ควรได้รับความสนใจก่อน
   const open = referrals
@@ -129,6 +132,7 @@ export default async function ReviewPage() {
               defaultWardPhone={config["chemo_ward_phone"] ?? ""}
               regimens={regimens}
               regimenLibraryUrl={config["regimen_library_url"] ?? ""}
+              attendings={attendings}
             />
           </>
         )}
