@@ -574,6 +574,14 @@ const FORM_COLUMN_ORDER = [
   'diagnosis_g3', 'disease_group_g3', 'stage_g3', 'comorbidity_g3',
   'treatment_summary_g3', 'performance_status', 'admission_reason',
   'clinical_question_g3',
+  // ถามทุกกลุ่ม แต่อยู่ท้ายสุดของคำถามที่ยังใช้งาน เพราะเพิ่มทีหลัง
+  //
+  // Google แทรกคอลัมน์ของคำถามใหม่ "ถัดจากคำถามสุดท้ายที่ยังมีอยู่ในฟอร์ม"
+  // ไม่ใช่ตามหน้าที่คำถามปรากฏ — คำถามนี้อยู่หน้า 2 แต่คอลัมน์มาอยู่ที่ 36
+  // คอลัมน์กลุ่ม 4 ที่เป็นซากจากคำถามที่ลบไปแล้วจึงถูกดันไปทางขวาหนึ่งช่อง
+  //
+  // ⚠️ เพิ่มคำถามใหม่ครั้งหน้าจะเลื่อนอีก — ต้อง showHeaderRow() ก่อนเสมอ
+  'insurance_scheme',
   // กลุ่มที่ 4 — เลิกใช้ฟอร์มแล้ว แต่คอลัมน์ยังอยู่ (ซ่อนไว้)
   'referral_reason', 'diagnosis_g4', 'refer_letter_ready',
 ];
