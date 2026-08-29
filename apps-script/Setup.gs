@@ -235,6 +235,9 @@ function showLineConfigStatus() {
   keys.forEach(function (k) {
     console.log(k + ': ' + (props.getProperty(k) ? 'ตั้งค่าแล้ว' : '— ยังไม่ได้ตั้งค่า —'));
   });
+  console.log('');
+  console.log('"ตั้งค่าแล้ว" ไม่ได้แปลว่าส่งถึง — บอทอาจถูกเตะออกจากกลุ่มไปแล้ว');
+  console.log('ให้ Run testLineTargets() เพื่อยิงข้อความทดสอบไปทุกปลายทางจริง');
 }
 
 /**

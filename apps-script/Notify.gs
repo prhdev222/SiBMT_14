@@ -161,6 +161,112 @@ function sendOneLinePush_(token, to, message) {
 }
 
 /**
+ * ยิงข้อความทดสอบไปทุกปลายทางที่ตั้งไว้ แล้วรายงานผลรายปลายทาง
+ *
+ * ⚠️ ต่างจาก runSelfTest() ตรงที่ตัวนั้นตรวจแค่ว่า "ตั้งค่าไว้แล้ว"
+ *
+ * การตั้งค่าครบไม่ได้แปลว่าส่งถึง — บอทถูกเตะออกจากกลุ่ม แอดมินบล็อกบัญชี
+ * กลุ่มถูกยุบ หรือ token หมดอายุ ล้วนทำให้แจ้งเตือนเงียบสนิทโดยที่
+ * Script Properties ยังมีค่าอยู่ครบทุกตัว และไม่มีอะไรฟ้องจนกว่าจะมีเคสค้าง
+ * แล้วไม่มีใครรู้ ซึ่งคือสิ่งเดียวที่การแจ้งเตือนมีไว้ทำ
+ *
+ * ควรรันหลังตั้งค่า LINE ครั้งแรก และทุกครั้งที่เปลี่ยนกลุ่มหรือเปลี่ยนตัวแอดมิน
+ */
+function testLineTargets() {
+  const props = PropertiesService.getScriptProperties();
+  const token = props.getProperty('LINE_CHANNEL_ACCESS_TOKEN');
+
+  if (!token) {
+    console.log('❌ ยังไม่ได้ตั้ง LINE_CHANNEL_ACCESS_TOKEN — ยังส่งอะไรไม่ได้');
+    return;
+  }
+
+  const stamp = Utilities.formatDate(new Date(), TIMEZONE, 'd MMM yyyy HH:mm');
+  const problems = [];
+  let sent = 0;
+
+  Object.keys(LINE_TARGET_BY_AUDIENCE).forEach(function (audience) {
+    const key = LINE_TARGET_BY_AUDIENCE[audience];
+    const targets = parseLineTargets_(props.getProperty(key));
+
+    if (targets.length === 0) {
+      // ไม่ใช่ error เสมอไป — ถ้าไม่ตั้ง ระบบจะไปใช้ LINE_TARGET_ADMIN แทน
+      // แต่ต้องรู้ตัว เพราะแปลว่ากลุ่มแอดมินจะได้ข้อความของกลุ่มอื่นไปด้วยทุกวัน
+      problems.push('⚠️  ' + key + ' ยังไม่ได้ตั้ง — ข้อความของ "' + audience +
+        '" จะไหลไปเข้า ' + LINE_TARGET_FALLBACK + ' แทน');
+      return;
+    }
+
+    targets.forEach(function (to) {
+      const result = probeLineTarget_(token, to, stamp, key);
+      if (result.ok) {
+        sent++;
+        console.log('✅ ' + key + ' → ' + maskLineId_(to));
+      } else {
+        problems.push('❌ ' + key + ' → ' + maskLineId_(to) + '\n      ' + result.detail);
+      }
+    });
+  });
+
+  console.log('');
+  if (problems.length === 0) {
+    console.log('ส่งข้อความทดสอบสำเร็จครบ ' + sent + ' ปลายทาง');
+    console.log('ไปเปิด LINE ดูว่าได้รับจริงทุกที่ — ตอบ 200 ไม่ได้แปลว่ามีคนเห็น');
+  } else {
+    console.log('ส่งสำเร็จ ' + sent + ' ปลายทาง / มีปัญหา ' + problems.length + ' รายการ:');
+    problems.forEach(function (p) { console.log('   ' + p); });
+  }
+}
+
+/** ส่งข้อความทดสอบหนึ่งครั้ง คืนผลแทนการเขียน log อย่างเดียว */
+function probeLineTarget_(token, to, stamp, key) {
+  try {
+    const response = UrlFetchApp.fetch(LINE_PUSH_ENDPOINT, {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + token },
+      payload: JSON.stringify({
+        to: to,
+        messages: [{
+          type: 'text',
+          text: '🔧 ทดสอบการแจ้งเตือน (' + key + ')\n' + stamp +
+            '\n\nได้รับข้อความนี้แปลว่าปลายทางใช้งานได้ ไม่ต้องดำเนินการอะไร',
+        }],
+      }),
+      muteHttpExceptions: true,
+    });
+
+    const code = response.getResponseCode();
+    if (code === 200) return { ok: true, detail: '' };
+
+    // 403 = บอทถูกเตะออกจากกลุ่ม หรือผู้ใช้บล็อกบัญชี
+    // 400 = id ผิดรูปแบบ (คัดลอกมาไม่ครบ หรือใส่ชื่อกลุ่มแทน id)
+    // 401 = token ผิดหรือหมดอายุ
+    const hint =
+      code === 403 ? 'บอทไม่ได้อยู่ในกลุ่มนี้แล้ว หรือผู้ใช้บล็อกบัญชีไว้' :
+      code === 400 ? 'id ผิดรูปแบบ — ตรวจว่าคัดลอกมาครบและไม่มีอักขระแปลกปน' :
+      code === 401 ? 'LINE_CHANNEL_ACCESS_TOKEN ผิดหรือหมดอายุ' :
+      'ดูรายละเอียดใน Executions';
+    return { ok: false, detail: 'HTTP ' + code + ' — ' + hint };
+  } catch (err) {
+    return { ok: false, detail: String(err) };
+  }
+}
+
+/**
+ * ปิดกลาง id ก่อนเขียนลง log
+ *
+ * Execution log ถูกคัดลอกไปวางในแชทเพื่อขอความช่วยเหลือบ่อย ๆ
+ * และ LINE id เป็นสิ่งที่ใครถือไปก็ยิงข้อความเข้ากลุ่มได้ทันทีหากมี token
+ * แสดงหัวกับท้ายพอให้แยกออกว่าเป็นปลายทางไหน โดยไม่ให้ค่าที่ใช้งานได้จริง
+ */
+function maskLineId_(id) {
+  const s = String(id);
+  if (s.length <= 10) return s.charAt(0) + '…';
+  return s.slice(0, 5) + '…' + s.slice(-4);
+}
+
+/**
  * รอบแจ้งเตือนรวมวันละครั้ง เวลา 10:00 น. ของวันทำการ
  *
  * รวมเคสค้างทั้งหมดส่งเป็นข้อความเดียว โดยปักหมุด Yellow Alert ไว้บนสุด
