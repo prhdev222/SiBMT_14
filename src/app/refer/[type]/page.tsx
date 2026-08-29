@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
+  businessDaysText,
   REFERRAL_TYPE_BY_SLUG,
   REFERRAL_TYPE_META,
 } from "@/lib/referral-types";
@@ -123,7 +124,7 @@ export default async function ReferTypePage({
             <div>
               <dt className="text-zinc-500">ตอบกลับภายใน</dt>
               <dd className="text-zinc-800 font-medium">
-                {meta.slaBusinessHours} ชั่วโมงทำการ
+                {businessDaysText(meta.slaBusinessHours)}
                 <span className="font-normal text-zinc-500">
                   {" "}
                   (ไม่นับวันหยุด)

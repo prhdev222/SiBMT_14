@@ -129,7 +129,7 @@ function ResponsibleContacts({ config }: { config: Record<string, string> }) {
               <span className="font-medium">
                 {missingCritical.map((r) => r.label).join(" และ ")}
               </span>{" "}
-              — ต้องมีก่อนเปิดใช้จริง มิฉะนั้นเคสที่ค้างครบ 48 ชั่วโมงจะไม่มีผู้รับแจ้ง
+              — ต้องมีก่อนเปิดใช้จริง มิฉะนั้นเคสที่ค้างครบ 3 วันทำการจะไม่มีผู้รับแจ้ง
             </div>
           )}
 

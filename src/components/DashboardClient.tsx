@@ -13,6 +13,7 @@ import {
   STATUS_COLOR,
   STATUS_LABEL_TH,
   alertLevelFor,
+  businessDaysText,
   type AlertLevel,
   type DiseaseGroup,
   type Referral,
@@ -156,9 +157,9 @@ export function DashboardClient({ referrals }: { referrals: Referral[] }) {
       {/* stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <StatCard label="Case ทั้งหมด" value={stats.total} />
-        <StatCard label="Red Alert (48 ชม.)" value={stats.red} tone="red" />
+        <StatCard label="Red Alert (3 วันทำการ)" value={stats.red} tone="red" />
         <StatCard
-          label="Yellow Alert (24 ชม.)"
+          label="Yellow Alert (2 วันทำการ)"
           value={stats.yellow}
           tone="amber"
         />
@@ -405,9 +406,9 @@ export function DashboardClient({ referrals }: { referrals: Referral[] }) {
             />
             <Detail
               label="เวลาที่ใช้ไป"
-              value={`${selected.elapsedBusinessHours} ชั่วโมงทำการ (SLA ${
-                REFERRAL_TYPE_META[selected.referralType].slaBusinessHours
-              } ชม.)`}
+              value={`${businessDaysText(selected.elapsedBusinessHours)} (SLA ${businessDaysText(
+                REFERRAL_TYPE_META[selected.referralType].slaBusinessHours,
+              )})`}
             />
             <Detail label="วันติดตาม" value={selected.followUpDate ?? "—"} />
           </dl>

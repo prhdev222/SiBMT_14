@@ -54,7 +54,7 @@ export const REFERRAL_TYPE_META: Record<ReferralType, ReferralTypeMeta> = {
       "ต้องการปรึกษาสูตรยาเคมีบำบัด โดยผู้ป่วยยังรักษาต่อที่โรงพยาบาลต้นทาง ไม่ต้องส่งตัวมา",
     handlerTh: "แพทย์ประจำบ้าน R2/R3 วอร์ดเคโม + อาจารย์ Attending อนุมัติ",
     automation: "SEMI_AUTOMATED",
-    slaBusinessHours: 48,
+    slaBusinessHours: 24,
     href: "/refer/regimen-consult",
   },
   CHEMO_ADMISSION: {
@@ -65,7 +65,7 @@ export const REFERRAL_TYPE_META: Record<ReferralType, ReferralTypeMeta> = {
       "ต้องการส่งผู้ป่วยมานอนโรงพยาบาลศิริราชเพื่อรับยาเคมีบำบัดหรือยากดภูมิ",
     handlerTh: "แพทย์ประจำบ้าน R2/R3 วอร์ดเคโม + อาจารย์ Attending อนุมัติ",
     automation: "SEMI_AUTOMATED",
-    slaBusinessHours: 48,
+    slaBusinessHours: 24,
     href: "/refer/chemo-admission",
   },
   GENERAL_OPD: {
@@ -216,15 +216,15 @@ export const URGENCY_COLOR: Record<Urgency, string> = {
 /**
  * ระดับการแจ้งเตือนตาม Fail-Safe & Escalation Matrix
  * - none   : ยังอยู่ในกรอบเวลา
- * - yellow : ค้างครบ 24 ชั่วโมงทำการ — ปักหมุดไว้บนสุดของ LINE รอบ 10:00 น.
- * - red    : ค้างครบ 48 ชั่วโมงทำการ — แจ้ง resident + คุณหมอแอดมินกลางทันที
+ * - yellow : ค้างครบ 2 วันทำการ — ปักหมุดไว้บนสุดของ LINE รอบ 10:00 น.
+ * - red    : ค้างครบ 3 วันทำการ — แจ้ง resident + คุณหมอแอดมินกลางทันที
  */
 export type AlertLevel = "none" | "yellow" | "red";
 
 export const ALERT_LABEL_TH: Record<AlertLevel, string> = {
   none: "ปกติ",
-  yellow: "Yellow Alert (ค้าง 24 ชม.)",
-  red: "Red Alert (ค้าง 48 ชม.)",
+  yellow: "Yellow Alert (ค้าง 2 วันทำการ)",
+  red: "Red Alert (ค้าง 3 วันทำการ)",
 };
 
 export const ALERT_COLOR: Record<AlertLevel, string> = {
@@ -233,10 +233,36 @@ export const ALERT_COLOR: Record<AlertLevel, string> = {
   red: "bg-red-100 text-red-800",
 };
 
-/** เกณฑ์เวลา (ชั่วโมงทำการ) ของแต่ละระดับการแจ้งเตือน */
+/** เวลาทำการต่อวัน — 08:00-16:00 ตรงกับ BUSINESS ใน apps-script/Config.gs */
+const BUSINESS_HOURS_PER_DAY = 8;
+
+/**
+ * แปลงชั่วโมงทำการเป็นวันทำการ สำหรับข้อความที่คนอ่าน
+ *
+ * ไม่มีใครแปลง "48 ชั่วโมงทำการ" ในหัวได้ว่าเท่ากับ 6 วันทำงาน
+ * แพทย์ต้นทางอ่านแล้วเข้าใจว่าราวสองวัน ซึ่งห่างจากของจริงสี่เท่า
+ * ตัวเลขที่สื่อสารออกไปจึงต้องเป็นวัน ส่วนการคำนวณภายในยังใช้ชั่วโมงเหมือนเดิม
+ * เพราะต้องตัดเศษของวันที่ยื่นตอนบ่ายให้ถูก
+ */
+export function businessDaysText(businessHours: number): string {
+  const days = businessHours / BUSINESS_HOURS_PER_DAY;
+  return `${Number.isInteger(days) ? days : days.toFixed(1)} วันทำการ`;
+}
+
+/**
+ * เกณฑ์เวลา (ชั่วโมงทำการ) ของแต่ละระดับการแจ้งเตือน
+ *
+ * ⚠️ ต้องตรงกับ ESCALATION ใน apps-script/Config.gs
+ *
+ * เดิม 24/48 ชั่วโมงทำการ = 3/6 วันทำงาน ซึ่งยาวกว่าที่ตั้งใจไว้มาก
+ * มติ 29 ส.ค. 2569 ให้กรอบตอบกลับเป็น 3 วันทำการนับจากวันที่ส่ง
+ * — ครอบคลุมความล่าช้าจากรอบแจ้งเตือน 10:00 น. อยู่ในตัวแล้ว
+ * เคสที่ส่งหลัง 10:00 จะได้รับแจ้งเช้าวันรุ่งขึ้น ยังเหลือเวลาราวสองวันทำการ
+ * จึงไม่ต้องแยกกรอบเวลาตามช่วงเวลาที่ส่ง
+ */
 export const ESCALATION_THRESHOLDS = {
-  yellowBusinessHours: 24,
-  redBusinessHours: 48,
+  yellowBusinessHours: 16, // 2 วันทำการ — เตือนล่วงหน้าหนึ่งวันเต็มก่อนครบกำหนด
+  redBusinessHours: 24, // 3 วันทำการ
 } as const;
 
 export function alertLevelFor(

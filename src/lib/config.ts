@@ -103,7 +103,7 @@ export const BATCH_NOTIFICATION = {
 export const ESCALATION_CONTACTS = {
   /** เจ้าของระบบในนามหน่วยงาน */
   systemOwner: { nameTh: "สาขาวิชาโลหิตวิทยา", contact: "" },
-  /** รับ Red Alert เมื่อเคสค้างครบ 48 ชั่วโมงทำการ — อาจารย์แจ้งว่ามีผู้รับแล้ว 1 ท่าน */
+  /** รับ Red Alert เมื่อเคสค้างครบ 3 วันทำการ — อาจารย์แจ้งว่ามีผู้รับแล้ว 1 ท่าน */
   centralAdminDoctor: { nameTh: "— รอระบุชื่อ —", contact: "" },
   /** ผู้สำรองเมื่อแอดมินกลางไม่สะดวก — อาจารย์กำลังหาเพิ่มอีก 1 ท่าน */
   centralAdminBackup: { nameTh: "— รอระบุชื่อ —", contact: "" },
