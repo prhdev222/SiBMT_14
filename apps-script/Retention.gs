@@ -37,6 +37,10 @@ function anonymizeExpired() {
     .getRange(library.getLastRow() + 1, 1, toAppend.length, ADVICE_LIBRARY_COLUMNS.length)
     .setValues(toAppend);
 
+  // ไฟล์แนบต้องหายไปพร้อมเคส ไม่ใช่ค้างใน Drive ตลอดไป
+  // ต้องทำก่อนลบแถว เพราะ url อยู่ในแถวที่กำลังจะหายไป
+  trashAttachments_(expired);
+
   // ลบจากล่างขึ้นบน มิฉะนั้นเลขแถวจะเลื่อนระหว่างลบ
   expired
     .map(function (r) { return r._row; })
@@ -46,6 +50,34 @@ function anonymizeExpired() {
     });
 
   console.log('ถอดชื่อและย้ายเข้าคลังแล้ว ' + expired.length + ' เคส');
+}
+
+/**
+ * ทิ้งไฟล์แนบของเคสที่ครบกำหนดลงถังขยะ Drive
+ *
+ * ใช้ setTrashed แทนการลบถาวร เพื่อให้กู้คืนได้ 30 วันหากลบผิด
+ * ไฟล์ที่หาไม่เจอ (ถูกลบไปแล้ว) ข้ามไปเงียบ ๆ — ไม่ควรทำให้การถอดชื่อทั้งรอบล้ม
+ * เพราะไฟล์ค้างเป็นเรื่องเล็กกว่าข้อมูลผู้ป่วยที่เลยกำหนดแล้วยังไม่ถูกถอดชื่อ
+ */
+function trashAttachments_(rows) {
+  let trashed = 0;
+
+  rows.forEach(function (r) {
+    const url = String(r['advice_file_url'] || '').trim();
+    if (!url) return;
+
+    const id = (url.match(/\/d\/([A-Za-z0-9_-]+)/) || [])[1];
+    if (!id) return;
+
+    try {
+      DriveApp.getFileById(id).setTrashed(true);
+      trashed++;
+    } catch (err) {
+      console.warn('ทิ้งไฟล์แนบไม่สำเร็จ (' + id + '): ' + err);
+    }
+  });
+
+  if (trashed > 0) console.log('ทิ้งไฟล์แนบลงถังขยะแล้ว ' + trashed + ' ไฟล์');
 }
 
 function ensureLibraryHeader_(library) {

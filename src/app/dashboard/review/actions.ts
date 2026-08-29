@@ -17,6 +17,41 @@ export interface AdviceState {
   referralId?: string;
 }
 
+/**
+ * ชนิดไฟล์ที่แนบได้ — ต้องตรงกับ ATTACHMENT.allowedMimeTypes ใน apps-script/Config.gs
+ *
+ * จำกัดไว้เพราะไฟล์จะถูกตั้งเป็น "ผู้ที่มีลิงก์ → ผู้อ่าน" บน Drive
+ * ยิ่งรับชนิดไฟล์กว้าง ยิ่งเสี่ยงมีคนอัปโหลดสิ่งที่ไม่ควรเปิดสาธารณะ
+ */
+const ALLOWED_ATTACHMENT_TYPES: Record<string, string> = {
+  "application/pdf": "PDF",
+  "image/jpeg": "JPG",
+  "image/png": "PNG",
+  "application/msword": "DOC",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    "DOCX",
+  "application/vnd.ms-excel": "XLS",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "XLSX",
+};
+
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
+/**
+ * แปลงไฟล์เป็น base64
+ *
+ * ทยอยทีละก้อน ไม่ใช้ String.fromCharCode(...bytes) รวดเดียว
+ * เพราะการ spread อาร์เรย์ขนาดหลายล้านตัวจะทำให้ call stack ล้น
+ * — ไฟล์ 10 MB พังแน่นอน ส่วนไฟล์เล็กที่ใช้ทดสอบจะผ่านได้ ทำให้ไม่เจอตอนพัฒนา
+ */
+function toBase64(bytes: Uint8Array): string {
+  const CHUNK = 0x8000;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
 export async function saveAdviceAction(
   _previous: AdviceState,
   formData: FormData,
@@ -39,6 +74,34 @@ export async function saveAdviceAction(
   // resident ติดเรียนได้ตลอด แต่พยาบาลที่วอร์ดรับเรื่องไว้ให้ได้เสมอ
   if (!wardPhone) return { ok: false, message: "กรุณากรอกเบอร์วอร์ดเคมีบำบัด" };
 
+  // ตรวจไฟล์ที่ฝั่งเซิร์ฟเวอร์ด้วย — accept กับ maxlength ในฟอร์มเป็นแค่ตัวช่วย
+  // ผู้ใช้ปิดได้ด้วย devtools และเราจะเอาไฟล์นี้ไปเปิดสาธารณะบน Drive
+  let fileName = "";
+  let fileMimeType = "";
+  let fileBase64 = "";
+
+  const upload = formData.get("attachment");
+  if (upload instanceof File && upload.size > 0) {
+    if (!(upload.type in ALLOWED_ATTACHMENT_TYPES)) {
+      return {
+        ok: false,
+        message: `แนบไฟล์ชนิดนี้ไม่ได้ — รับเฉพาะ ${Object.values(
+          ALLOWED_ATTACHMENT_TYPES,
+        ).join(", ")}`,
+      };
+    }
+    if (upload.size > MAX_ATTACHMENT_BYTES) {
+      return {
+        ok: false,
+        message: `ไฟล์ใหญ่ ${(upload.size / 1024 / 1024).toFixed(1)} MB เกินเพดาน 10 MB`,
+      };
+    }
+
+    fileName = upload.name;
+    fileMimeType = upload.type;
+    fileBase64 = toBase64(new Uint8Array(await upload.arrayBuffer()));
+  }
+
   try {
     // ไม่ต่อท้ายชื่อในเนื้อคำตอบแล้ว — มีคอลัมน์ advice_by แยกต่างหาก
     // และอีเมลมีบล็อก "ติดต่อกลับ" ของตัวเอง การใส่ซ้ำทำให้อ่านสับสน
@@ -52,14 +115,21 @@ export async function saveAdviceAction(
       answeredBy,
       wardPhone,
       directPhone,
+      fileName,
+      fileMimeType,
+      fileBase64,
     });
+
+    // บอกให้ชัดว่าไฟล์ไปด้วยหรือไม่ — ถ้าเงียบไว้ resident จะไม่รู้ว่าลืมแนบ
+    // จนกว่าแพทย์ต้นทางจะโทรมาถาม ซึ่งสายเกินแก้แล้วเพราะแก้คำตอบเดิมไม่ได้
+    const withFile = result.fileUrl ? " (แนบไฟล์ไปด้วยแล้ว)" : "";
 
     return {
       ok: true,
       referralId: result.referralId,
       message: result.emailed
-        ? `บันทึกคำตอบและส่งอีเมลกลับแพทย์ต้นทางแล้ว`
-        : `บันทึกคำตอบแล้ว — แต่เคสนี้ไม่มีอีเมลผู้ส่ง กรุณาโทรแจ้งกลับเอง`,
+        ? `บันทึกคำตอบและส่งอีเมลกลับแพทย์ต้นทางแล้ว${withFile}`
+        : `บันทึกคำตอบแล้ว${withFile} — แต่เคสนี้ไม่มีอีเมลผู้ส่ง กรุณาโทรแจ้งกลับเอง`,
     };
   } catch (error) {
     return {

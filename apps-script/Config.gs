@@ -28,6 +28,31 @@ const SHEETS = {
  * ดู docs/DEPLOYMENT.md §ไฟล์ชีตตารางเวร fellow
  */
 
+/**
+ * ไฟล์แนบในคำตอบ เช่น protocol chemotherapy
+ *
+ * อัปโหลดขึ้น Drive แล้วส่ง "ลิงก์" ไปกับอีเมล ไม่ได้แนบไฟล์จริง
+ * เพื่อให้ส่งไฟล์ใหญ่ได้และอีเมลไม่บวมจนตีกลับ (Gmail จำกัดไฟล์แนบ 25 MB)
+ *
+ * ⚠️ ไฟล์ตั้งเป็น "ผู้ที่มีลิงก์ → ผู้อ่าน" เพราะแพทย์ต้นทางไม่มีบัญชีของหน่วยงาน
+ * ความปลอดภัยจึงอยู่ที่ลิงก์เดาไม่ได้ (Drive id 33 ตัวอักษร) แบบเดียวกับ manage_token
+ * ด้วยเหตุนี้หน้าเว็บจึงเตือนชัดว่าห้ามแนบเอกสารที่มีชื่อหรือ HN ผู้ป่วย
+ */
+const ATTACHMENT = {
+  folderName: 'SiBMT ไฟล์แนบคำตอบ',
+  maxBytes: 10 * 1024 * 1024,
+  /** ต้องตรงกับ ALLOWED_ATTACHMENT_TYPES ใน src/app/dashboard/review/actions.ts */
+  allowedMimeTypes: [
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ],
+};
+
 /** เวลาทำการที่ใช้นับ SLA (FR-013) */
 const BUSINESS = {
   startHour: 8,
@@ -117,6 +142,9 @@ const IDENTIFYING_COLUMNS = [
   'consent_acknowledged_at',
   'closed_at',
   'document_links',
+  // ลิงก์ไฟล์แนบเปิดได้ด้วยตัวมันเอง ถ้าหลุดเข้าคลังถาวรก็เท่ากับข้อมูลไม่ถูกถอด
+  'advice_file_name',
+  'advice_file_url',
   'appointment_note',
   'fellow_assigned',
   'assigned_to',

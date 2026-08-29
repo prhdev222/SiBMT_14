@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-08-29 adviceContact';
+const API_VERSION = '2026-08-29 adviceAttachment';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -132,6 +132,7 @@ function isAuthorized_(token) {
 const ADVICE_CONTACT_COLUMNS = [
   'advice_record', 'status', 'closed_at',
   'advice_by', 'advice_ward_phone', 'advice_direct_phone',
+  'advice_file_name', 'advice_file_url',
 ];
 
 /**
@@ -282,6 +283,73 @@ function bookTransplantSlot_(payload) {
  *
  * ปฏิเสธถ้าเคสถูกตอบไปแล้ว เพื่อไม่ให้สองคนตอบทับกันโดยไม่รู้ตัว
  */
+/**
+ * โฟลเดอร์เก็บไฟล์แนบ — สร้างให้เองครั้งแรก แล้วจำ id ไว้ใน Script Properties
+ *
+ * ถ้าโฟลเดอร์ถูกลบทิ้ง จะสร้างใหม่แทนการโยน error
+ * ไฟล์เก่าที่หายไปกับโฟลเดอร์ยังตามได้จากคอลัมน์ advice_file_url ในชีต
+ */
+function attachmentFolder_() {
+  const props = PropertiesService.getScriptProperties();
+  const saved = props.getProperty('ATTACHMENT_FOLDER_ID');
+
+  if (saved) {
+    try {
+      const folder = DriveApp.getFolderById(saved);
+      if (!folder.isTrashed()) return folder;
+    } catch (err) {
+      console.warn('โฟลเดอร์ไฟล์แนบเดิมเปิดไม่ได้ จะสร้างใหม่: ' + err);
+    }
+  }
+
+  const folder = DriveApp.createFolder(ATTACHMENT.folderName);
+  props.setProperty('ATTACHMENT_FOLDER_ID', folder.getId());
+  console.log('สร้างโฟลเดอร์ไฟล์แนบใหม่: ' + folder.getId());
+  return folder;
+}
+
+/**
+ * รับไฟล์เป็น base64 จากเว็บ แล้วอัปโหลดขึ้น Drive คืนชื่อกับลิงก์
+ *
+ * คืน null เมื่อไม่มีไฟล์แนบมาด้วย — ไม่ใช่ error เพราะแนบไฟล์เป็นตัวเลือก
+ * แต่ถ้ามีไฟล์แล้วอัปโหลดไม่ผ่าน จะโยน error ให้การบันทึกทั้งก้อนล้มไปเลย
+ * ดีกว่าบันทึกคำตอบสำเร็จแต่อีเมลไม่มีไฟล์ที่ resident ตั้งใจส่ง โดยไม่มีใครรู้
+ */
+function uploadAdviceAttachment_(payload, referralId) {
+  const base64 = String(payload.fileBase64 || '');
+  if (!base64) return null;
+
+  const name = String(payload.fileName || 'attachment').trim();
+  const mimeType = String(payload.fileMimeType || '').trim();
+
+  if (ATTACHMENT.allowedMimeTypes.indexOf(mimeType) === -1) {
+    throw new Error('ชนิดไฟล์นี้แนบไม่ได้: ' + (mimeType || 'ไม่ทราบชนิด'));
+  }
+
+  const bytes = Utilities.base64Decode(base64);
+  if (bytes.length > ATTACHMENT.maxBytes) {
+    throw new Error(
+      'ไฟล์ใหญ่เกิน ' + Math.round(ATTACHMENT.maxBytes / 1024 / 1024) + ' MB'
+    );
+  }
+
+  // ใส่เลขที่อ้างอิงนำหน้า เพื่อให้เปิดโฟลเดอร์แล้วรู้ทันทีว่าไฟล์ไหนของเคสไหน
+  const blob = Utilities.newBlob(bytes, mimeType, referralId + ' — ' + name);
+  const file = attachmentFolder_().createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+  return { name: name, url: file.getUrl(), id: file.getId() };
+}
+
+/** บล็อกไฟล์แนบในอีเมล — ไม่มีไฟล์ก็ไม่ขึ้นอะไรเลย */
+function buildAttachmentBlock_(data) {
+  if (!data.fileUrl) return '';
+  return '--- ไฟล์แนบ ---\n' +
+    data.fileName + '\n' +
+    data.fileUrl + '\n' +
+    '(ลิงก์นี้ไม่ปรากฏในการค้นหา เปิดได้เฉพาะผู้ที่มีลิงก์)\n\n';
+}
+
 function saveAdvice_(payload) {
   const referralId = String(payload.referralId || '').trim();
   const advice = String(payload.advice || '').trim();
@@ -313,6 +381,10 @@ function saveAdvice_(payload) {
       );
     }
 
+    // อัปโหลดก่อนเขียนแถว — ถ้าไฟล์ขึ้นไม่ได้ ยังไม่มีอะไรถูกบันทึก
+    // resident กดใหม่ได้สะอาด ๆ ไม่ติดกับดัก "เคสนี้มีคำตอบอยู่แล้ว"
+    const attachment = uploadAdviceAttachment_(payload, referralId);
+
     // ช่องติดต่อกลับของผู้ตอบ — สร้างคอลัมน์ให้ก่อนถ้ายังไม่มี
     // ชีตนี้เกิดจาก Google Form คอลัมน์ที่โค้ดเพิ่มทีหลังจึงต้องสร้างเอง
     ensureColumns_(sheet, ADVICE_CONTACT_COLUMNS);
@@ -327,6 +399,10 @@ function saveAdvice_(payload) {
       String(payload.wardPhone || '').trim());
     setCell_(sheet, map2, match._row, 'advice_direct_phone',
       String(payload.directPhone || '').trim());
+    if (attachment) {
+      setCell_(sheet, map2, match._row, 'advice_file_name', attachment.name);
+      setCell_(sheet, map2, match._row, 'advice_file_url', attachment.url);
+    }
     if (TERMINAL_STATUSES.indexOf(status) !== -1) {
       setCell_(sheet, map2, match._row, 'closed_at', now);
     }
@@ -342,10 +418,17 @@ function saveAdvice_(payload) {
         wardPhone: String(payload.wardPhone || '').trim(),
         directPhone: String(payload.directPhone || '').trim(),
         question: String(match['clinical_question'] || '').trim(),
+        fileName: attachment ? attachment.name : '',
+        fileUrl: attachment ? attachment.url : '',
       });
     }
 
-    return { referralId: referralId, status: status, emailed: emailed };
+    return {
+      referralId: referralId,
+      status: status,
+      emailed: emailed,
+      fileUrl: attachment ? attachment.url : '',
+    };
   } finally {
     lock.releaseLock();
   }
@@ -358,6 +441,7 @@ function sendAdviceEmail_(email, data) {
     'เลขที่อ้างอิง: ' + data.referralId + '\n\n' +
     (data.question ? '--- คำถามของท่าน ---\n' + data.question + '\n\n' : '') +
     '--- คำตอบ ---\n' + data.advice + '\n\n' +
+    buildAttachmentBlock_(data) +
     buildAdviceContactBlock_(data) +
     'กรุณาอย่าส่งชื่อ-สกุล หรือเลข HN ของผู้ป่วยทางอีเมลนี้\n\n' +
     '--\n' +

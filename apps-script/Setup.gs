@@ -219,6 +219,31 @@ function showLineConfigStatus() {
 /**
  * ตรวจความพร้อมของระบบ รันได้ทุกเมื่อ ไม่แก้ไขข้อมูล
  */
+/**
+ * เตรียมโฟลเดอร์ไฟล์แนบ — ต้องรันครั้งเดียวหลังวาง Api.gs ที่มี DriveApp
+ *
+ * ⚠️ สำคัญกว่าการสร้างโฟลเดอร์คือ **การขออนุญาตเข้าถึง Drive**
+ *
+ * โค้ดเดิมไม่เคยแตะ Drive สคริปต์จึงยังไม่มีสิทธิ์นั้น พอ saveAdvice เรียก
+ * DriveApp ครั้งแรกผ่าน Web App มันจะล้มด้วย error เรื่องสิทธิ์ทันที
+ * และ Web App **ขึ้นหน้าต่างขออนุญาตไม่ได้** เพราะไม่มีคนนั่งอยู่หน้าจอ
+ *
+ * การกด Run ฟังก์ชันนี้จาก editor คือจังหวะเดียวที่ Google จะแสดงหน้าต่าง
+ * ให้กด Allow ได้ — ข้ามขั้นนี้แล้วการแนบไฟล์จะพังทุกครั้งโดยไม่มีทางแก้จากฝั่งเว็บ
+ */
+function setupAttachmentFolder() {
+  const folder = attachmentFolder_();
+
+  console.log('โฟลเดอร์ไฟล์แนบพร้อมใช้งาน');
+  console.log('  ชื่อ: ' + folder.getName());
+  console.log('  id:   ' + folder.getId());
+  console.log('  ลิงก์: ' + folder.getUrl());
+  console.log('');
+  console.log('เก็บ id ไว้ใน Script Properties → ATTACHMENT_FOLDER_ID แล้ว');
+  console.log('ไฟล์ในโฟลเดอร์นี้จะถูกทิ้งลงถังขยะอัตโนมัติเมื่อเคสครบ ' +
+    RETENTION_MONTHS + ' เดือน (ดู Retention.gs)');
+}
+
 function runSelfTest() {
   const problems = [];
 
@@ -271,6 +296,25 @@ function runSelfTest() {
           'ตรวจว่าคำถาม "อีเมล" ในฟอร์มติ๊ก Required แล้วหรือยัง'
         );
       }
+    }
+
+    // สิทธิ์ Drive — ถ้ายังไม่ได้ให้ การแนบไฟล์จะพังเงียบ ๆ ตอนใช้งานจริง
+    // ตรวจที่นี่เพราะเป็นอย่างเดียวที่ Web App แก้เองไม่ได้ ต้องมีคนกด Allow
+    try {
+      const folderId = PropertiesService.getScriptProperties()
+        .getProperty('ATTACHMENT_FOLDER_ID');
+      if (!folderId) {
+        problems.push(
+          'ยังไม่ได้เตรียมโฟลเดอร์ไฟล์แนบ — ให้ Run ฟังก์ชัน setupAttachmentFolder() ' +
+          'หนึ่งครั้งจาก editor เพื่อกด Allow ให้สิทธิ์ Drive ' +
+          '(ถ้าข้ามขั้นนี้ การแนบไฟล์ในคำตอบจะล้มทุกครั้ง)'
+        );
+      } else {
+        DriveApp.getFolderById(folderId); // โยน error ถ้าโฟลเดอร์หายหรือสิทธิ์หลุด
+      }
+    } catch (err) {
+      problems.push('โฟลเดอร์ไฟล์แนบมีปัญหา: ' + err +
+        ' — ให้ Run setupAttachmentFolder() ใหม่');
     }
 
     // ต้องไม่มีคอลัมน์ที่ระบุตัวตนเด็ดขาด

@@ -252,6 +252,8 @@ function ReviewCard({
                   hint="เปิดดูรายละเอียดขนาดยาและตารางการให้ หรือดาวน์โหลดไปพิมพ์"
                 />
 
+                <AttachmentField />
+
                 <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 space-y-3">
                   <div>
                     <p className="text-sm font-medium text-zinc-800">
@@ -361,7 +363,12 @@ function ReviewCard({
                   <span aria-hidden="true">⏳</span>
                   <span>
                     กำลังบันทึกลง Google Sheet และส่งอีเมลกลับแพทย์ต้นทาง —
-                    ใช้เวลาประมาณ 2–3 วินาที กรุณาอย่าปิดหน้านี้
+                    ใช้เวลาประมาณ 2–3 วินาที
+                    <strong className="font-semibold">
+                      {" "}
+                      หากแนบไฟล์ด้วยจะนานกว่านั้น ขึ้นกับขนาดไฟล์
+                    </strong>{" "}
+                    กรุณาอย่าปิดหน้านี้
                   </span>
                 </p>
               )}
@@ -369,6 +376,74 @@ function ReviewCard({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+const MAX_ATTACHMENT_MB = 10;
+
+/**
+ * ช่องแนบไฟล์ประกอบคำตอบ เช่น protocol chemotherapy
+ *
+ * ไฟล์ไม่ได้แนบไปกับอีเมลจริง แต่ขึ้น Google Drive ของหน่วยงานแล้วส่งลิงก์ไปแทน
+ * ทำให้ส่งไฟล์ใหญ่ได้โดยอีเมลไม่ตีกลับ (Gmail จำกัดไฟล์แนบ 25 MB)
+ *
+ * ⚠️ แลกมาด้วยการที่ไฟล์ถูกตั้งเป็น "ผู้ที่มีลิงก์ → ผู้อ่าน"
+ * คำเตือนเรื่องห้ามแนบเอกสารที่มีชื่อหรือ HN ผู้ป่วยจึงต้องเห็นตอนกำลังจะเลือกไฟล์
+ * ไม่ใช่ไปอยู่ในคู่มือที่ไม่มีใครเปิดตอนนั้น
+ */
+function AttachmentField() {
+  const [picked, setPicked] = useState<{ name: string; mb: string } | null>(
+    null,
+  );
+  const [tooBig, setTooBig] = useState(false);
+
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 space-y-2">
+      <div>
+        <p className="text-sm font-medium text-zinc-800">
+          แนบไฟล์ประกอบ (ไม่บังคับ)
+        </p>
+        <p className="text-xs text-zinc-500">
+          เช่น protocol chemotherapy — รับ PDF, JPG, PNG, DOC, DOCX, XLS, XLSX
+          ไม่เกิน {MAX_ATTACHMENT_MB} MB
+        </p>
+      </div>
+
+      <input
+        type="file"
+        name="attachment"
+        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (!f) {
+            setPicked(null);
+            setTooBig(false);
+            return;
+          }
+          setPicked({ name: f.name, mb: (f.size / 1024 / 1024).toFixed(1) });
+          setTooBig(f.size > MAX_ATTACHMENT_MB * 1024 * 1024);
+        }}
+        className="block w-full text-sm text-zinc-700 file:mr-3 file:rounded-lg file:border file:border-zinc-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-zinc-700 hover:file:bg-zinc-100"
+      />
+
+      {picked && (
+        <p
+          className={`text-xs ${tooBig ? "text-red-700 font-medium" : "text-zinc-600"}`}
+        >
+          {tooBig ? "⚠️ " : "📎 "}
+          {picked.name} · {picked.mb} MB
+          {tooBig && ` — เกินเพดาน ${MAX_ATTACHMENT_MB} MB บันทึกไม่ได้`}
+        </p>
+      )}
+
+      <p className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-900">
+        <span className="font-semibold">
+          🔒 ห้ามแนบเอกสารที่มีชื่อ-สกุล เลข HN หรือเลขบัตรประชาชนของผู้ป่วย
+        </span>{" "}
+        — ไฟล์จะถูกอัปโหลดขึ้น Google Drive
+        และตั้งให้เปิดได้ด้วยลิงก์เพื่อให้แพทย์ต้นทางที่ไม่มีบัญชีของหน่วยงานเปิดได้
+      </p>
     </div>
   );
 }

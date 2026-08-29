@@ -76,6 +76,16 @@ export interface AdviceInput {
   wardPhone: string;
   /** เบอร์ตรงของผู้ตอบ — ไม่บังคับ บางคนไม่สะดวกให้ */
   directPhone: string;
+  /** ชื่อไฟล์แนบ — ว่าง = ไม่ได้แนบไฟล์ */
+  fileName: string;
+  fileMimeType: string;
+  /**
+   * ไฟล์แนบเป็น base64
+   *
+   * ส่งเป็น base64 เพราะ Apps Script รับได้แต่ JSON ทาง doPost
+   * ทำให้ payload ใหญ่ขึ้นราวหนึ่งในสาม — เผื่อไว้แล้วใน bodySizeLimit
+   */
+  fileBase64: string;
 }
 
 export interface AdviceResult {
@@ -83,6 +93,8 @@ export interface AdviceResult {
   status: string;
   /** false = เคสไม่มีอีเมลผู้ส่ง หรือส่งไม่สำเร็จ ต้องแจ้งกลับเอง */
   emailed: boolean;
+  /** ลิงก์ Drive ของไฟล์ที่แนบไป — ว่างเมื่อไม่ได้แนบ */
+  fileUrl: string;
 }
 
 export async function saveAdvice(payload: AdviceInput): Promise<AdviceResult> {
