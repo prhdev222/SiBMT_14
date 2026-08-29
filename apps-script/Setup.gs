@@ -306,7 +306,9 @@ function addColumnNotes() {
         console.warn('ข้ามคอลัมน์ ' + sheetName + '.' + column + ' — ไม่พบหัวตาราง');
         return;
       }
-      sheet.getRange(1, map[column]).setNote(NOTES[sheetName][column]);
+      // headerMap_() คืนดัชนีเริ่มที่ 0 ส่วน getRange() นับคอลัมน์เริ่มที่ 1
+      // ต้องบวกหนึ่งเหมือนที่ setCell_() ทำ ไม่งั้นคอลัมน์แรกจะกลายเป็น 0 แล้วโยน error
+      sheet.getRange(1, map[column] + 1).setNote(NOTES[sheetName][column]);
       added++;
     });
   });
