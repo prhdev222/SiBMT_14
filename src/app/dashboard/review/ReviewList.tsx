@@ -100,6 +100,15 @@ function ReviewCard({
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<Status>("Advice Sent");
   const [adviceLength, setAdviceLength] = useState(0);
+  /**
+   * สูตรยาที่หยิบจากคลัง — เก็บแยกจากเนื้อคำตอบเพื่อให้นับสถิติได้ภายหลัง
+   *
+   * ⚠️ บันทึกเฉพาะสูตรที่ "เลือกจากคลัง" ไม่ใช่ทุกสูตรที่ปรากฏในคำตอบ
+   * resident ที่พิมพ์ชื่อสูตรเองจะไม่ถูกนับ — ตั้งใจไม่ไปแกะจากข้อความอิสระ
+   * เพราะสูตรเดียวกันสะกดได้หลายแบบ แล้วสถิติที่ได้จะเชื่อถือไม่ได้
+   * ตัวเลขที่นับได้น้อยแต่ถูกต้อง ดีกว่าตัวเลขที่ครบแต่ผิด
+   */
+  const [pickedRegimens, setPickedRegimens] = useState<string[]>([]);
   const adviceRef = useRef<HTMLTextAreaElement>(null);
 
   const alert = alertLevelFor(item.elapsedBusinessHours, item.status);
@@ -219,6 +228,11 @@ function ReviewCard({
             <form action={formAction} className="space-y-3">
               {/* อยู่นอก fieldset เพราะช่องที่ถูก disabled จะไม่ถูกส่งไปกับฟอร์ม */}
               <input type="hidden" name="referralId" value={item.referralId} />
+              <input
+                type="hidden"
+                name="regimens"
+                value={pickedRegimens.join(", ")}
+              />
 
               {/*
                 ล็อกช่องกรอกระหว่างรอบันทึก — การบันทึกใช้เวลา 2-3 วินาที
@@ -261,7 +275,11 @@ function ReviewCard({
 
                 <RegimenPicker
                   regimens={regimens}
-                  onInsert={(snippet) => {
+                  onInsert={(snippet, abbr) => {
+                    setPickedRegimens((prev) =>
+                      prev.includes(abbr) ? prev : [...prev, abbr],
+                    );
+
                     const el = adviceRef.current;
                     if (!el) return;
 
@@ -274,6 +292,8 @@ function ReviewCard({
                       el.value.slice(0, start) + snippet + el.value.slice(end);
                     el.focus();
                     el.selectionStart = el.selectionEnd = start + snippet.length;
+                    // onChange ไม่ยิงเมื่อโค้ดเป็นคนเขียนค่า ต้องอัปเดตตัวนับเอง
+                    setAdviceLength(el.value.length);
                   }}
                 />
 
@@ -657,7 +677,8 @@ function RegimenPicker({
   onInsert,
 }: {
   regimens: ChemoRegimen[];
-  onInsert: (snippet: string) => void;
+  /** snippet = ข้อความที่แทรก, abbr = รหัสย่อสำหรับเก็บสถิติ */
+  onInsert: (snippet: string, abbr: string) => void;
 }) {
   const [group, setGroup] = useState("");
   const [abbr, setAbbr] = useState("");
@@ -732,7 +753,9 @@ function RegimenPicker({
 
       <button
         type="button"
-        onClick={() => chosen && onInsert(`${chosen.abbr} (${chosen.components})`)}
+        onClick={() =>
+          chosen && onInsert(`${chosen.abbr} (${chosen.components})`, chosen.abbr)
+        }
         disabled={!chosen}
         className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-800 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >

@@ -116,8 +116,33 @@ function sweepOldAttachments() {
     trashed + ' ไฟล์');
 }
 
+/**
+ * เขียนหัวตารางคลังให้ตรงกับ ADVICE_LIBRARY_COLUMNS
+ *
+ * ⚠️ ห้ามเขียนทับเมื่อคลังมีข้อมูลอยู่แล้วและหัวตารางไม่ตรง
+ *
+ * เดิมโค้ดนี้เขียนทับทันทีที่จำนวนคอลัมน์น้อยกว่าที่คาด ซึ่งจะทำให้แถวเก่า
+ * ที่เก็บ treatment_summary ไว้คอลัมน์ 8 ถูกอ่านเป็น comorbidity หลังเพิ่ม
+ * คอลัมน์ใหม่ตรงกลาง — ข้อมูลไม่หาย แต่ผิดความหมายทั้งคลังโดยไม่มีอะไรฟ้อง
+ *
+ * คลังว่างจึงเขียนได้ตามสบาย มีข้อมูลแล้วต้องให้คนตัดสินใจย้ายเอง
+ */
 function ensureLibraryHeader_(library) {
-  if (library.getLastRow() >= 1 && library.getLastColumn() >= ADVICE_LIBRARY_COLUMNS.length) return;
+  const width = library.getLastColumn();
+  const hasRows = library.getLastRow() > 1;
+
+  if (width >= ADVICE_LIBRARY_COLUMNS.length) return;
+
+  if (hasRows) {
+    throw new Error(
+      'ชีต ' + SHEETS.adviceLibrary + ' มีข้อมูล ' + (library.getLastRow() - 1) +
+      ' แถว แต่หัวตารางมี ' + width + ' คอลัมน์ ซึ่งน้อยกว่าที่โค้ดคาด (' +
+      ADVICE_LIBRARY_COLUMNS.length + ')\n\n' +
+      'เขียนหัวตารางทับตอนนี้จะทำให้ค่าของแถวเดิมเลื่อนคอลัมน์และผิดความหมาย\n' +
+      'ให้เพิ่มคอลัมน์ที่ขาดต่อท้ายด้วยมือ แล้วย้ายค่าให้ตรงก่อน จึงรันใหม่'
+    );
+  }
+
   library
     .getRange(1, 1, 1, ADVICE_LIBRARY_COLUMNS.length)
     .setValues([ADVICE_LIBRARY_COLUMNS]);
@@ -128,6 +153,8 @@ function ensureLibraryHeader_(library) {
  *
  * ที่ต้องถอด: referral_id, ชื่อ/เบอร์/โรงพยาบาลผู้ส่ง, วันที่แบบเต็ม, เอกสารแนบ
  * ที่แปลง:    อายุจริง → ช่วงอายุ, วันที่ → เหลือเฉพาะปี
+ * ที่เก็บต่อ:  โรคร่วม สิทธิการรักษา และสูตรยาที่เลือก — ไม่ระบุตัวผู้ป่วย
+ *             แต่เป็นสิ่งเดียวที่อธิบายได้ว่าทำไมเคสนั้นถึงถูกตอบแบบนั้น
  */
 function buildAnonymizedRow_(r) {
   const submittedAt = toDate_(r['submitted_at'] || r['Timestamp']);
@@ -141,9 +168,12 @@ function buildAnonymizedRow_(r) {
     patient_sex: r['patient_sex'] || '',
     diagnosis: r['diagnosis'] || '',
     stage: r['stage'] || '',
+    comorbidity: r['comorbidity'] || '',
+    insurance_scheme: r['insurance_scheme'] || '',
     treatment_summary: r['treatment_summary'] || '',
     clinical_question: r['clinical_question'] || '',
     advice_record: r['advice_record'] || '',
+    advice_regimens: r['advice_regimens'] || '',
   };
 
   return ADVICE_LIBRARY_COLUMNS.map(function (c) { return values[c]; });

@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-08-30 answerLink';
+const API_VERSION = '2026-08-30 regimenStats';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -138,6 +138,9 @@ const ADVICE_CONTACT_COLUMNS = [
   'advice_by', 'advice_ward_phone', 'advice_direct_phone',
   'advice_file_name', 'advice_file_url',
   'advice_attending', 'advice_approved_at',
+  // สูตรยาที่เลือกจากคลัง คั่นด้วยจุลภาค — เก็บแยกจากเนื้อคำตอบเพื่อให้นับสถิติได้
+  // โดยไม่ต้องแกะข้อความอิสระ ซึ่งสะกดสูตรเดียวกันได้หลายแบบ
+  'advice_regimens',
   'appointment_date', 'appointment_note',
   // ลิงก์เปิดคำตอบบนเว็บ ใช้กลไกเดียวกับ manage_token ของกลุ่ม 1
   // เนื้อคำตอบจึงไม่ต้องอยู่ใน LINE ซึ่ง PDPA-003 ห้ามไว้
@@ -447,6 +450,8 @@ function saveAdvice_(payload) {
       String(payload.wardPhone || '').trim());
     setCell_(sheet, map2, match._row, 'advice_direct_phone',
       String(payload.directPhone || '').trim());
+    setCell_(sheet, map2, match._row, 'advice_regimens',
+      String(payload.regimens || '').trim());
     if (attachment) {
       setCell_(sheet, map2, match._row, 'advice_file_name', attachment.name);
       setCell_(sheet, map2, match._row, 'advice_file_url', attachment.url);

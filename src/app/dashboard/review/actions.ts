@@ -75,6 +75,7 @@ export async function saveAdviceAction(
   const visitDate = String(formData.get("visitDate") ?? "").trim();
   const visitTime = String(formData.get("visitTime") ?? "").trim();
   const visitDoctor = String(formData.get("visitDoctor") ?? "").trim();
+  const regimens = String(formData.get("regimens") ?? "").trim();
 
   if (!referralId) return { ok: false, message: "ไม่พบเลขที่อ้างอิงของเคส" };
   if (!advice) return { ok: false, message: "กรุณาพิมพ์คำตอบก่อนบันทึก" };
@@ -166,6 +167,7 @@ export async function saveAdviceAction(
       fileMimeType,
       fileBase64,
       attending,
+      regimens,
       // ส่งเฉพาะเมื่อเลือกสถานะนัดตรวจ — สถานะอื่นกรอกช่องนี้ไว้ก็ไม่นับ
       visitDate: status === "Readiness Visit Scheduled" ? visitDate : "",
       visitTime: status === "Readiness Visit Scheduled" ? visitTime : "",
