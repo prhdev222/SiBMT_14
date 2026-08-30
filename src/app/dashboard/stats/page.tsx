@@ -1,17 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { loadReferrals } from "@/lib/referral-repository";
-import { buildStatistics } from "@/lib/statistics";
 import { requireSession } from "@/lib/session";
 import { SessionBar } from "@/components/SessionBar";
-import {
-  REFERRAL_TYPE_META,
-  STATUS_LABEL_TH,
-  isTerminal,
-  type Referral,
-} from "@/lib/referral-types";
-import { questionTypeLabel } from "@/lib/question-types";
-import { StatsClient, type ExportRow } from "./StatsClient";
+import { StatsClient } from "./StatsClient";
 
 export const dynamic = "force-dynamic";
 
@@ -20,87 +12,27 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/**
- * แปลงเคสเป็นแถวสำหรับไฟล์ CSV
- *
- * ⚠️ ไม่มีคอลัมน์ชื่อหรือ HN ผู้ป่วย เพราะระบบไม่เคยเก็บ
- * แต่มีเบอร์และชื่อแพทย์ต้นทาง ซึ่งเป็นข้อมูลส่วนบุคคลของบุคลากร
- * หน้าเว็บจึงเตือนว่าไฟล์ที่โหลดไปต้องเก็บในเครื่องของหน่วยงาน
- */
-function toExportRow(r: Referral): ExportRow {
-  return {
-    referralId: r.referralId,
-    submittedAt: r.submittedAt,
-    groupNumber: REFERRAL_TYPE_META[r.referralType].groupNumber,
-    status: STATUS_LABEL_TH[r.status],
-    diseaseGroup: r.diseaseGroup ?? "",
-    diagnosis: r.diagnosis,
-    stage: r.stage,
-    insuranceScheme: r.insuranceScheme,
-    comorbidity: r.comorbidity,
-    clinicalQuestion: r.clinicalQuestion,
-    questionType: questionTypeLabel(r.questionType),
-    adviceRecord: r.adviceRecord,
-    adviceRegimens: r.adviceRegimens,
-    answeredBy: r.answeredBy,
-    attending: r.adviceAttending,
-    elapsedBusinessHours: r.elapsedBusinessHours,
-    referrerOrg: r.referrerOrg,
-    referrerPhone: r.referrerPhone,
-    appointmentDate: r.appointmentDate ?? "",
-    fellowAssigned: r.fellowAssigned ?? "",
-  };
-}
-
 /** ช่วงที่ resident วางแผนงานล่วงหน้า — ตรงกับรอบขึ้นวอร์ดสองสัปดาห์ */
 const QUEUE_WEEKS = 2;
 
+/**
+ * สถิติและรายงาน
+ *
+ * ⚠️ ส่งเคสทั้งชุดไปให้ฝั่งเบราว์เซอร์คิดเอง ไม่ได้สรุปมาจากเซิร์ฟเวอร์
+ *
+ * เพราะช่วงวันที่เป็นตัวกรองที่ผู้ใช้ปรับไปมาระหว่างทำรายงาน ถ้าคิดที่เซิร์ฟเวอร์
+ * ต้องโหลดหน้าใหม่ทุกครั้งที่ขยับวันที่ ซึ่งแต่ละครั้งคืออ่านทั้งชีตใหม่หมด
+ * ข้อมูลที่ส่งไปเป็นชุดเดียวกับที่ไฟล์ CSV มีอยู่แล้ว จึงไม่ได้เปิดอะไรเพิ่ม
+ */
 export default async function StatsPage() {
   const session = await requireSession("/dashboard/stats");
   const { referrals, isSampleData } = await loadReferrals();
 
-  const stats = buildStatistics(referrals);
-
-  const todayIso = toIso(new Date());
+  // คิดวันที่ที่เซิร์ฟเวอร์แล้วส่งไปเป็นค่าคงที่ ไม่ให้ฝั่งเบราว์เซอร์เรียก
+  // new Date() เอง — ค่าที่ต่างกันตอน render กับตอน hydrate ทำให้ React เตือน
+  // และตัวเลขกระพริบเปลี่ยนต่อหน้าผู้ใช้
   const horizon = new Date();
   horizon.setDate(horizon.getDate() + QUEUE_WEEKS * 7);
-  const horizonIso = toIso(horizon);
-
-  /**
-   * คิวที่ resident ต้องตอบ
-   *
-   * ไม่กรองด้วยวันที่ส่งเข้ามา แต่เอา "ทุกเคสที่ยังไม่จบ" เพราะเคสที่ค้าง
-   * มาสามสัปดาห์ยิ่งต้องอยู่ในรายการที่พิมพ์ไปดู ไม่ใช่ตกหล่นเพราะเก่าเกินช่วง
-   */
-  const dueTwoWeeks = referrals
-    .filter(
-      (r) =>
-        (r.referralType === "REGIMEN_CONSULT" ||
-          r.referralType === "CHEMO_ADMISSION") &&
-        !isTerminal(r.status),
-    )
-    .sort((a, b) => b.elapsedBusinessHours - a.elapsedBusinessHours)
-    .map(toExportRow);
-
-  /** นัดของ fellow ในสองสัปดาห์ข้างหน้า — ใช้เตรียมตัวก่อนออกตรวจ */
-  const fellowAppointments = referrals
-    .filter(
-      (r) =>
-        r.referralType === "TRANSPLANT_APPOINTMENT" &&
-        r.status === "Appointment Confirmed" &&
-        r.appointmentDate &&
-        r.appointmentDate >= todayIso &&
-        r.appointmentDate <= horizonIso,
-    )
-    .sort((a, b) =>
-      (a.appointmentDate ?? "").localeCompare(b.appointmentDate ?? ""),
-    )
-    .map(toExportRow);
-
-  const answered = referrals
-    .filter((r) => r.adviceRecord.trim().length > 0)
-    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
-    .map(toExportRow);
 
   return (
     <div className="flex flex-col flex-1 bg-zinc-50">
@@ -140,11 +72,9 @@ export default async function StatsPage() {
         )}
 
         <StatsClient
-          stats={stats}
-          all={referrals.map(toExportRow)}
-          dueTwoWeeks={dueTwoWeeks}
-          fellowAppointments={fellowAppointments}
-          answered={answered}
+          referrals={referrals}
+          todayIso={toIso(new Date())}
+          horizonIso={toIso(horizon)}
         />
 
         <p className="text-xs text-zinc-500 pt-2">
