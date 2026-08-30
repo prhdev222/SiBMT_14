@@ -99,6 +99,7 @@ function ReviewCard({
   );
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<Status>("Advice Sent");
+  const [adviceLength, setAdviceLength] = useState(0);
   const adviceRef = useRef<HTMLTextAreaElement>(null);
 
   const alert = alertLevelFor(item.elapsedBusinessHours, item.status);
@@ -237,12 +238,25 @@ function ReviewCard({
                     name="advice"
                     required
                     rows={6}
+                    maxLength={MAX_ADVICE_CHARS}
+                    onChange={(e) => setAdviceLength(e.target.value.length)}
                     placeholder="เช่น แนะนำให้ R-CHOP ครบ 6 cycles ก่อน แล้วประเมินซ้ำด้วย PET-CT หากยังมี residual disease จึงส่งปรึกษาการปลูกถ่าย"
                     className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 leading-relaxed"
                   />
                   <span className="block text-xs text-zinc-500 mt-1">
                     ข้อความนี้จะถูกส่งอีเมลกลับแพทย์ต้นทางตามที่กรอกไว้
                   </span>
+                  {/*
+                    โผล่เฉพาะตอนใกล้เพดาน — ตัวนับที่ขึ้นตลอดเวลาเป็นเสียงรบกวน
+                    สำหรับคำตอบทั่วไปที่ยาวไม่ถึงหนึ่งในห้าของเพดาน
+                  */}
+                  {adviceLength > MAX_ADVICE_CHARS * 0.7 && (
+                    <span className="block text-xs text-amber-700 mt-1">
+                      {adviceLength.toLocaleString()} /{" "}
+                      {MAX_ADVICE_CHARS.toLocaleString()} ตัวอักษร —
+                      ถ้าเป็นเนื้อหา protocol ยาว ๆ แนบเป็นไฟล์จะอ่านง่ายกว่า
+                    </span>
+                  )}
                 </label>
 
                 <RegimenPicker
@@ -553,6 +567,18 @@ function OpdVisitFields() {
 }
 
 const MAX_ATTACHMENT_MB = 10;
+
+/**
+ * เพดานความยาวคำตอบ
+ *
+ * ไม่ได้ตั้งเพราะกลัวคำตอบที่เขียนยาว — Google Sheets รับได้ 50,000 ตัวอักษร
+ * ต่อช่อง คำตอบที่ละเอียดมากยังใช้ไม่ถึงหนึ่งในสิบของเพดานนั้น
+ *
+ * ตั้งเพื่อกันการเผลอวางทั้ง protocol ลงในช่องนี้ ซึ่งเป็นหมื่นตัวอักษร
+ * และควรไปเป็นไฟล์แนบมากกว่า — ทั้งชีตถูกอ่านใหม่ทุกครั้งที่เปิดหน้า
+ * ข้อความก้อนใหญ่ก้อนเดียวจึงถ่วงทุกหน้าไปด้วย ไม่ใช่แค่เคสของตัวเอง
+ */
+const MAX_ADVICE_CHARS = 5000;
 
 /**
  * ช่องแนบไฟล์ประกอบคำตอบ เช่น protocol chemotherapy

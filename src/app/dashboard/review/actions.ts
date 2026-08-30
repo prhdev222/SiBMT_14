@@ -37,6 +37,9 @@ const ALLOWED_ATTACHMENT_TYPES: Record<string, string> = {
 
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 
+/** ต้องตรงกับ MAX_ADVICE_CHARS ใน ReviewList.tsx — ดูเหตุผลที่นั่น */
+const MAX_ADVICE_CHARS = 5000;
+
 /**
  * แปลงไฟล์เป็น base64
  *
@@ -75,6 +78,13 @@ export async function saveAdviceAction(
 
   if (!referralId) return { ok: false, message: "ไม่พบเลขที่อ้างอิงของเคส" };
   if (!advice) return { ok: false, message: "กรุณาพิมพ์คำตอบก่อนบันทึก" };
+  // maxLength ในฟอร์มปิดได้ด้วย devtools และค่านี้ไปลงชีตที่ทุกหน้าอ่านร่วมกัน
+  if (advice.length > MAX_ADVICE_CHARS) {
+    return {
+      ok: false,
+      message: `คำตอบยาว ${advice.length.toLocaleString()} ตัวอักษร เกิน ${MAX_ADVICE_CHARS.toLocaleString()} — หากเป็นเนื้อหา protocol กรุณาแนบเป็นไฟล์แทน`,
+    };
+  }
   if (!answeredBy) return { ok: false, message: "กรุณากรอกชื่อผู้ตอบ" };
   // เบอร์วอร์ดบังคับ เพราะเป็นเบอร์เดียวที่รับประกันว่ามีคนรับสาย
   // resident ติดเรียนได้ตลอด แต่พยาบาลที่วอร์ดรับเรื่องไว้ให้ได้เสมอ
