@@ -85,7 +85,7 @@ export function CategoryBars({
 
       {data.length > shown.length && (
         <p className="text-xs text-zinc-500 mt-2">
-          และอีก {data.length - shown.length} รายการ — ดูครบในไฟล์ CSV
+          และอีก {data.length - shown.length} รายการ — กดปุ่มขยายเพื่อดูครบ
         </p>
       )}
     </div>

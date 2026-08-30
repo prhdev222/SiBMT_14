@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { downloadCsv, fileStamp, toCsv } from "@/lib/csv";
-import { CategoryBars } from "@/components/charts/CategoryBars";
+import { ChartCard } from "@/components/charts/ChartCard";
 
 export interface AnsweredCase {
   referralId: string;
@@ -251,49 +251,35 @@ function Analysis({ cases }: { cases: AnsweredCase[] }) {
       </button>
 
       {open && (
-        <div className="px-4 pb-4 grid gap-4 sm:grid-cols-2">
-          <Panel title="แยกตามกลุ่มงาน">
-            <CategoryBars data={summary.byGroup} max={cases.length} />
-          </Panel>
-          <Panel title="ประเภทคำถาม">
-            <CategoryBars
-              data={summary.byQuestionType}
-              emptyText="ยังไม่มีเคสที่บันทึกประเภทคำถาม"
-            />
-          </Panel>
-          <Panel title="กลุ่มโรค">
-            <CategoryBars data={summary.byDisease} />
-          </Panel>
-          <Panel title="สูตรยาที่แนะนำบ่อย">
-            <CategoryBars
-              data={summary.byRegimen}
-              emptyText="ยังไม่มีเคสที่เลือกสูตรยาจากคลัง"
-            />
-          </Panel>
-          <Panel title="สิทธิการรักษา">
-            <CategoryBars
-              data={summary.byInsurance}
-              emptyText="ยังไม่มีเคสที่ระบุสิทธิ"
-            />
-          </Panel>
+        <div className="px-4 pb-4 grid gap-3 sm:grid-cols-2">
+          <ChartCard
+            dense
+            title="แยกตามกลุ่มงาน"
+            data={summary.byGroup}
+            max={cases.length}
+          />
+          <ChartCard
+            dense
+            title="ประเภทคำถาม"
+            data={summary.byQuestionType}
+            emptyText="ยังไม่มีเคสที่บันทึกประเภทคำถาม"
+          />
+          <ChartCard dense title="กลุ่มโรค" data={summary.byDisease} />
+          <ChartCard
+            dense
+            title="สูตรยาที่แนะนำบ่อย"
+            data={summary.byRegimen}
+            emptyText="ยังไม่มีเคสที่เลือกสูตรยาจากคลัง"
+          />
+          <ChartCard
+            dense
+            title="สิทธิการรักษา"
+            data={summary.byInsurance}
+            emptyText="ยังไม่มีเคสที่ระบุสิทธิ"
+          />
         </div>
       )}
     </section>
-  );
-}
-
-function Panel({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-lg border border-zinc-200 p-3">
-      <h3 className="text-xs font-medium text-zinc-500 mb-2">{title}</h3>
-      {children}
-    </div>
   );
 }
 

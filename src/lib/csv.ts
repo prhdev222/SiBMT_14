@@ -4,6 +4,8 @@
  * ⚠️ client-only — ใช้ Blob กับ URL.createObjectURL
  */
 
+import { saveBlob } from "./download";
+
 /**
  * แปลงตารางเป็นข้อความ CSV
  *
@@ -32,12 +34,7 @@ export function downloadCsv(filename: string, csv: string): void {
   const blob = new Blob(["﻿" + csv], {
     type: "text/csv;charset=utf-8;",
   });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename.endsWith(".csv") ? filename : `${filename}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  saveBlob(filename.endsWith(".csv") ? filename : `${filename}.csv`, blob);
 }
 
 /** วันที่แบบ yyyy-MM-dd สำหรับต่อท้ายชื่อไฟล์ — เรียงตามเวลาได้เมื่อเก็บหลายไฟล์ */

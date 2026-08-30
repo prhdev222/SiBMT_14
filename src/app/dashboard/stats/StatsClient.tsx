@@ -3,8 +3,7 @@
 import { downloadCsv, fileStamp, toCsv } from "@/lib/csv";
 import type { CountRow, Statistics } from "@/lib/statistics";
 import { businessDaysText } from "@/lib/referral-types";
-import { CategoryBars } from "@/components/charts/CategoryBars";
-import { MonthlyBars } from "@/components/charts/MonthlyBars";
+import { ChartCard } from "@/components/charts/ChartCard";
 
 export interface ExportRow {
   referralId: string;
@@ -134,9 +133,11 @@ export function StatsClient({
         </p>
       </section>
 
-      <Card title="จำนวนเคสที่ส่งเข้ามาแต่ละเดือน">
-        <MonthlyBars data={stats.byMonth} />
-      </Card>
+      <ChartCard
+        title="จำนวนเคสที่ส่งเข้ามาแต่ละเดือน"
+        kind="monthly"
+        data={stats.byMonth}
+      />
 
       {/*
         กลุ่มงานเป็นตัวตนถาวร สีจึงผูกกับเลขกลุ่ม ไม่ใช่อันดับ —
@@ -146,39 +147,31 @@ export function StatsClient({
         อยู่นอกตารางสองคอลัมน์เพราะเป็นคำถามที่หน้านี้ตอบตรงที่สุด —
         "ที่ปรึกษาเข้ามาถามเรื่องอะไร" ซึ่งเป็นคนละเรื่องกับ "เป็นโรคอะไร"
       */}
-      <Card title="ประเภทคำถามที่ปรึกษาเข้ามา">
-        <CategoryBars
-          data={stats.byQuestionType}
-          emptyText="ยังไม่มีเคสที่บันทึกประเภทคำถาม — เคสที่ตอบก่อนมีช่องนี้จะไม่มีค่าย้อนหลัง"
-        />
-      </Card>
+      <ChartCard
+        title="ประเภทคำถามที่ปรึกษาเข้ามา"
+        data={stats.byQuestionType}
+        emptyText="ยังไม่มีเคสที่บันทึกประเภทคำถาม — เคสที่ตอบก่อนมีช่องนี้จะไม่มีค่าย้อนหลัง"
+      />
 
-      <Card title="แยกตามกลุ่มงาน">
-        <CategoryBars
-          data={stats.byType.map((r, i) => ({ ...r, seriesIndex: i }))}
-          max={stats.total}
-        />
-      </Card>
+      <ChartCard
+        title="แยกตามกลุ่มงาน"
+        data={stats.byType.map((r, i) => ({ ...r, seriesIndex: i }))}
+        max={stats.total}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card title="แยกตามสถานะ">
-          <CategoryBars data={stats.byStatus} />
-        </Card>
-        <Card title="กลุ่มโรค">
-          <CategoryBars data={stats.byDiseaseGroup} />
-        </Card>
-        <Card title="สิทธิการรักษา">
-          <CategoryBars
-            data={stats.byInsurance}
-            emptyText="ยังไม่มีเคสที่ระบุสิทธิ — ฟอร์มเพิ่งเริ่มถามคำถามนี้"
-          />
-        </Card>
-        <Card title="สูตรยาที่เลือกบ่อย">
-          <CategoryBars
-            data={stats.byRegimen}
-            emptyText="ยังไม่มีเคสที่เลือกสูตรยาจากคลัง"
-          />
-        </Card>
+        <ChartCard title="แยกตามสถานะ" data={stats.byStatus} />
+        <ChartCard title="กลุ่มโรค" data={stats.byDiseaseGroup} />
+        <ChartCard
+          title="สิทธิการรักษา"
+          data={stats.byInsurance}
+          emptyText="ยังไม่มีเคสที่ระบุสิทธิ — ฟอร์มเพิ่งเริ่มถามคำถามนี้"
+        />
+        <ChartCard
+          title="สูตรยาที่เลือกบ่อย"
+          data={stats.byRegimen}
+          emptyText="ยังไม่มีเคสที่เลือกสูตรยาจากคลัง"
+        />
       </div>
     </div>
   );
@@ -221,24 +214,5 @@ function Download({ onClick, label }: { onClick: () => void; label: string }) {
     >
       ⬇ {label}
     </button>
-  );
-}
-
-function Card({
-  title,
-  note,
-  children,
-}: {
-  title: string;
-  /** คำอธิบายใต้กราฟ — ใช้เมื่อตัวเลขอาจถูกอ่านผิดถ้าไม่มีบริบท */
-  note?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-xl bg-white border border-zinc-200 p-4">
-      <h2 className="font-semibold text-zinc-900 text-sm mb-3">{title}</h2>
-      {children}
-      {note && <p className="text-xs text-zinc-500 mt-3">ⓘ {note}</p>}
-    </section>
   );
 }
