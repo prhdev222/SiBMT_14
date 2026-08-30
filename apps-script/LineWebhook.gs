@@ -134,6 +134,18 @@ const LINE_ADMIN_PREFIX_BARE = /^(admin|แอดมิน)[\s:：,-]*$/i;
  */
 const LINE_BUTTON_UNSURE = 'ไม่แน่ใจว่าเข้ากลุ่มไหน';
 const LINE_BUTTON_CONTACT = 'ติดต่อเจ้าหน้าที่';
+const LINE_BUTTON_MYCASES = 'เคสของฉัน';
+
+/**
+ * ค้นเคสด้วยเบอร์โทรได้กี่ครั้งต่อชั่วโมง
+ *
+ * ต่ำกว่าการค้นด้วยรหัสอ้างอิงมาก เพราะเบอร์โทรเดาง่ายกว่ารหัสหลายเท่า
+ * — รหัสมาจากอีเมลเท่านั้น ส่วนเบอร์หมออยู่บนใบ refer และทำเนียบโรงพยาบาล
+ */
+const LINE_PHONE_LOOKUP_LIMIT_PER_HOUR = 5;
+
+/** สั่งส่งคำตอบซ้ำ เช่น "ส่งซ้ำ 2" */
+const LINE_RESEND_PATTERN = /^ส่งซ้ำ\s*(\d{1,2})$/;
 
 /** พิมพ์คำใดคำหนึ่งนี้เพื่อออกจากโฟลว์ที่ค้างอยู่ */
 const LINE_CANCEL_WORDS = ['ยกเลิก', 'เลิก', 'cancel'];
@@ -227,6 +239,11 @@ function handleLineEvent_(event) {
 
   if (matchesButton_(text, LINE_BUTTON_CONTACT)) {
     startContactFlow_(event, id);
+    return;
+  }
+
+  if (matchesButton_(text, LINE_BUTTON_MYCASES)) {
+    startMyCasesFlow_(event, id);
     return;
   }
 
@@ -436,6 +453,168 @@ function buildUnsureGroupReply_() {
 }
 
 /* ------------------------------------------------------------------ */
+/* โฟลว์ "เคสของฉัน" — ค้นด้วยเบอร์โทร แล้วขอให้ส่งคำตอบซ้ำทางอีเมล        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * ⚠️ เบอร์โทรอย่างเดียวเปิดได้แค่ "รายการ" ไม่เปิดคำตอบ
+ *
+ * เบอร์แพทย์ต้นทางอยู่บนใบ refer และทำเนียบโรงพยาบาล ใครก็หาได้
+ * ถ้าพิมพ์เบอร์แล้วอ่านคำตอบทางคลินิกได้เลย เท่ากับใครที่รู้เบอร์หมอคนหนึ่ง
+ * ก็อ่านคำปรึกษาทุกเคสของเขาได้ — ต่างจากรหัส HEM-… ที่มาจากอีเมลเท่านั้น
+ *
+ * สิ่งที่ทำได้คือสั่งให้ "ส่งคำตอบซ้ำไปที่อีเมลเดิมของเคส" ซึ่งปลอดภัยเสมอ
+ * เพราะปลายทางไม่ได้มาจากคนที่กด แต่มาจากที่ลงทะเบียนไว้ในแถวนั้น
+ */
+function startMyCasesFlow_(event, userId) {
+  writeContactFlow_(userId, { step: 'myCasesPhone' });
+
+  replyLineMessage_(event.replyToken, [withQuickReply_(
+    { type: 'text', text:
+      'พิมพ์เบอร์โทรที่ใช้ตอนส่งเคสเข้ามาครับ\n\n' +
+      'ระบบจะแสดงรายการเคสของเบอร์นั้น และส่งคำตอบซ้ำไปที่อีเมลเดิมให้ได้\n\n' +
+      '🔒 คำตอบจะไม่แสดงใน LINE และจะถูกส่งไปที่อีเมลที่ลงทะเบียนไว้เท่านั้น' },
+    cancelQuickReply_())]);
+}
+
+/** ตัดให้เหลือเฉพาะตัวเลข เพื่อให้ 08x-xxx-xxxx กับ 08xxxxxxxx ตรงกัน */
+function digitsOnly_(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function handleMyCasesPhone_(event, text, userId) {
+  const digits = digitsOnly_(text);
+  if (digits.length < 9) {
+    replyLineMessage_(event.replyToken, [withQuickReply_(
+      { type: 'text', text: 'เบอร์โทรไม่ครบ กรุณาพิมพ์ใหม่ เช่น 081-234-5678' },
+      cancelQuickReply_())]);
+    return;
+  }
+
+  if (!lineCasesLookupAllowed_(userId)) {
+    clearContactFlow_(userId);
+    replyLineMessage_(event.replyToken,
+      'ค้นบ่อยเกินไป กรุณารออีกสักครู่\n\n' +
+      'ถ้าเร่งด่วน โทร ' + CONTACT_PHONE + ' (จันทร์-ศุกร์ 08:00-16:00 น.)');
+    return;
+  }
+
+  const rows = readRows_(getSheet_(SHEETS.referrals)).filter(function (r) {
+    return r['referral_id'] && digitsOnly_(r['referrer_phone']) === digits;
+  });
+
+  if (rows.length === 0) {
+    clearContactFlow_(userId);
+    replyLineMessage_(event.replyToken, [withQuickReply_(
+      { type: 'text', text:
+        'ไม่พบเคสของเบอร์นี้\n\n' +
+        'ตรวจว่าเป็นเบอร์เดียวกับที่กรอกตอนส่งเคสหรือไม่ ' +
+        'ถ้ายังไม่พบ แจ้งเจ้าหน้าที่ได้จากปุ่มด้านล่าง' },
+      [{ label: 'ขอติดต่อเจ้าหน้าที่', text: 'ติดต่อเจ้าหน้าที่' }])]);
+    return;
+  }
+
+  // ใหม่สุดขึ้นก่อน — คนที่ตามหาคำตอบมักตามหาเคสล่าสุดของตัวเอง
+  rows.sort(function (a, b) {
+    const x = toDate_(a['submitted_at']), y = toDate_(b['submitted_at']);
+    return (y ? y.getTime() : 0) - (x ? x.getTime() : 0);
+  });
+
+  const shown = rows.slice(0, 10);
+  let message = 'พบ ' + rows.length + ' เคสของเบอร์นี้';
+  if (rows.length > shown.length) message += ' (แสดง ' + shown.length + ' รายการล่าสุด)';
+  message += '\n────────────────\n';
+
+  const ids = [];
+  const chips = [];
+
+  shown.forEach(function (r, i) {
+    const n = i + 1;
+    const submitted = toDate_(r['submitted_at']);
+    const hasAdvice = String(r['advice_record'] || '').trim();
+    const hasEmail = String(r['referrer_email'] || '').trim();
+
+    ids.push(String(r['referral_id']).trim());
+
+    message +=
+      n + '. ' + r['referral_id'] + '\n' +
+      '   กลุ่มที่ ' + (GROUP_NUMBER[String(r['referral_type'])] || '-') +
+        ' · ' + (submitted ? formatThaiDate_(submitted) : '-') + '\n' +
+      '   สถานะ: ' +
+        (LINE_STATUS_LABEL_TH[String(r['status'])] || r['status'] || '-') + '\n';
+
+    if (hasAdvice && hasEmail) {
+      message += '   ✉️ ส่งคำตอบซ้ำได้\n';
+      chips.push({
+        label: n + ') ' + (submitted ? formatThaiDate_(submitted) : '-'),
+        text: 'ส่งซ้ำ ' + n,
+      });
+    } else if (hasAdvice) {
+      message += '   ⚠️ ไม่มีอีเมลในเคสนี้ ส่งซ้ำไม่ได้\n';
+    } else {
+      message += '   ยังไม่มีคำตอบ\n';
+    }
+    message += '\n';
+  });
+
+  if (chips.length === 0) {
+    clearContactFlow_(userId);
+    message += 'ยังไม่มีเคสไหนที่ส่งคำตอบซ้ำได้';
+    replyLineMessage_(event.replyToken, message);
+    return;
+  }
+
+  writeContactFlow_(userId, { step: 'myCasesResend', ids: ids });
+  message += 'กดเลือกเคสที่ต้องการให้ส่งคำตอบซ้ำทางอีเมล';
+
+  chips.push({ label: '✕ ปิด', text: 'ยกเลิก' });
+  replyLineMessage_(event.replyToken,
+    [withQuickReply_({ type: 'text', text: message }, chips)]);
+}
+
+function handleMyCasesResend_(event, flow, text, userId) {
+  const matched = text.match(LINE_RESEND_PATTERN);
+  if (!matched) {
+    replyLineMessage_(event.replyToken,
+      'กดปุ่มเลือกเคสด้านล่าง หรือพิมพ์ "ส่งซ้ำ" ตามด้วยลำดับ เช่น ส่งซ้ำ 1');
+    return;
+  }
+
+  const index = parseInt(matched[1], 10) - 1;
+  const referralId = (flow.ids || [])[index];
+  if (!referralId) {
+    replyLineMessage_(event.replyToken, 'ไม่พบลำดับนั้นในรายการ กรุณาเลือกใหม่');
+    return;
+  }
+
+  const found = readRows_(getSheet_(SHEETS.referrals)).filter(function (r) {
+    return String(r['referral_id'] || '').trim() === referralId;
+  })[0];
+
+  const sent = found ? sendAdviceCopyEmail_(found) : false;
+  clearContactFlow_(userId);
+
+  // ไม่บอกอีเมลปลายทางกลับไป — คนที่พิมพ์เบอร์อาจไม่ใช่เจ้าของเคส
+  // การยืนยันว่า "ส่งไปที่ a@b.com แล้ว" คือการเปิดเผยอีเมลให้คนนั้นฟรี ๆ
+  replyLineMessage_(event.replyToken,
+    sent
+      ? 'ส่งสำเนาคำตอบของ ' + referralId + ' ไปที่อีเมลที่ลงทะเบียนไว้แล้ว ✓\n\n' +
+        'กรุณาตรวจกล่องจดหมาย รวมถึงโฟลเดอร์จดหมายขยะ'
+      : 'ส่งไม่สำเร็จ เคสนี้อาจยังไม่มีคำตอบหรือไม่มีอีเมลที่ลงทะเบียนไว้\n\n' +
+        'โทร ' + CONTACT_PHONE + ' (จันทร์-ศุกร์ 08:00-16:00 น.)');
+}
+
+/** จำกัดการค้นด้วยเบอร์โทร — ต่ำกว่าการค้นด้วยรหัสเพราะเบอร์เดาง่ายกว่า */
+function lineCasesLookupAllowed_(sourceId) {
+  const cache = CacheService.getScriptCache();
+  const key = 'line_cases_' + sourceId;
+  const current = parseInt(cache.get(key) || '0', 10);
+  if (current >= LINE_PHONE_LOOKUP_LIMIT_PER_HOUR) return false;
+  cache.put(key, String(current + 1), 3600);
+  return true;
+}
+
+/* ------------------------------------------------------------------ */
 /* โฟลว์ "ขอติดต่อเจ้าหน้าที่"                                            */
 /* ------------------------------------------------------------------ */
 
@@ -479,6 +658,16 @@ function startContactFlow_(event, userId) {
 }
 
 function advanceContactFlow_(event, flow, text, userId) {
+  if (flow.step === 'myCasesPhone') {
+    handleMyCasesPhone_(event, text, userId);
+    return;
+  }
+
+  if (flow.step === 'myCasesResend') {
+    handleMyCasesResend_(event, flow, text, userId);
+    return;
+  }
+
   if (flow.step === 'topic') {
     if (!LINE_CONTACT_TOPICS[text]) {
       replyLineMessage_(event.replyToken, [withQuickReply_(

@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-08-30 adminPrefix';
+const API_VERSION = '2026-08-30 phoneLookup';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -499,6 +499,67 @@ function saveAdvice_(payload) {
 }
 
 /** ส่งคำตอบของอาจารย์กลับให้แพทย์ต้นทาง — ส่งไม่สำเร็จต้องไม่ทำให้การบันทึกล้ม */
+/**
+ * ส่งคำตอบเดิมซ้ำไปที่อีเมลที่ลงทะเบียนไว้กับเคส
+ *
+ * ⚠️ ส่งไปที่ referrer_email ของแถวนั้นเท่านั้น ไม่รับอีเมลปลายทางจากผู้เรียก
+ *
+ * นี่คือสิ่งเดียวที่ทำให้การค้นด้วยเบอร์โทรอย่างเดียวปลอดภัย — ต่อให้คนอื่น
+ * รู้เบอร์แล้วสั่งส่งซ้ำ คำตอบก็วิ่งไปหาเจ้าของอีเมลตัวจริง ไม่ใช่คนที่สั่ง
+ * ผลที่แย่ที่สุดคือเจ้าตัวได้อีเมลซ้ำโดยไม่ได้ขอ ซึ่งเป็นความรำคาญ ไม่ใช่ข้อมูลรั่ว
+ *
+ * ประกอบร่างจากคอลัมน์ในชีต ไม่ได้เก็บสำเนาอีเมลฉบับเดิมไว้
+ * บล็อกวันนัดจึงใช้ข้อความใน appointment_note ตามที่บันทึกไว้
+ * แทนการถอดกลับเป็นวัน/เวลา/แพทย์ ซึ่งจะเดาผิดได้ถ้ารูปแบบเปลี่ยน
+ */
+function sendAdviceCopyEmail_(row) {
+  const email = String(row['referrer_email'] || '').trim();
+  const advice = String(row['advice_record'] || '').trim();
+  if (!email || !advice) return false;
+
+  const referralId = String(row['referral_id'] || '').trim();
+  const appointment = String(row['appointment_note'] || '').trim();
+  const clinicDate = row['appointment_date'];
+
+  const body =
+    'สำเนาคำตอบการปรึกษา (ส่งซ้ำตามที่ร้องขอทาง LINE)\n\n' +
+    'เลขที่อ้างอิง: ' + referralId + '\n\n' +
+    (row['clinical_question']
+      ? '--- คำถามของท่าน ---\n' + row['clinical_question'] + '\n\n' : '') +
+    '--- คำตอบ ---\n' + advice + '\n\n' +
+    (clinicDate
+      ? '--- นัดที่ OPD 700 ---\n' +
+        formatThaiDate_(toDate_(clinicDate), true) + '\n' +
+        (appointment ? appointment + '\n' : '') + '\n'
+      : '') +
+    buildAttachmentBlock_({
+      fileName: row['advice_file_name'],
+      fileUrl: row['advice_file_url'],
+    }) +
+    buildAdviceContactBlock_({
+      answeredBy: row['advice_by'],
+      attending: row['advice_attending'],
+      wardPhone: row['advice_ward_phone'],
+      directPhone: row['advice_direct_phone'],
+    }) +
+    'กรุณาอย่าส่งชื่อ-สกุล หรือเลข HN ของผู้ป่วยทางอีเมลนี้\n\n' +
+    '--\n' +
+    'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช\n' +
+    'อีเมลนี้ส่งจากระบบอัตโนมัติ กรุณาอย่าตอบกลับ';
+
+  try {
+    MailApp.sendEmail({
+      to: email,
+      subject: 'สำเนาคำตอบการปรึกษา ' + referralId,
+      body: body,
+    });
+    return true;
+  } catch (err) {
+    console.error('ส่งสำเนาคำตอบไม่สำเร็จ (' + referralId + '): ' + err);
+    return false;
+  }
+}
+
 function sendAdviceEmail_(email, data) {
   const body =
     'ทีมโลหิตวิทยา ศิริราช ได้ตอบคำปรึกษาของท่านแล้ว\n\n' +
