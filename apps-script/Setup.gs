@@ -8,6 +8,125 @@
  *   4. runSelfTest()      ตรวจว่าทุกอย่างพร้อม
  */
 
+/**
+ * ตรวจว่าโค้ดทุกไฟล์ถูกวางครบและไม่มีอะไรหายไป
+ *
+ * ⚠️ ต่างจาก runSelfTest() ซึ่งตรวจ "ข้อมูลในชีต" — ตัวนี้ตรวจ "ตัวโค้ดเอง"
+ *
+ * Apps Script ใช้ global scope เดียวกันทั้งโปรเจกต์ ค่าที่ประกาศไว้ในไฟล์หนึ่ง
+ * จึงเรียกได้จากทุกไฟล์ ผลข้างเคียงคือถ้าไฟล์ใดถูกวางไม่ครบ วางไฟล์เก่าทับ
+ * หรือลบบางส่วนไปโดยไม่ตั้งใจ ทุกอย่างจะยังบันทึกได้และหน้าตาปกติ
+ * แล้วไปพังตอนมีคนใช้งานจริง โดยฟ้องเป็นชื่อที่ไม่รู้จักซึ่งอ่านไม่ออกว่ามาจากไหน
+ *
+ * ฟังก์ชันนี้ไล่เช็คว่าชื่อที่โค้ดพึ่งพามีอยู่จริงทุกตัว และบอกว่าตัวที่ขาด
+ * อยู่ในไฟล์ไหน จะได้วางเฉพาะไฟล์นั้นใหม่ ไม่ต้องเดา
+ *
+ * รันได้ทุกเมื่อ ไม่แก้ไขข้อมูลใด ๆ
+ */
+function checkCodeFiles() {
+  const EXPECT = {
+    'Config.gs': [
+      'TIMEZONE', 'SHEETS', 'ATTACHMENT', 'BUSINESS', 'ESCALATION',
+      'BATCH_HOUR', 'FELLOW_URGENT_DAYS', 'DUPLICATE_WINDOW_DAYS',
+      'RETENTION_MONTHS', 'TYPES', 'TYPE_FROM_FORM_LABEL', 'GROUP_NUMBER',
+      'SLOT_RELEASING_STATUSES', 'TERMINAL_STATUSES', 'IDENTIFYING_COLUMNS',
+      'ADVICE_LIBRARY_COLUMNS', 'FORM_COLUMNS_REQUIRED', 'FORM_COLUMNS_OPTIONAL',
+      'MERGED_COLUMNS', 'SITE_URL', 'DASHBOARD_URL', 'LINE_OA_ID', 'CONTACT_PHONE',
+    ],
+    'Util.gs': [
+      'formatThaiDate_', 'businessHoursBetween_', 'isWorkingDay_', 'headerMap_',
+      'readRows_', 'setCell_', 'ensureColumns_', 'getSheet_', 'toDate_',
+      'readConfigValue_', 'parseEmailList_',
+    ],
+    'Setup.gs': [
+      'setupSheets', 'setupTriggers', 'runSelfTest', 'checkCodeFiles',
+      'addColumnNotes', 'setupAttachmentFolder', 'restoreFormHeaders',
+      'showHeaderRow', 'FORM_COLUMN_ORDER', 'ATTENDING_COLUMNS',
+      'REGIMEN_COLUMNS', 'INDICATION_COLUMNS', 'LINE_LINK_COLUMNS',
+    ],
+    'Api.gs': [
+      'API_VERSION', 'doPost', 'doGet', 'saveAdvice_', 'bookTransplantSlot_',
+      'contactAdmin_', 'ADVICE_CONTACT_COLUMNS', 'attachmentFolder_',
+      'uploadAdviceAttachment_', 'sendAdviceEmail_', 'sendAdviceCopyEmail_',
+      'buildAdviceContactBlock_', 'buildVisitBlock_', 'buildAttachmentBlock_',
+    ],
+    'Notify.gs': [
+      'pushLineMessage_', 'replyLineMessage_', 'sendOneLinePush_',
+      'sendOneLineMessage_', 'parseLineTargets_', 'linkButtonMessage_',
+      'withQuickReply_', 'cancelQuickReply_', 'sendDailyBatch',
+      'sendFellowDailyBatch', 'notifyFellowOfBooking_', 'notifyReferrerOnLine_',
+      'sendLinkCodeEmail_', 'buildLineLinkInvite_', 'testLineTargets',
+    ],
+    'LineWebhook.gs': [
+      'handleLineWebhook_', 'handleLineEvent_', 'handleAdminReply_',
+      'startContactFlow_', 'advanceContactFlow_', 'startMyCasesFlow_',
+      'startLinkFlow_', 'handleLinkPhone_', 'handleLinkCode_', 'handleUnlink_',
+      'findLineLink_', 'findLineUserByPhone_', 'saveLineLink_',
+      'buildMyAnswersMenu_', 'issueLineTicket_', 'relayToAdmin_',
+      'LINE_ADMIN_PREFIX', 'LINE_BUTTON_MYANSWERS', 'LINE_CONTACT_TOPICS',
+    ],
+    'OnFormSubmit.gs': ['onFormSubmit', 'SYSTEM_COLUMNS'],
+    'Retention.gs': [
+      'anonymizeExpired', 'buildAnonymizedRow_', 'trashAttachments_',
+      'sweepOldAttachments', 'verifyLibraryHasNoIdentifiers',
+    ],
+    'Sla.gs': ['recalculateSla', 'sendRedAlert'],
+    'Stats.gs': ['buildMonthlyStats', 'STATS_COLUMNS'],
+    'ManageBooking.gs': [
+      'lookupBooking_', 'cancelBooking_', 'rescheduleBooking_',
+      'generateManageToken_',
+    ],
+  };
+
+  const stale = [];
+  let checked = 0;
+
+  Object.keys(EXPECT).forEach(function (file) {
+    const missing = EXPECT[file].filter(function (name) {
+      checked++;
+      try {
+        return eval('typeof ' + name) === 'undefined';
+      } catch (err) {
+        return true;
+      }
+    });
+    if (missing.length > 0) stale.push({ file: file, missing: missing });
+  });
+
+  // ชื่อแท็บใน SHEETS ต้องมีค่าครบ ไม่ใช่แค่ตัวแปร SHEETS มีอยู่
+  // — เคสที่เจอจริงคือ Config.gs เก่าทำให้ SHEETS.lineLinks เป็น undefined
+  // แล้ว insertSheet(undefined) สร้างแท็บชื่อ "Sheet1" ให้แทนโดยไม่ error
+  const blankSheetKeys = typeof SHEETS === 'undefined' ? ['(ไม่มี SHEETS)'] :
+    ['referrals', 'adviceLibrary', 'statsMonthly', 'statusLog', 'holidays',
+     'config', 'indications', 'regimens', 'attendings', 'lineLinks']
+      .filter(function (k) { return !SHEETS[k]; });
+
+  console.log('ตรวจชื่อที่โค้ดพึ่งพา ' + checked + ' รายการ');
+  console.log('');
+
+  if (stale.length === 0 && blankSheetKeys.length === 0) {
+    console.log('✅ โค้ดครบทุกไฟล์ ไม่มีอะไรขาด');
+    console.log('เวอร์ชันที่ deploy อยู่: ' + API_VERSION);
+    return;
+  }
+
+  if (blankSheetKeys.length > 0) {
+    console.log('❌ SHEETS ขาดชื่อแท็บ: ' + blankSheetKeys.join(', '));
+    console.log('   → วาง Config.gs ฉบับล่าสุดใหม่');
+    console.log('');
+  }
+
+  stale.forEach(function (s) {
+    console.log('❌ ' + s.file + ' — ขาด ' + s.missing.length + ' รายการ');
+    console.log('   ' + s.missing.join(', '));
+    console.log('   → วางไฟล์นี้ใหม่ทั้งไฟล์');
+    console.log('');
+  });
+
+  console.log('⚠️ วาง Config.gs ก่อนไฟล์อื่นเสมอ');
+  console.log('   ทุกไฟล์อ้างชื่อแท็บและค่าคงที่จากไฟล์นั้น');
+}
+
 function setupSheets() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
