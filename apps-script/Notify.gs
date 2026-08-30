@@ -23,12 +23,18 @@ const LINE_REPLY_ENDPOINT = 'https://api.line.me/v2/bot/message/reply';
  *
  * replyToken ใช้ได้ครั้งเดียวและหมดอายุใน 1 นาที
  */
-function replyLineMessage_(replyToken, text) {
+function replyLineMessage_(replyToken, payload) {
   const token = PropertiesService.getScriptProperties()
     .getProperty('LINE_CHANNEL_ACCESS_TOKEN');
 
+  // รับได้ทั้งสตริงเดียว (ใช้อยู่เกือบทุกที่) และอาร์เรย์ของ message object
+  // เพื่อให้แนบปุ่มกดไปด้วยได้โดยไม่ต้องแก้ผู้เรียกทั้ง 22 จุด
+  const messages = typeof payload === 'string'
+    ? [{ type: 'text', text: payload.substring(0, 4900) }]
+    : payload;
+
   if (!token || !replyToken) {
-    console.log('[ตอบ LINE ไม่ได้ ยังไม่มี token] ' + text);
+    console.log('[ตอบ LINE ไม่ได้ ยังไม่มี token] ' + JSON.stringify(messages));
     return;
   }
 
@@ -38,7 +44,8 @@ function replyLineMessage_(replyToken, text) {
     headers: { Authorization: 'Bearer ' + token },
     payload: JSON.stringify({
       replyToken: replyToken,
-      messages: [{ type: 'text', text: text.substring(0, 4900) }],
+      // LINE รับได้สูงสุด 5 ข้อความต่อการตอบหนึ่งครั้ง
+      messages: messages.slice(0, 5),
     }),
     muteHttpExceptions: true,
   });
@@ -47,6 +54,30 @@ function replyLineMessage_(replyToken, text) {
     console.error('ตอบ LINE ไม่สำเร็จ (' + response.getResponseCode() + '): ' +
       response.getContentText());
   }
+}
+
+/**
+ * ข้อความแบบมีปุ่มกดเปิดลิงก์ — ใช้แทนการวาง URL ดิบในข้อความ
+ *
+ * URL ดิบใน LINE จะถูกดึงมาทำการ์ดพรีวิวต่อท้ายอัตโนมัติ ซึ่งกินพื้นที่จอ
+ * และทำให้ข้อความที่เป็นคำถาม ("พิมพ์เลข 1-3") ถูกดันขึ้นไปจนคนเลื่อนไม่เห็น
+ *
+ * ⚠️ ข้อจำกัดของ buttons template
+ *   text  ยาวได้ 160 ตัวอักษร — ข้อความยาวกว่านั้นให้ส่งเป็นข้อความแยกก่อนหน้า
+ *   label ยาวได้ 20 ตัวอักษร
+ * เกินแล้ว LINE ตอบ 400 และ "ไม่ส่งอะไรเลย" ไม่ใช่ตัดให้ จึงต้องตัดเองที่นี่
+ */
+function linkButtonMessage_(text, label, url) {
+  return {
+    type: 'template',
+    // altText คือสิ่งที่โผล่ในรายการแชทและใน notification ของมือถือ
+    altText: text.substring(0, 300),
+    template: {
+      type: 'buttons',
+      text: text.substring(0, 160),
+      actions: [{ type: 'uri', label: label.substring(0, 20), uri: url }],
+    },
+  };
 }
 
 const LINE_TARGET_BY_AUDIENCE = {
