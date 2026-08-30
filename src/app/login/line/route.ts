@@ -36,10 +36,9 @@ export async function GET(request: Request) {
   }
 
   const state = randomToken();
-  const nonce = randomToken();
 
   const response = NextResponse.redirect(
-    authorizeUrl(callbackUrl(request), state, nonce),
+    authorizeUrl(callbackUrl(request), state),
   );
 
   response.cookies.set(LINE_STATE_COOKIE, `${state}|${next}`, {

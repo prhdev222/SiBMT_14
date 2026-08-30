@@ -43,20 +43,23 @@ export function callbackUrl(request: Request): string {
   return new URL("/login/line/callback", request.url).toString();
 }
 
-export function authorizeUrl(
-  redirectUri: string,
-  state: string,
-  nonce: string,
-): string {
+export function authorizeUrl(redirectUri: string, state: string): string {
   const params = new URLSearchParams({
     response_type: "code",
     client_id: process.env.LINE_LOGIN_CHANNEL_ID ?? "",
     redirect_uri: redirectUri,
     state,
-    // ขอแค่ profile — ไม่ขออีเมล เพราะระบบไม่ได้ใช้ และการขอสิทธิ์ที่ไม่ได้ใช้
-    // ทำให้หน้ายืนยันดูน่ากลัวโดยไม่จำเป็น
-    scope: "profile openid",
-    nonce,
+    /*
+     * ขอแค่ profile อย่างเดียว
+     *
+     * ระบบต้องการแค่ userId เพื่อถามว่าอยู่ในกลุ่มไหม ซึ่ง /v2/profile ให้ครบ
+     *
+     * ⚠️ ไม่ขอ openid โดยตั้งใจ — มันเปิดใช้ OpenID Connect ซึ่งเป็นการตั้งค่า
+     * อีกชั้นที่ต้องเปิดในหน้า LINE Developers และเป็นจุดที่พังได้โดยไม่จำเป็น
+     * ในเมื่อไม่ได้อ่าน id_token เลย และไม่ขอ email เพราะระบบไม่เคยใช้ —
+     * สิทธิ์ที่ขอแต่ไม่ได้ใช้ทำให้หน้ายืนยันดูน่ากลัวและต้องยื่นขออนุมัติเพิ่ม
+     */
+    scope: "profile",
   });
   return `${AUTHORIZE_URL}?${params.toString()}`;
 }
