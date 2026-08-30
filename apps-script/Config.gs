@@ -19,7 +19,18 @@ const SHEETS = {
   regimens: 'chemo_regimens',      // คลังสูตรยา แก้/เพิ่ม/ลดได้เมื่อแนวทางเปลี่ยน
   attendings: 'attendings',        // รายชื่ออาจารย์ผู้ให้คำปรึกษา หมุนเวียนทุกปี
   lineLinks: 'line_links',         // แพทย์ต้นทางที่ผูกบัญชี LINE ไว้รับคำตอบ
+  dashboardLogins: 'dashboard_logins', // ใครเข้า dashboard ด้วย LINE เมื่อไร
 };
+
+/**
+ * คอลัมน์ของชีตบันทึกการเข้า dashboard
+ *
+ * ⚠️ ชีตนี้คือคำตอบของคำถาม "ใครเปิดดูข้อมูลผู้ป่วยเมื่อไร"
+ * ซึ่งบัญชีรหัสผ่านที่ใช้ร่วมกันในวอร์ดตอบไม่ได้เลย ห้ามลบทิ้งเพื่อความสะอาด
+ */
+const DASHBOARD_LOGIN_COLUMNS = [
+  'timestamp', 'line_user_id', 'display_name', 'group', 'result',
+];
 
 /**
  * ตารางออกตรวจ fellow ไม่ได้อยู่ในไฟล์นี้

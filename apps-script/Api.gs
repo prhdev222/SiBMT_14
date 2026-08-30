@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-08-30 questionType';
+const API_VERSION = '2026-08-30 lineLogin';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -83,6 +83,10 @@ function doPost(e) {
 
     if (body.action === 'cancelBooking') {
       return jsonResponse_({ ok: true, data: cancelBooking_(body.payload || {}) });
+    }
+
+    if (body.action === 'checkDashboardMember') {
+      return jsonResponse_({ ok: true, data: checkDashboardMember_(body.payload || {}) });
     }
 
     if (body.action === 'contactAdmin') {
@@ -897,4 +901,150 @@ function buildAdviceContactBlock_(data) {
     'พร้อมแจ้งเลขที่อ้างอิงข้างต้น\n\n';
 
   return out;
+}
+
+/* ------------------------------------------------------------------ */
+/* เข้าสู่ระบบ dashboard ด้วย LINE                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * ตรวจว่า LINE คนนี้อยู่ในกลุ่มที่มีสิทธิ์เข้า dashboard หรือไม่
+ *
+ * ⚠️ นี่คือประตูของ dashboard ทั้งหมด ไม่ใช่แค่การอ่านชื่อ
+ *
+ * เว็บพิสูจน์มาแล้วว่า lineUserId นี้เป็นเจ้าของบัญชี LINE จริง (ผ่าน OAuth)
+ * แต่คนทั้งโลกที่มี LINE ก็ผ่านขั้นนั้นได้ ฟังก์ชันนี้ต่างหากที่ตอบว่า
+ * "แล้วคนนี้เป็นคนของหน่วยงานไหม" โดยถือว่าการอยู่ในกลุ่มงานคือคำตอบ
+ *
+ * ⚠️ ตรวจทุกครั้งที่ล็อกอิน ไม่ได้จำไว้
+ * เอาใครออกจากกลุ่ม LINE แล้วครั้งถัดไปที่เขากดเข้าจะไม่ผ่าน
+ * — session ที่ถืออยู่แล้วยังใช้ได้จนหมดอายุ (8 ชม. ดู src/lib/auth.ts)
+ *
+ * ⚠️ ตรวจไม่ได้ = ไม่ให้ผ่าน ไม่ใช่ปล่อยผ่าน
+ * ถ้าเรียก LINE ไม่สำเร็จหรือยังไม่ได้ตั้งรายชื่อกลุ่ม จะตอบว่าไม่มีสิทธิ์
+ * ระบบที่ปล่อยผ่านตอนตรวจไม่ได้ จะเปิดประตูทิ้งไว้ทุกครั้งที่ LINE ล่ม
+ */
+function checkDashboardMember_(payload) {
+  const userId = String(payload.lineUserId || '').trim();
+  const fallbackName = String(payload.displayName || '').trim();
+
+  if (!userId) return { allowed: false, displayName: '' };
+
+  const groups = dashboardLineGroups_();
+  if (groups.length === 0) {
+    console.warn(
+      'ยังไม่ได้ตั้ง dashboard_line_groups ในชีต config — ' +
+      'ปฏิเสธการเข้าระบบด้วย LINE ทุกราย'
+    );
+    return { allowed: false, displayName: fallbackName };
+  }
+
+  const token = PropertiesService.getScriptProperties()
+    .getProperty('LINE_CHANNEL_ACCESS_TOKEN');
+  if (!token) {
+    console.warn('ยังไม่ได้ตั้ง LINE_CHANNEL_ACCESS_TOKEN');
+    return { allowed: false, displayName: fallbackName };
+  }
+
+  for (let i = 0; i < groups.length; i++) {
+    const profile = lineGroupMemberProfile_(token, groups[i], userId);
+    if (profile) {
+      logDashboardLogin_(userId, profile.displayName || fallbackName, groups[i]);
+      return {
+        allowed: true,
+        displayName: profile.displayName || fallbackName || 'ผู้ใช้ LINE',
+      };
+    }
+  }
+
+  logDashboardLogin_(userId, fallbackName, 'ไม่อยู่ในกลุ่มใดเลย');
+  return { allowed: false, displayName: fallbackName };
+}
+
+/**
+ * อ่านโปรไฟล์ของสมาชิกในกลุ่ม — คืน null เมื่อไม่ได้เป็นสมาชิก
+ *
+ * ใช้ endpoint นี้แทน "รายชื่อสมาชิกทั้งกลุ่ม" เพราะตัวที่ดึงทั้งกลุ่มเปิดให้
+ * เฉพาะบัญชีที่ผ่านการรับรองแล้ว ส่วนตัวนี้ทุกบัญชีเรียกได้ ขอแค่บอทอยู่ในกลุ่ม
+ *
+ * ⚠️ 404 แปลว่า "ไม่ได้เป็นสมาชิก" ซึ่งเป็นคำตอบปกติ ไม่ใช่ข้อผิดพลาด
+ * สถานะอื่นที่ไม่ใช่ 200 ถือว่าตรวจไม่ได้ และต้องบันทึกไว้ให้เห็น
+ * ไม่งั้นเวลามีคนเข้าไม่ได้จะไม่มีทางรู้ว่าเพราะไม่ได้อยู่ในกลุ่มหรือเพราะบอทหลุดออกจากกลุ่ม
+ */
+function lineGroupMemberProfile_(token, groupId, userId) {
+  const url = 'https://api.line.me/v2/bot/group/' + encodeURIComponent(groupId) +
+    '/member/' + encodeURIComponent(userId);
+
+  const res = UrlFetchApp.fetch(url, {
+    method: 'get',
+    headers: { Authorization: 'Bearer ' + token },
+    muteHttpExceptions: true,
+  });
+
+  const code = res.getResponseCode();
+  if (code === 200) {
+    try {
+      return JSON.parse(res.getContentText());
+    } catch (err) {
+      console.warn('อ่านโปรไฟล์สมาชิกไม่สำเร็จ: ' + err);
+      return null;
+    }
+  }
+
+  if (code !== 404) {
+    console.warn(
+      'ตรวจสมาชิกกลุ่ม ' + maskLineId_(groupId) + ' ไม่สำเร็จ (' + code + '): ' +
+      res.getContentText().substring(0, 200)
+    );
+  }
+  return null;
+}
+
+/**
+ * รายชื่อกลุ่มที่มีสิทธิ์เข้า dashboard จากชีต config
+ *
+ * อยู่ในชีตไม่ใช่ในโค้ด เพราะการเพิ่มหรือถอนกลุ่มเป็นเรื่องการบริหารคน
+ * ไม่ใช่การเปลี่ยนพฤติกรรมของระบบ — ควรทำได้โดยไม่ต้อง deploy
+ */
+function dashboardLineGroups_() {
+  return String(readConfigValue_('dashboard_line_groups') || '')
+    .split(',')
+    .map(function (s) { return s.trim(); })
+    .filter(function (s) { return s.length > 0; });
+}
+
+/**
+ * บันทึกทุกครั้งที่มีคนพยายามเข้า dashboard ด้วย LINE
+ *
+ * ⚠️ บันทึกทั้งที่ผ่านและไม่ผ่าน
+ *
+ * รายการที่ไม่ผ่านคือสิ่งที่บอกว่ามีคนนอกพยายามเข้า หรือมีคนของเราหลุดออกจาก
+ * กลุ่มโดยไม่ตั้งใจ ถ้าเก็บแต่รายการที่สำเร็จจะไม่มีทางเห็นทั้งสองอย่าง
+ *
+ * เก็บ userId แบบเต็มเพราะเป็นข้อมูลบุคลากร ไม่ใช่ผู้ป่วย และจำเป็นต่อการ
+ * ตรวจสอบย้อนหลังว่าใครเปิดดูข้อมูลผู้ป่วยเมื่อไร ซึ่งบัญชีรหัสผ่านที่ใช้
+ * ร่วมกันในวอร์ดตอบไม่ได้เลย
+ */
+function logDashboardLogin_(userId, displayName, groupId) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(SHEETS.dashboardLogins);
+    if (!sheet) {
+      sheet = ss.insertSheet(SHEETS.dashboardLogins);
+      sheet.getRange(1, 1, 1, DASHBOARD_LOGIN_COLUMNS.length)
+        .setValues([DASHBOARD_LOGIN_COLUMNS]);
+      sheet.setFrozenRows(1);
+    }
+
+    sheet.appendRow([
+      new Date(),
+      userId,
+      displayName,
+      groupId === 'ไม่อยู่ในกลุ่มใดเลย' ? '' : maskLineId_(groupId),
+      groupId === 'ไม่อยู่ในกลุ่มใดเลย' ? 'ปฏิเสธ' : 'ผ่าน',
+    ]);
+  } catch (err) {
+    // บันทึก log ไม่สำเร็จไม่ควรทำให้คนที่มีสิทธิ์เข้าระบบไม่ได้
+    console.warn('บันทึก dashboard login ไม่สำเร็จ: ' + err);
+  }
 }

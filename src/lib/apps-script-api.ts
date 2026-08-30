@@ -134,6 +134,31 @@ export async function saveAdvice(payload: AdviceInput): Promise<AdviceResult> {
   return callAppsScript("saveAdvice", payload);
 }
 
+export interface DashboardMemberResult {
+  /** อยู่ในกลุ่ม LINE ที่มีสิทธิ์เข้า dashboard หรือไม่ */
+  allowed: boolean;
+  /** ชื่อที่จะแสดงในระบบ — ชื่อในกลุ่มถ้าอ่านได้ ไม่งั้นใช้ชื่อโปรไฟล์ที่ส่งไป */
+  displayName: string;
+}
+
+/**
+ * ถามว่า LINE คนนี้อยู่ในกลุ่มที่มีสิทธิ์เข้า dashboard ไหม
+ *
+ * ⚠️ ให้ Apps Script เป็นคนถาม LINE ไม่ใช่เว็บถามเอง
+ *
+ * การตรวจสมาชิกภาพต้องใช้ channel access token ของบอท ซึ่งตอนนี้อยู่ใน
+ * Script Properties ที่เดียว ถ้าเว็บจะถามเองต้องเอา token ไปวางไว้บน
+ * Cloudflare อีกชุด แล้วความลับตัวเดียวกันจะมีสองที่ให้หลุดและสองที่ให้ลืมหมุน
+ *
+ * รายชื่อกลุ่มก็อยู่ในชีต config ทำให้เพิ่มหรือถอนกลุ่มได้โดยไม่ต้อง deploy เว็บใหม่
+ */
+export async function checkDashboardMember(
+  lineUserId: string,
+  displayName: string,
+): Promise<DashboardMemberResult> {
+  return callAppsScript("checkDashboardMember", { lineUserId, displayName });
+}
+
 async function callAppsScript<T>(
   action: string,
   payload: unknown,

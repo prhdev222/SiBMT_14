@@ -19,6 +19,15 @@
         "dev:demo"
       ],
       "port": 3111
+    },
+    {
+      "name": "demo-line",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:demo:line"
+      ],
+      "port": 3112
     }
   ]
 }

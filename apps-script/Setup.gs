@@ -30,7 +30,8 @@ function checkCodeFiles() {
       'BATCH_HOUR', 'FELLOW_URGENT_DAYS', 'DUPLICATE_WINDOW_DAYS',
       'RETENTION_MONTHS', 'TYPES', 'TYPE_FROM_FORM_LABEL', 'GROUP_NUMBER',
       'SLOT_RELEASING_STATUSES', 'TERMINAL_STATUSES', 'IDENTIFYING_COLUMNS',
-      'ADVICE_LIBRARY_COLUMNS', 'FORM_COLUMNS_REQUIRED', 'FORM_COLUMNS_OPTIONAL',
+      'ADVICE_LIBRARY_COLUMNS', 'DASHBOARD_LOGIN_COLUMNS',
+      'FORM_COLUMNS_REQUIRED', 'FORM_COLUMNS_OPTIONAL',
       'MERGED_COLUMNS', 'SITE_URL', 'DASHBOARD_URL', 'LINE_OA_ID', 'CONTACT_PHONE',
     ],
     'Util.gs': [
@@ -46,7 +47,9 @@ function checkCodeFiles() {
     ],
     'Api.gs': [
       'API_VERSION', 'doPost', 'doGet', 'saveAdvice_', 'bookTransplantSlot_',
-      'contactAdmin_', 'ADVICE_CONTACT_COLUMNS', 'attachmentFolder_',
+      'contactAdmin_', 'checkDashboardMember_', 'lineGroupMemberProfile_',
+      'dashboardLineGroups_', 'logDashboardLogin_',
+      'ADVICE_CONTACT_COLUMNS', 'attachmentFolder_',
       'uploadAdviceAttachment_', 'sendAdviceEmail_', 'sendAdviceCopyEmail_',
       'buildAdviceContactBlock_', 'buildVisitBlock_', 'buildAttachmentBlock_',
     ],
@@ -238,6 +241,13 @@ function seedConfigKeys_(ss) {
     ['fellow_schedule_owner', '', 'ผู้กรอกตารางออกตรวจ fellow'],
     ['opd_phone', '02-419-9903', 'เบอร์ธุรการ OPD 700'],
     ['chemo_ward_phone', '', 'เบอร์วอร์ดเคมีบำบัด — เติมอัตโนมัติในฟอร์มตอบคำปรึกษา'],
+
+    // ⚠️ ค่านี้คือประตูของ dashboard ทั้งหมด ใส่ผิดเท่ากับเปิดหรือปิดให้คนทั้งกลุ่ม
+    ['dashboard_line_groups', '',
+     'กลุ่ม LINE ที่สมาชิกเข้า dashboard ได้โดยไม่ต้องใส่รหัสผ่าน — ' +
+     'ใส่ groupId คั่นด้วยจุลภาค (พิมพ์ #id ในกลุ่มเพื่อดู groupId) ' +
+     'เว้นว่าง = ปิดการเข้าระบบด้วย LINE ทุกราย ' +
+     '⚠️ ใครอยู่ในกลุ่มก็เห็นข้อมูลผู้ป่วยทั้งหมด เอาออกจากกลุ่มเมื่อย้ายหน่วยงาน'],
 
     // ลิงก์เอกสาร PDF — เก็บเป็น config เพื่อให้เปลี่ยนไฟล์ฉบับใหม่ได้เองโดยไม่ต้อง deploy
     // ⚠️ ไฟล์ต้องตั้งการแชร์เป็น "ผู้ที่มีลิงก์ → ผู้อ่าน" ไม่งั้นแพทย์ต้นทางเปิดไม่ได้
