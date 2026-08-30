@@ -217,10 +217,12 @@ function Analysis({ cases }: { cases: AnsweredCase[] }) {
 
     return {
       byGroup: [2, 3]
-        .map((n, i) => ({
+        .map((n) => ({
           label: `กลุ่มที่ ${n}`,
           count: cases.filter((c) => c.groupNumber === n).length,
-          seriesIndex: i,
+          // n - 1 ไม่ใช่ลำดับที่วน — กลุ่มที่ 2 ต้องเป็นสีส้มเหมือนหน้าสถิติ
+          // ไม่ใช่สีน้ำเงินเพราะบังเอิญมาก่อนในรายการนี้
+          seriesIndex: n - 1,
         }))
         .filter((r) => r.count > 0),
       byQuestionType: tally(cases.map((c) => c.questionType)),
@@ -265,8 +267,10 @@ function Analysis({ cases }: { cases: AnsweredCase[] }) {
             emptyText="ยังไม่มีเคสที่บันทึกประเภทคำถาม"
           />
           <ChartCard dense title="กลุ่มโรค" data={summary.byDisease} />
+          {/* เคสเดียวเลือกได้หลายสูตร ผลรวมจึงไม่ใช่จำนวนเคส — วงกลมใช้ไม่ได้ */}
           <ChartCard
             dense
+            pie={false}
             title="สูตรยาที่แนะนำบ่อย"
             data={summary.byRegimen}
             emptyText="ยังไม่มีเคสที่เลือกสูตรยาจากคลัง"

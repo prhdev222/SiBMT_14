@@ -16,6 +16,7 @@
  */
 
 import { GRID, SERIES, SINGLE } from "@/components/charts/palette";
+import { buildPieData, percentText } from "@/components/charts/slices";
 import { safeFileName, saveBlob } from "./download";
 
 export interface ChartDatum {
@@ -149,6 +150,99 @@ export async function saveMonthlyChart(
 
   ctx.textAlign = "left";
   drawFootnote(ctx, baseY + 8 + 16, meta);
+  await save(canvas, meta.title);
+}
+
+/** ขนาดของวงกลมในรูปที่บันทึก — ใหญ่กว่าบนหน้าจอเพราะมีที่ว่างให้ */
+const PIE_SIZE = 260;
+const PIE_RING_R = 96;
+const PIE_RING_W = 50;
+
+/**
+ * บันทึกกราฟวงกลมเป็น PNG
+ *
+ * ⚠️ ต้องเรียกด้วยข้อมูลชุดเดียวกับที่แสดงบนจอเท่านั้น การยุบ "อื่น ๆ"
+ * และการกำหนดสีทำใน buildPieData ที่เดียว รูปกับหน้าจอจึงตรงกันเสมอ
+ */
+export async function savePieChart(
+  data: ChartDatum[],
+  meta: ChartMeta,
+  unit = "เคส",
+): Promise<void> {
+  const { slices, total } = buildPieData(data);
+  if (slices.length === 0) return;
+
+  const headerH = headerHeight();
+  const legendH = slices.length * 28;
+  const width = 900;
+  const height =
+    headerH +
+    Math.max(PIE_SIZE, legendH) +
+    (meta.footnote ? FOOT_H : 0) +
+    PAD;
+
+  const canvas = await createCanvas(width, height);
+  const ctx = canvas.getContext("2d")!;
+  const font = await drawHeader(ctx, width, meta);
+
+  const cx = PAD + PIE_SIZE / 2;
+  const cy = headerH + PIE_SIZE / 2;
+
+  ctx.lineWidth = PIE_RING_W;
+  let start = -Math.PI / 2;
+
+  for (const s of slices) {
+    const sweep = s.fraction * Math.PI * 2;
+    // ช่องไฟระหว่างชิ้น — หดข้างละครึ่งองศา แต่ไม่เกินหนึ่งในสี่ของชิ้นเอง
+    // ไม่งั้นชิ้นที่บางมากจะหายไปทั้งชิ้น
+    const gap = slices.length > 1 ? Math.min(0.012, sweep / 4) : 0;
+
+    ctx.strokeStyle = s.color;
+    ctx.beginPath();
+    ctx.arc(cx, cy, PIE_RING_R, start + gap, start + sweep - gap);
+    ctx.stroke();
+    start += sweep;
+  }
+
+  ctx.textAlign = "center";
+  ctx.font = `700 26px ${font}`;
+  ctx.fillStyle = INK;
+  ctx.fillText(String(total), cx, cy - 18);
+  ctx.font = `13px ${font}`;
+  ctx.fillStyle = MUTED;
+  ctx.fillText(unit, cx, cy + 12);
+
+  // คำอธิบายด้านขวา เรียงลำดับตรงกับชิ้นในวงกลม
+  const legendX = PAD + PIE_SIZE + 28;
+  const legendR = width - PAD;
+  let ly = headerH + Math.max(0, (PIE_SIZE - legendH) / 2);
+
+  for (const s of slices) {
+    ctx.fillStyle = s.color;
+    ctx.fillRect(legendX, ly + 4, 12, 12);
+
+    ctx.textAlign = "right";
+    ctx.font = `13px ${font}`;
+    ctx.fillStyle = MUTED;
+    ctx.fillText(percentText(s.fraction), legendR, ly + 3);
+    const pctW = ctx.measureText(percentText(s.fraction)).width;
+
+    ctx.font = `600 14px ${font}`;
+    ctx.fillStyle = INK;
+    ctx.fillText(String(s.count), legendR - pctW - 14, ly + 2);
+    const countW = ctx.measureText(String(s.count)).width;
+
+    ctx.textAlign = "left";
+    ctx.font = `14px ${font}`;
+    ctx.fillStyle = s.residual ? MUTED : "#3f3f46";
+    const room = legendR - pctW - countW - 28 - (legendX + 20);
+    ctx.fillText(ellipsize(ctx, s.label, room), legendX + 20, ly + 2);
+
+    ly += 28;
+  }
+
+  ctx.textAlign = "left";
+  drawFootnote(ctx, headerH + Math.max(PIE_SIZE, legendH), meta);
   await save(canvas, meta.title);
 }
 

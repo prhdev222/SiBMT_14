@@ -3,7 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { CategoryBars, type BarDatum } from "./CategoryBars";
 import { MonthlyBars } from "./MonthlyBars";
-import { saveCategoryChart, saveMonthlyChart } from "@/lib/chart-image";
+import { PieChart } from "./PieChart";
+import {
+  saveCategoryChart,
+  saveMonthlyChart,
+  savePieChart,
+} from "@/lib/chart-image";
 import { downloadCsv, fileStamp, toCsv } from "@/lib/csv";
 import { safeFileName } from "@/lib/download";
 
@@ -23,6 +28,8 @@ export function ChartCard({
   emptyText,
   limit = 8,
   dense = false,
+  pie = true,
+  unit = "เคส",
 }: {
   title: string;
   /** คำอธิบายใต้กราฟ — ใช้เมื่อตัวเลขอาจถูกอ่านผิดถ้าไม่มีบริบท */
@@ -35,12 +42,23 @@ export function ChartCard({
   limit?: number;
   /** แบบกะทัดรัดสำหรับกล่องที่ซ้อนอยู่ในแผงอื่น */
   dense?: boolean;
+  /**
+   * เลือกดูเป็นวงกลมได้ไหม
+   *
+   * ⚠️ ปิดเมื่อข้อมูลไม่ใช่ "ส่วนหนึ่งของทั้งหมด" — วงกลมสื่อว่าทุกชิ้น
+   * รวมกันได้ 100% ของบางอย่าง ถ้าไม่จริงกราฟจะโกหกโดยที่ไม่มีตัวเลขไหนผิด
+   */
+  pie?: boolean;
+  /** หน่วยที่เขียนไว้กลางวงกลม */
+  unit?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [shape, setShape] = useState<"bar" | "pie">("bar");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const hasData = data.length > 0;
+  const canPie = pie && kind === "category";
 
   const saveImage = async () => {
     setSaving(true);
@@ -48,6 +66,9 @@ export function ChartCard({
     try {
       if (kind === "monthly") {
         await saveMonthlyChart(data, { title, footnote: note });
+      } else if (shape === "pie") {
+        // รูปที่บันทึกต้องเป็นแบบเดียวกับที่กำลังดูอยู่ ไม่ใช่แบบตั้งต้นเสมอ
+        await savePieChart(data, { title, footnote: note }, unit);
       } else {
         await saveCategoryChart(data, { title, footnote: note }, max);
       }
@@ -65,10 +86,19 @@ export function ChartCard({
       toCsv(["รายการ", "จำนวน"], data.map((d) => [d.label, d.count])),
     );
 
-  const chart = (full: boolean) =>
-    kind === "monthly" ? (
-      <MonthlyBars data={data} />
-    ) : (
+  const chart = (full: boolean) => {
+    if (kind === "monthly") return <MonthlyBars data={data} />;
+    if (shape === "pie")
+      return (
+        <PieChart
+          data={data}
+          emptyText={emptyText}
+          unit={unit}
+          // ตอนขยายมีที่กว้างแล้ว ไม่ต้องบีบเป็นแบบกะทัดรัดอีก
+          compact={dense && !full}
+        />
+      );
+    return (
       <CategoryBars
         data={data}
         max={max}
@@ -76,6 +106,7 @@ export function ChartCard({
         limit={full ? data.length : limit}
       />
     );
+  };
 
   return (
     <section
@@ -90,6 +121,9 @@ export function ChartCard({
 
         {hasData && (
           <div className="flex items-center gap-1 shrink-0 print:hidden">
+            {canPie && (
+              <ShapeToggle shape={shape} onChange={setShape} />
+            )}
             <IconButton
               label="ขยาย"
               title="ขยายเต็มจอ"
@@ -208,6 +242,56 @@ function Expanded({
         {children}
       </div>
     </dialog>
+  );
+}
+
+/**
+ * สลับระหว่างแท่งกับวงกลม
+ *
+ * ทั้งสองปุ่มแสดงพร้อมกันเสมอ ไม่ใช่ปุ่มเดียวที่สลับความหมายเมื่อกด —
+ * ปุ่มสลับทำให้ต้องเดาว่าไอคอนที่เห็นคือ "กำลังดูอยู่" หรือ "กดแล้วจะได้"
+ */
+function ShapeToggle({
+  shape,
+  onChange,
+}: {
+  shape: "bar" | "pie";
+  onChange: (s: "bar" | "pie") => void;
+}) {
+  const style = (active: boolean) =>
+    `px-2 py-1 text-sm leading-none transition-colors ${
+      active
+        ? "bg-zinc-100 text-zinc-900"
+        : "text-zinc-400 hover:text-zinc-700"
+    }`;
+
+  return (
+    <div
+      className="flex rounded-md border border-zinc-200 overflow-hidden mr-1"
+      role="group"
+      aria-label="รูปแบบกราฟ"
+    >
+      <button
+        type="button"
+        onClick={() => onChange("bar")}
+        aria-pressed={shape === "bar"}
+        aria-label="กราฟแท่ง"
+        title="กราฟแท่ง"
+        className={style(shape === "bar")}
+      >
+        ▤
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("pie")}
+        aria-pressed={shape === "pie"}
+        aria-label="กราฟวงกลม"
+        title="กราฟวงกลม"
+        className={style(shape === "pie")}
+      >
+        ◕
+      </button>
+    </div>
   );
 }
 
