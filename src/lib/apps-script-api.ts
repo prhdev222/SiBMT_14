@@ -150,7 +150,8 @@ export interface DashboardMemberResult {
  * Script Properties ที่เดียว ถ้าเว็บจะถามเองต้องเอา token ไปวางไว้บน
  * Cloudflare อีกชุด แล้วความลับตัวเดียวกันจะมีสองที่ให้หลุดและสองที่ให้ลืมหมุน
  *
- * รายชื่อกลุ่มก็อยู่ในชีต config ทำให้เพิ่มหรือถอนกลุ่มได้โดยไม่ต้อง deploy เว็บใหม่
+ * รายชื่อกลุ่มก็มาจาก LINE_TARGET_* ใน Script Properties ที่ตั้งไว้แล้ว
+ * เพิ่มหรือถอนกลุ่มจึงทำที่เดียวและไม่ต้อง deploy เว็บใหม่
  */
 export async function checkDashboardMember(
   lineUserId: string,

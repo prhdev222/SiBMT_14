@@ -273,6 +273,20 @@ function testLineTargets() {
     });
   });
 
+  // ⚠️ ค่าเดียวกันนี้เป็นประตูของ dashboard ด้วย ไม่ใช่แค่ปลายทางแจ้งเตือน
+  // พิมพ์ออกมาทุกครั้งที่ตรวจ เพื่อให้คนที่เพิ่งเพิ่มกลุ่มเห็นผลข้างเคียงทันที
+  // ไม่ใช่รู้ตัวตอนที่มีคนเข้าดูข้อมูลผู้ป่วยได้โดยไม่มีใครตั้งใจให้เข้า
+  const dashboardGroups = dashboardLineGroups_();
+  console.log('');
+  console.log('กลุ่มที่เข้า dashboard ด้วย LINE ได้ตอนนี้: ' +
+    dashboardGroups.length + ' กลุ่ม');
+  dashboardGroups.forEach(function (id) {
+    console.log('   • ' + maskLineId_(id));
+  });
+  if (dashboardGroups.length === 0) {
+    console.log('   (ไม่มี — ยังไม่มีใครเข้าระบบด้วย LINE ได้)');
+  }
+
   console.log('');
   if (problems.length === 0) {
     console.log('ส่งข้อความทดสอบสำเร็จครบ ' + sent + ' ปลายทาง');

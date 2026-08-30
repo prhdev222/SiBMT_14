@@ -933,8 +933,8 @@ function checkDashboardMember_(payload) {
   const groups = dashboardLineGroups_();
   if (groups.length === 0) {
     console.warn(
-      'ยังไม่ได้ตั้ง dashboard_line_groups ในชีต config — ' +
-      'ปฏิเสธการเข้าระบบด้วย LINE ทุกราย'
+      'ไม่พบ groupId ใน LINE_TARGET_ADMIN / LINE_TARGET_FELLOW / ' +
+      'LINE_TARGET_RESIDENT — ปฏิเสธการเข้าระบบด้วย LINE ทุกราย'
     );
     return { allowed: false, displayName: fallbackName };
   }
@@ -1001,16 +1001,40 @@ function lineGroupMemberProfile_(token, groupId, userId) {
 }
 
 /**
- * รายชื่อกลุ่มที่มีสิทธิ์เข้า dashboard จากชีต config
+ * รายชื่อกลุ่มที่มีสิทธิ์เข้า dashboard
  *
- * อยู่ในชีตไม่ใช่ในโค้ด เพราะการเพิ่มหรือถอนกลุ่มเป็นเรื่องการบริหารคน
- * ไม่ใช่การเปลี่ยนพฤติกรรมของระบบ — ควรทำได้โดยไม่ต้อง deploy
+ * อ่านจาก LINE_TARGET_* ใน Script Properties ที่ตั้งไว้อยู่แล้ว ไม่ได้เก็บซ้ำ
+ * ที่อื่น — groupId ชุดเดียวกันถ้าวางไว้สองที่ วันหนึ่งจะแก้ที่เดียวแล้วอีกที่
+ * ค้างไว้ โดยที่ไม่มีอะไรบอกว่าสองที่ไม่ตรงกันแล้ว
+ *
+ * และ Script Properties เห็นได้เฉพาะคนที่เปิด Apps Script ได้ ต่างจากชีต config
+ * ซึ่งใครที่แชร์ชีตด้วยก็เห็น — รายชื่อที่เป็นประตูของระบบควรอยู่ในที่ที่แคบกว่า
+ *
+ * ⚠️ ข้อแลกเปลี่ยนที่ต้องรู้: ค่าเหล่านี้มีหน้าที่เดิมคือ "ปลายทางแจ้งเตือน"
+ * การเพิ่มกลุ่มเข้าไปเพื่อให้ได้รับแจ้งเตือน จะทำให้กลุ่มนั้นเข้า dashboard ได้ด้วย
+ * testLineTargets() จึงพิมพ์จำนวนกลุ่มที่เข้า dashboard ได้ออกมาทุกครั้ง
+ * เพื่อไม่ให้ผลข้างเคียงนี้เกิดขึ้นโดยไม่มีใครเห็น
+ *
+ * ⚠️ รับเฉพาะ id ที่ขึ้นต้นด้วย C ซึ่งคือกลุ่ม
+ * ปลายทางแจ้งเตือนใส่ userId (ขึ้นต้นด้วย U) ได้ด้วย แต่ "อยู่ในกลุ่ม" คือเกณฑ์
+ * ที่ตกลงกันไว้ — ถ้าปล่อยให้ userId ผ่านด้วย ก็เท่ากับมีรายชื่อบุคคลที่เข้าได้
+ * ซ่อนอยู่ในค่าที่ตั้งไว้เพื่อการแจ้งเตือน ซึ่งไม่มีใครตั้งใจให้เป็นแบบนั้น
  */
 function dashboardLineGroups_() {
-  return String(readConfigValue_('dashboard_line_groups') || '')
-    .split(',')
-    .map(function (s) { return s.trim(); })
-    .filter(function (s) { return s.length > 0; });
+  const props = PropertiesService.getScriptProperties();
+  const seen = {};
+  const groups = [];
+
+  Object.keys(LINE_TARGET_BY_AUDIENCE).forEach(function (audience) {
+    parseLineTargets_(props.getProperty(LINE_TARGET_BY_AUDIENCE[audience]))
+      .forEach(function (id) {
+        if (id.charAt(0) !== 'C' || seen[id]) return;
+        seen[id] = true;
+        groups.push(id);
+      });
+  });
+
+  return groups;
 }
 
 /**
