@@ -429,6 +429,15 @@ export interface Referral {
    * และเคสที่ resident พิมพ์ชื่อสูตรเองก็จะว่าง (ดู similar-cases.ts)
    */
   adviceRegimens: string;
+  /** ชื่อผู้ตอบที่กรอกในฟอร์ม — ไม่ใช่ username ที่ล็อกอิน */
+  answeredBy: string;
+  /**
+   * อาจารย์ที่ resident ระบุว่าให้ความเห็น
+   *
+   * ⚠️ เป็นคำรับรองของ resident ไม่ใช่การอนุมัติที่ระบบพิสูจน์ได้
+   * รายงานที่อ้างคอลัมน์นี้ต้องเข้าใจข้อจำกัดนั้น
+   */
+  adviceAttending: string;
 }
 
 /**

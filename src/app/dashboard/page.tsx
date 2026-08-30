@@ -51,6 +51,12 @@ export default async function DashboardPage() {
               นัดตรวจ OPD
             </Link>
             <Link
+              href="/dashboard/stats"
+              className="text-sm font-medium text-blue-600 hover:underline whitespace-nowrap"
+            >
+              สถิติและรายงาน
+            </Link>
+            <Link
               href="/dashboard/schedule"
               className="text-sm font-medium text-blue-600 hover:underline whitespace-nowrap"
             >

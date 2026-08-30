@@ -346,6 +346,8 @@ function toReferral(row: Record<string, string>): Referral | null {
     insuranceScheme: text(row["insurance_scheme"]),
     appointmentNote: text(row["appointment_note"]),
     adviceRegimens: text(row["advice_regimens"]),
+    answeredBy: text(row["advice_by"]),
+    adviceAttending: text(row["advice_attending"]),
     urgency: parseUrgency(row["urgency"]),
     status,
     assignedTo: text(row["assigned_to"]) || null,

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/Badge";
+import { downloadCsv, fileStamp, toCsv } from "@/lib/csv";
 import {
   ALERT_COLOR,
   ALERT_LABEL_TH,
@@ -26,53 +27,42 @@ function alertOf(r: Referral): AlertLevel {
   return alertLevelFor(r.elapsedBusinessHours, r.status);
 }
 
-function toCsv(rows: Referral[]): string {
-  const header = [
-    "referral_id",
-    "referral_type",
-    "group_no",
-    "submitted_at",
-    "referrer_org",
-    "referrer_phone",
-    "disease_group",
-    "status",
-    "assigned_to",
-    "elapsed_business_hours",
-    "alert_level",
-    "follow_up_date",
-    "possible_duplicate_of",
-  ];
-  const lines = rows.map((r) =>
-    [
-      r.referralId,
-      r.referralType,
-      REFERRAL_TYPE_META[r.referralType].groupNumber,
-      r.submittedAt,
-      r.referrerOrg,
-      r.referrerPhone,
-      r.diseaseGroup ?? "",
-      r.status,
-      r.assignedTo ?? "",
-      r.elapsedBusinessHours,
-      alertOf(r),
-      r.followUpDate ?? "",
-      r.possibleDuplicateOf ?? "",
-    ]
-      .map((v) => `"${String(v).replaceAll('"', '""')}"`)
-      .join(","),
-  );
-  return [header.join(","), ...lines].join("\n");
-}
+/**
+ * ส่งออกเคสที่กรองอยู่เป็น CSV
+ *
+ * ใช้ตัวช่วยกลางใน lib/csv.ts — เดิมมีสำเนาของตัวเองที่ไม่ได้ใส่ BOM
+ * ทำให้ Excel อ่านภาษาไทยเป็นอักขระขยะ ส่วน Numbers กับ Google Sheets
+ * แสดงถูก จึงไม่มีใครเจอจนกว่าจะมีคนเปิดด้วย Excel จริง
+ */
+const CSV_HEADERS = [
+  "referral_id", "referral_type", "group_no", "submitted_at",
+  "referrer_org", "referrer_phone", "disease_group", "status",
+  "assigned_to", "elapsed_business_hours", "alert_level",
+  "follow_up_date", "possible_duplicate_of",
+];
 
-function downloadCsv(rows: Referral[]) {
-  const csv = toCsv(rows);
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `referrals-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+function exportCsv(rows: Referral[]) {
+  downloadCsv(
+    `referrals-${fileStamp()}`,
+    toCsv(
+      CSV_HEADERS,
+      rows.map((r) => [
+        r.referralId,
+        r.referralType,
+        REFERRAL_TYPE_META[r.referralType].groupNumber,
+        r.submittedAt,
+        r.referrerOrg,
+        r.referrerPhone,
+        r.diseaseGroup ?? "",
+        r.status,
+        r.assignedTo ?? "",
+        r.elapsedBusinessHours,
+        alertOf(r),
+        r.followUpDate ?? "",
+        r.possibleDuplicateOf ?? "",
+      ]),
+    ),
+  );
 }
 
 export function DashboardClient({ referrals }: { referrals: Referral[] }) {
@@ -276,7 +266,7 @@ export function DashboardClient({ referrals }: { referrals: Referral[] }) {
 
         <div className="sm:col-span-2 flex justify-end">
           <button
-            onClick={() => downloadCsv(filtered)}
+            onClick={() => exportCsv(filtered)}
             className="rounded-md bg-zinc-900 text-white text-sm px-4 py-2 font-medium hover:bg-zinc-700"
           >
             Export CSV ({filtered.length} รายการ)
