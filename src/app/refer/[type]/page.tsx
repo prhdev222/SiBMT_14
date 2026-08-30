@@ -170,15 +170,52 @@ export default async function ReferTypePage({
           <h2 className="font-semibold text-blue-900 mb-1">
             ก่อนส่งข้อมูล: หนังสือรับทราบสำหรับผู้ป่วย
           </h2>
-          <p className="text-blue-900/80">
-            กรุณาพิมพ์แบบฟอร์มให้ผู้ป่วยหรือผู้แทนโดยชอบธรรมลงนามรับทราบ
-            แล้วเก็บต้นฉบับไว้ที่โรงพยาบาลต้นทาง (ไม่ต้องส่งกลับมาศิริราช)
-          </p>
+
+          {/*
+            กลุ่มที่ 2 รับสองอย่างที่ต่างกันมากตั้งแต่ขยายขอบเขต (มติ 29 ส.ค. 2569)
+            — ขอความเห็นสูตรยาของผู้ป่วยรายหนึ่ง กับถามคำถามทั่วไป
+
+            อันแรกส่งข้อมูลคลินิกชุดเดียวกับกลุ่มที่ 3 ทุกประการ ต่างแค่ผู้ป่วย
+            ไม่ได้เดินทางมา ซึ่งไม่ใช่สิ่งที่กฎหมายคุ้มครองข้อมูลสนใจ
+            อันหลังอาจไม่มีข้อมูลของใครเลย
+
+            ตัวแปรคือ "ส่งข้อมูลของผู้ป่วยรายใดรายหนึ่งไปหรือไม่" ไม่ใช่ "ผู้ป่วยมาหรือไม่"
+            การบอกให้ชัดตรงนี้ลดภาระของคำถามทั่วไปได้ โดยไม่ลดการคุ้มครอง
+            ของเคสที่ส่งข้อมูลจริง — ต่างจากการตัดการ์ดออกทั้งกลุ่ม
+          */}
+          {type === "REGIMEN_CONSULT" ? (
+            <>
+              <p className="text-blue-900/80">
+                <span className="font-medium">
+                  ถ้าเป็นคำถามเกี่ยวกับผู้ป่วยรายใดรายหนึ่ง
+                </span>{" "}
+                กรุณาพิมพ์แบบฟอร์มให้ผู้ป่วยหรือผู้แทนโดยชอบธรรมลงนามรับทราบ
+                แล้วเก็บต้นฉบับไว้ที่โรงพยาบาลต้นทาง (ไม่ต้องส่งกลับมาศิริราช)
+              </p>
+              <p className="text-blue-900/80 mt-2">
+                <span className="font-medium">
+                  ถ้าเป็นคำถามทั่วไปที่ไม่ระบุผู้ป่วย
+                </span>{" "}
+                เช่น ถามว่าขณะนี้มีการศึกษาวิจัยใดเปิดรับอยู่บ้าง
+                — ไม่ต้องใช้แบบฟอร์มนี้ และกรุณาอย่ากรอกข้อมูลผู้ป่วยลงในฟอร์ม
+              </p>
+            </>
+          ) : (
+            <p className="text-blue-900/80">
+              กรุณาพิมพ์แบบฟอร์มให้ผู้ป่วยหรือผู้แทนโดยชอบธรรมลงนามรับทราบ
+              แล้วเก็บต้นฉบับไว้ที่โรงพยาบาลต้นทาง (ไม่ต้องส่งกลับมาศิริราช)
+            </p>
+          )}
+
+          {/*
+            เป็นลิงก์ ไม่ใช่ปุ่มทึบ — ปุ่มทึบสีเข้มดึงสายตามากกว่าปุ่มส่งฟอร์มจริง
+            ทั้งที่นี่เป็นขั้นเตรียมเอกสาร ไม่ใช่ทางไปต่อของหน้านี้
+          */}
           <Link
             href="/consent"
-            className="mt-3 inline-flex rounded-lg bg-blue-600 px-4 py-2 text-white font-semibold hover:bg-blue-700 transition-colors"
+            className="mt-3 inline-flex items-center gap-1 font-medium text-blue-700 hover:underline"
           >
-            เปิดแบบฟอร์มเพื่อพิมพ์
+            เปิดแบบฟอร์มเพื่อพิมพ์ →
           </Link>
         </section>
         )}
@@ -193,25 +230,34 @@ export default async function ReferTypePage({
         ) : type === "TRANSPLANT_APPOINTMENT" ? (
           <BookSlotCard />
         ) : (
-        /* ปุ่มส่งฟอร์ม */
-        <section className="rounded-xl bg-white border border-zinc-200 p-5">
-          <h2 className="font-semibold text-zinc-900 mb-2">ส่งข้อมูล</h2>
+        /*
+          ปุ่มส่งฟอร์ม — กล่องนี้คือทางไปต่อของหน้า จึงเป็นที่เดียวที่ใช้พื้นหลังสี
+          และปุ่มเต็มความกว้าง สิ่งอื่นบนหน้านี้เป็นข้อมูลประกอบทั้งหมด
+          ถ้าทุกอย่างเด่นเท่ากันก็เท่ากับไม่มีอะไรเด่น แล้วคนจะเลื่อนผ่านสิ่งที่ต้องกดจริง
+        */
+        <section className="rounded-xl bg-blue-600 p-5 sm:p-6 shadow-sm">
+          <h2 className="font-semibold text-white text-lg">ส่งข้อมูล</h2>
           {formUrl ? (
-            <a
-              href={formUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex rounded-lg bg-blue-600 px-5 py-3 text-white font-semibold hover:bg-blue-700 transition-colors"
-            >
-              กรอกแบบฟอร์มกลุ่มที่ {meta.groupNumber}
-            </a>
+            <>
+              <p className="text-sm text-blue-100 mt-1 mb-4">
+                เตรียมเอกสารตามรายการด้านบนให้ครบก่อน แล้วกดปุ่มนี้เพื่อกรอกฟอร์ม
+              </p>
+              <a
+                href={formUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-white px-6 py-4 text-blue-700 text-base font-bold hover:bg-blue-50 transition-colors"
+              >
+                กรอกแบบฟอร์มกลุ่มที่ {meta.groupNumber} →
+              </a>
+            </>
           ) : (
-            <p className="text-sm text-zinc-600">
+            <p className="text-sm text-blue-50 mt-2">
               ช่องทางส่งข้อมูลของกลุ่มนี้อยู่ระหว่างเปิดใช้งาน
               กรุณาติดต่อเจ้าหน้าที่ที่{" "}
               <a
                 href={`tel:${CONTACT.phone}`}
-                className="text-blue-600 hover:underline"
+                className="font-semibold text-white underline"
               >
                 {CONTACT.phoneDisplay}
               </a>{" "}
