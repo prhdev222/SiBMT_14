@@ -80,6 +80,40 @@ function linkButtonMessage_(text, label, url) {
   };
 }
 
+/**
+ * แปะปุ่มลัดไว้เหนือแป้นพิมพ์ของข้อความหนึ่ง
+ *
+ * ต่างจาก buttons template ตรงที่ปุ่มพวกนี้ "หายไปเองเมื่อกดหรือพิมพ์อย่างอื่น"
+ * จึงเหมาะกับตัวเลือกชั่วคราวของโฟลว์ที่กำลังคุยกันอยู่ ไม่ค้างรกแชทย้อนหลัง
+ *
+ * action แบบ message ทำให้ข้อความถูกส่งเสมือนผู้ใช้พิมพ์เอง
+ * ตัวจัดการเดิมจึงรับได้โดยไม่ต้องแก้ — คนที่อยากพิมพ์ "1" เองก็ยังได้ผลเหมือนกัน
+ *
+ * ⚠️ LINE แสดงปุ่มลัดของ "ข้อความสุดท้าย" ในการตอบหนึ่งครั้งเท่านั้น
+ *    แปะไว้กับข้อความอื่นแล้วจะไม่ขึ้นเลย
+ * ⚠️ label ยาวได้ 20 ตัวอักษร เกินแล้ว LINE ตอบ 400 และไม่ส่งอะไรเลย
+ */
+function withQuickReply_(message, items) {
+  message.quickReply = {
+    items: items.slice(0, 13).map(function (item) {
+      return {
+        type: 'action',
+        action: {
+          type: 'message',
+          label: item.label.substring(0, 20),
+          text: item.text,
+        },
+      };
+    }),
+  };
+  return message;
+}
+
+/** ปุ่มลัด "ยกเลิก" — ใช้ทุกขั้นของโฟลว์ที่ออกกลางคันได้ */
+function cancelQuickReply_() {
+  return [{ label: '✕ ยกเลิก', text: 'ยกเลิก' }];
+}
+
 const LINE_TARGET_BY_AUDIENCE = {
   batch: 'LINE_TARGET_RESIDENT',
   red: 'LINE_TARGET_ADMIN',

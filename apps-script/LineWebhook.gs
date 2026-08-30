@@ -137,6 +137,19 @@ const LINE_CONTACT_TOPICS = {
 /** โฟลว์ค้างไว้ได้นานแค่ไหน — ตอบสองสามคำถามไม่ควรเกินนี้ */
 const LINE_FLOW_TTL_SECONDS = 1800;
 
+/**
+ * ปุ่มลัดของขั้นเลือกหัวข้อ
+ *
+ * label ย่อกว่าข้อความในเมนู เพราะ LINE จำกัดไว้ 20 ตัวอักษร
+ * ส่วน text ที่ส่งจริงยังเป็น "1" "2" "3" เหมือนที่พิมพ์เอง ตัวจัดการจึงใช้ตัวเดิม
+ */
+const TOPIC_QUICK_REPLY = [
+  { label: '1. ส่งข้อมูลไม่ได้', text: '1' },
+  { label: '2. สถานะเกินกำหนด', text: '2' },
+  { label: '3. อื่น ๆ', text: '3' },
+  { label: '✕ ยกเลิก', text: 'ยกเลิก' },
+];
+
 function handleLineWebhook_(body) {
   (body.events || []).forEach(function (event) {
     try {
@@ -414,12 +427,16 @@ function startContactFlow_(event, userId) {
         '1. ' + LINE_CONTACT_TOPICS['1'] + '\n' +
         '2. ' + LINE_CONTACT_TOPICS['2'] + '\n' +
         '3. ' + LINE_CONTACT_TOPICS['3'] + '\n\n' +
-        '(พิมพ์ "ยกเลิก" เพื่อออก)',
+        'กดปุ่มด้านล่าง หรือพิมพ์เลขก็ได้',
     },
-    linkButtonMessage_(
-      'ถ้าเป็นคำถามทางคลินิก หรือไม่แน่ใจว่าเคสเข้ากลุ่มไหน ให้ส่งผ่านกลุ่มที่ 2 แทน',
-      'ไปที่กลุ่มที่ 2',
-      SITE_URL + '/refer/regimen-consult'
+    // ปุ่มลัดต้องอยู่กับข้อความสุดท้าย LINE ถึงจะแสดง
+    withQuickReply_(
+      linkButtonMessage_(
+        'ถ้าเป็นคำถามทางคลินิก หรือไม่แน่ใจว่าเคสเข้ากลุ่มไหน ให้ส่งผ่านกลุ่มที่ 2 แทน',
+        'ไปที่กลุ่มที่ 2',
+        SITE_URL + '/refer/regimen-consult'
+      ),
+      TOPIC_QUICK_REPLY
     ),
   ]);
 }
@@ -427,11 +444,13 @@ function startContactFlow_(event, userId) {
 function advanceContactFlow_(event, flow, text, userId) {
   if (flow.step === 'topic') {
     if (!LINE_CONTACT_TOPICS[text]) {
-      replyLineMessage_(event.replyToken,
-        'กรุณาพิมพ์เลข 1, 2 หรือ 3 เท่านั้น\n\n' +
-        '1. ' + LINE_CONTACT_TOPICS['1'] + '\n' +
-        '2. ' + LINE_CONTACT_TOPICS['2'] + '\n' +
-        '3. ' + LINE_CONTACT_TOPICS['3']);
+      replyLineMessage_(event.replyToken, [withQuickReply_(
+        { type: 'text', text:
+          'กรุณาเลือก 1, 2 หรือ 3\n\n' +
+          '1. ' + LINE_CONTACT_TOPICS['1'] + '\n' +
+          '2. ' + LINE_CONTACT_TOPICS['2'] + '\n' +
+          '3. ' + LINE_CONTACT_TOPICS['3'] },
+        TOPIC_QUICK_REPLY)]);
       return;
     }
 
@@ -441,32 +460,42 @@ function advanceContactFlow_(event, flow, text, userId) {
     if (text === '2') {
       flow.step = 'referralId';
       writeContactFlow_(userId, flow);
-      replyLineMessage_(event.replyToken,
-        'กรุณาพิมพ์รหัสอ้างอิงของเคส\n' +
-        'เช่น HEM-20260822-0001\n\n' +
-        'คัดลอกจากอีเมลที่ระบบส่งให้ได้เลย');
+      replyLineMessage_(event.replyToken, [withQuickReply_(
+        { type: 'text', text:
+          'กรุณาพิมพ์รหัสอ้างอิงของเคส\n' +
+          'เช่น HEM-20260822-0001\n\n' +
+          'คัดลอกจากอีเมลที่ระบบส่งให้ได้เลย' },
+        cancelQuickReply_())]);
       return;
     }
 
     flow.step = 'phone';
     writeContactFlow_(userId, flow);
-    replyLineMessage_(event.replyToken, 'กรุณาพิมพ์เบอร์โทรที่ให้ติดต่อกลับ');
+    replyLineMessage_(event.replyToken, [withQuickReply_(
+      { type: 'text', text: 'กรุณาพิมพ์เบอร์โทรที่ให้ติดต่อกลับ' },
+      cancelQuickReply_())]);
     return;
   }
 
   if (flow.step === 'referralId') {
     const matched = text.match(LINE_REFERRAL_ID_PATTERN);
     if (!matched) {
-      replyLineMessage_(event.replyToken,
-        'รูปแบบรหัสไม่ถูกต้อง\n' +
-        'ต้องเป็น HEM-ปีเดือนวัน-เลข 4 หลัก เช่น HEM-20260822-0001\n\n' +
-        'ถ้าหารหัสไม่เจอ พิมพ์ "-" เพื่อข้ามได้');
+      // มีปุ่ม "ข้าม" ด้วย เพราะคนหารหัสไม่เจอคือคนที่เปิดอีเมลไม่ได้อยู่แล้ว
+      // การให้พิมพ์ขีดกลางเองเป็นด่านที่ไม่จำเป็นสำหรับคนที่ติดอยู่ตรงนั้นพอดี
+      replyLineMessage_(event.replyToken, [withQuickReply_(
+        { type: 'text', text:
+          'รูปแบบรหัสไม่ถูกต้อง\n' +
+          'ต้องเป็น HEM-ปีเดือนวัน-เลข 4 หลัก เช่น HEM-20260822-0001' },
+        [{ label: 'หารหัสไม่เจอ ข้ามไป', text: '-' }].concat(cancelQuickReply_())
+      )]);
       if (text !== '-') return;
     }
     flow.referralId = matched ? matched[0].toUpperCase() : '(ไม่ทราบรหัส)';
     flow.step = 'phone';
     writeContactFlow_(userId, flow);
-    replyLineMessage_(event.replyToken, 'กรุณาพิมพ์เบอร์โทรที่ให้ติดต่อกลับ');
+    replyLineMessage_(event.replyToken, [withQuickReply_(
+      { type: 'text', text: 'กรุณาพิมพ์เบอร์โทรที่ให้ติดต่อกลับ' },
+      cancelQuickReply_())]);
     return;
   }
 
@@ -474,17 +503,21 @@ function advanceContactFlow_(event, flow, text, userId) {
     // นับเฉพาะตัวเลข เพราะคนพิมพ์ 08x-xxx-xxxx บ้าง 08x xxx xxxx บ้าง
     const digits = text.replace(/\D/g, '');
     if (digits.length < 9) {
-      replyLineMessage_(event.replyToken,
-        'เบอร์โทรไม่ครบ กรุณาพิมพ์ใหม่\n' +
-        'เช่น 081-234-5678 หรือ 02-419-9903 ต่อ 123');
+      replyLineMessage_(event.replyToken, [withQuickReply_(
+        { type: 'text', text:
+          'เบอร์โทรไม่ครบ กรุณาพิมพ์ใหม่\n' +
+          'เช่น 081-234-5678 หรือ 02-419-9903 ต่อ 123' },
+        cancelQuickReply_())]);
       return;
     }
     flow.phone = text;
     flow.step = 'detail';
     writeContactFlow_(userId, flow);
-    replyLineMessage_(event.replyToken,
-      'พิมพ์รายละเอียดที่ต้องการแจ้งได้เลยครับ\n\n' +
-      '🔒 กรุณาอย่าพิมพ์ชื่อ-สกุล เลข HN หรือเลขบัตรประชาชนของผู้ป่วย');
+    replyLineMessage_(event.replyToken, [withQuickReply_(
+      { type: 'text', text:
+        'พิมพ์รายละเอียดที่ต้องการแจ้งได้เลยครับ\n\n' +
+        '🔒 กรุณาอย่าพิมพ์ชื่อ-สกุล เลข HN หรือเลขบัตรประชาชนของผู้ป่วย' },
+      cancelQuickReply_())]);
     return;
   }
 
