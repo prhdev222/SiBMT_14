@@ -182,6 +182,19 @@ function seedIndications_(ss) {
 }
 
 function createIfMissing_(ss, name, headers) {
+  // ⚠️ กันกรณีวาง Setup.gs แล้วลืมวาง Config.gs
+  //
+  // ชื่อแท็บทั้งหมดอยู่ใน SHEETS ของ Config.gs ถ้าไฟล์นั้นเป็นฉบับเก่า
+  // ชื่อที่เพิ่งเพิ่มจะเป็น undefined แล้ว insertSheet(undefined) ไม่ error
+  // แต่สร้างแท็บชื่อ "Sheet1" ให้แทน พร้อมหัวคอลัมน์ที่ถูกต้องทุกช่อง
+  // — กลายเป็นแท็บที่ถูกทุกอย่างยกเว้นชื่อ ซึ่งโค้ดหาไม่เจอตลอดไปโดยไม่มีอะไรฟ้อง
+  if (!name) {
+    throw new Error(
+      'ชื่อชีตเป็นค่าว่าง — แปลว่า Config.gs ยังเป็นฉบับเก่า\n' +
+      'ให้วาง Config.gs ฉบับล่าสุดก่อน แล้วรัน setupSheets() ใหม่'
+    );
+  }
+
   let sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);
@@ -386,7 +399,11 @@ function runSelfTest() {
   Object.keys(SHEETS).forEach(function (key) {
     const name = SHEETS[key];
     if (!SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name)) {
-      problems.push('ไม่พบชีต: ' + name);
+      problems.push(
+        'ไม่พบชีต: ' + name +
+        ' — ถ้ามีแท็บชื่อ "Sheet1" ที่หัวคอลัมน์ตรงกับแท็บนี้ ให้เปลี่ยนชื่อเป็น "' +
+        name + '" (เกิดจากวาง Setup.gs โดยยังไม่ได้วาง Config.gs)'
+      );
     }
   });
 
