@@ -90,6 +90,25 @@ const LINE_CONTACT_LIMIT_PER_HOUR = 5;
 /** สั้นกว่านี้ถือว่าเป็นคำทักทายหรือพิมพ์พลาด ไม่ส่งต่อให้แอดมิน */
 const LINE_CONTACT_MIN_CHARS = 10;
 
+/**
+ * รหัสตั๋วที่แอดมินใช้อ้างถึงคนถาม เช่น #R7K2
+ *
+ * ตัดอักษรที่อ่านสับสนออก (I O 0 1) เพราะแอดมินต้องพิมพ์ตามที่เห็นในกลุ่ม
+ * ถ้าพิมพ์ผิดหนึ่งตัว ข้อความจะไปถึงคนอื่นหรือไม่ไปเลย
+ */
+const LINE_TICKET_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const LINE_TICKET_LENGTH = 4;
+const LINE_TICKET_PATTERN = /^#([A-Z2-9]{4})\s+([\s\S]+)$/;
+
+/**
+ * ตั๋วหมดอายุกี่วัน
+ *
+ * ยาวพอให้ตอบวันทำการถัดไปได้ แต่ไม่เก็บ LINE user id ของแพทย์ต้นทาง
+ * ไว้ตลอดกาลโดยไม่มีใครลบ — เก็บใน Script Properties ซึ่งไม่มี TTL ในตัว
+ * จึงต้องกวาดเอง (ทำตอนออกตั๋วใหม่ ไม่ต้องตั้ง trigger เพิ่ม)
+ */
+const LINE_TICKET_TTL_DAYS = 7;
+
 function handleLineWebhook_(body) {
   (body.events || []).forEach(function (event) {
     try {
@@ -119,6 +138,12 @@ function handleLineEvent_(event) {
 
   if (text === LINE_WHOAMI_KEYWORD) {
     replyLineMessage_(event.replyToken, buildWhoAmIReply_(source.type, id));
+    return;
+  }
+
+  // แอดมินตอบกลับจากในกลุ่มของตัวเอง — ต้องมาก่อนการกรองเฉพาะแชทตัวต่อตัว
+  if (LINE_TICKET_PATTERN.test(text)) {
+    handleAdminReply_(event, text, id);
     return;
   }
 
@@ -303,13 +328,17 @@ function forwardToAdmin_(event, text, sourceId) {
   }
 
   const who = lineDisplayName_(sourceId);
+  const ticket = issueLineTicket_(sourceId);
 
   pushLineMessage_(
     '💬 มีคนทักเข้ามาทาง LINE OA\n\n' +
     'จาก: ' + who + '\n\n' +
     text.slice(0, 1200) + '\n\n' +
     '──────────\n' +
-    'ตอบกลับได้ที่แอป LINE Official Account Manager → แชท\n' +
+    'ตอบกลับ: พิมพ์ในกลุ่มนี้ได้เลย\n\n' +
+    '   #' + ticket + ' ตามด้วยข้อความที่จะตอบ\n\n' +
+    'บอทจะส่งข้อความนั้นถึงเขาให้ (ตั๋วใช้ได้ ' + LINE_TICKET_TTL_DAYS + ' วัน)\n' +
+    '🔒 อย่าพิมพ์ข้อมูลผู้ป่วยในคำตอบ\n' +
     'ถ้าเป็นคำถามทางคลินิก แนะนำให้เขาส่งผ่านกลุ่มที่ 2 จะได้เข้าคิวและมีคนตอบตามกรอบเวลา',
     'red'
   );
@@ -351,6 +380,150 @@ function lineDisplayName_(userId) {
     console.warn('อ่านชื่อ LINE ไม่สำเร็จ: ' + err);
     return maskLineId_(userId);
   }
+}
+
+/**
+ * แอดมินพิมพ์ "#R7K2 ข้อความ" ในกลุ่ม → บอทส่งข้อความนั้นถึงแพทย์ต้นทาง
+ *
+ * มีไว้เพื่อให้แอดมินตอบจากกลุ่มที่ใช้อยู่แล้ว ไม่ต้องเปิดแอป
+ * LINE Official Account Manager ซึ่งไม่มีใครติดตั้งไว้
+ *
+ * ⚠️ รับเฉพาะจากปลายทางที่อยู่ใน LINE_TARGET_ADMIN เท่านั้น
+ * ถ้าไม่ตรวจ ใครก็ตามที่เดารหัสตั๋วถูกจะยิงข้อความในนามทีมถึงแพทย์ต้นทางได้
+ * — ตั๋วสี่ตัวอักษรกันการเดาแบบสุ่มไม่ไหว มันมีไว้แค่ชี้ว่าตอบใคร ไม่ใช่กุญแจ
+ */
+function handleAdminReply_(event, text, sourceId) {
+  if (!isAdminTarget_(sourceId)) {
+    // ไม่ตอบอะไรกลับ — คนที่ไม่ใช่แอดมินไม่ควรรู้ด้วยซ้ำว่าคำสั่งนี้มีอยู่
+    console.warn('ปฏิเสธคำสั่งตอบกลับจากปลายทางที่ไม่ใช่แอดมิน: ' +
+      maskLineId_(sourceId));
+    return;
+  }
+
+  const matched = text.match(LINE_TICKET_PATTERN);
+  const ticket = matched[1].toUpperCase();
+  const reply = matched[2].trim();
+
+  const userId = readLineTicket_(ticket);
+  if (!userId) {
+    replyLineMessage_(
+      event.replyToken,
+      'ไม่พบตั๋ว #' + ticket + '\n\n' +
+      'อาจพิมพ์รหัสผิด หรือตั๋วหมดอายุแล้ว (เก็บไว้ ' +
+      LINE_TICKET_TTL_DAYS + ' วัน)\n' +
+      'เลื่อนขึ้นไปดูรหัสในข้อความที่บอทส่งเข้ากลุ่ม'
+    );
+    return;
+  }
+
+  const token = PropertiesService.getScriptProperties()
+    .getProperty('LINE_CHANNEL_ACCESS_TOKEN');
+  if (!token) {
+    replyLineMessage_(event.replyToken, 'ยังไม่ได้ตั้ง LINE_CHANNEL_ACCESS_TOKEN');
+    return;
+  }
+
+  sendOneLinePush_(
+    token,
+    userId,
+    '💬 ตอบจากแพทย์แอดมินกลาง\n\n' + reply.slice(0, 1200) + '\n\n' +
+    '──────────\n' +
+    'พิมพ์ตอบกลับในแชทนี้ได้เลย ระบบจะส่งต่อให้'
+  );
+
+  replyLineMessage_(
+    event.replyToken,
+    '✅ ส่งถึงผู้ถาม (#' + ticket + ') แล้ว'
+  );
+}
+
+/** ปลายทางนี้อยู่ใน LINE_TARGET_ADMIN หรือไม่ */
+function isAdminTarget_(sourceId) {
+  const raw = PropertiesService.getScriptProperties()
+    .getProperty('LINE_TARGET_ADMIN');
+  return parseLineTargets_(raw).indexOf(String(sourceId)) !== -1;
+}
+
+/**
+ * ออกตั๋วใหม่ให้ผู้ถามหนึ่งคน แล้วกวาดตั๋วที่หมดอายุทิ้ง
+ *
+ * เก็บใน Script Properties ไม่ใช่ CacheService เพราะ cache อยู่ได้สูงสุด 6 ชั่วโมง
+ * ซึ่งสั้นกว่า "ตอบวันทำการถัดไป" ที่เป็นพฤติกรรมจริงของแอดมิน
+ *
+ * ค่าเก็บเป็น "userId|เวลาที่ออก" เพื่อให้กวาดของเก่าได้โดยไม่ต้องมีตารางแยก
+ * กวาดตอนออกตั๋วใหม่ ไม่ต้องตั้ง trigger เพิ่ม — ปริมาณอยู่ระดับหลักสิบต่อเดือน
+ */
+function issueLineTicket_(userId) {
+  const props = PropertiesService.getScriptProperties();
+  purgeExpiredLineTickets_(props);
+
+  // คนเดิมที่ยังมีตั๋วไม่หมดอายุ ให้ใช้รหัสเดิม
+  //
+  // ถ้าออกใหม่ทุกครั้งที่พิมพ์ บทสนทนาเดียวจะมีหลายรหัสลอยอยู่ในกลุ่ม
+  // แล้วแอดมินต้องเดาว่าอันไหนใหม่สุด — ตอบผิดตั๋วคือตอบถูกคนแต่หลุดบริบท
+  const existing = findActiveTicket_(props, userId);
+  if (existing) return existing;
+
+  let ticket = '';
+  for (let attempt = 0; attempt < 10; attempt++) {
+    let candidate = '';
+    for (let i = 0; i < LINE_TICKET_LENGTH; i++) {
+      candidate += LINE_TICKET_ALPHABET.charAt(
+        Math.floor(Math.random() * LINE_TICKET_ALPHABET.length)
+      );
+    }
+    if (!props.getProperty('line_ticket_' + candidate)) {
+      ticket = candidate;
+      break;
+    }
+  }
+
+  // ชนกันสิบครั้งติดแทบเป็นไปไม่ได้ แต่ถ้าเกิดขึ้นจริง เขียนทับของเก่าดีกว่า
+  // ไม่ออกตั๋วเลย เพราะแอดมินจะไม่มีทางตอบกลับคนนี้ได้
+  if (!ticket) ticket = 'ZZZZ';
+
+  props.setProperty('line_ticket_' + ticket, userId + '|' + Date.now());
+  return ticket;
+}
+
+/** หาตั๋วที่ยังไม่หมดอายุของผู้ใช้คนนี้ — คืนสตริงว่างถ้าไม่มี */
+function findActiveTicket_(props, userId) {
+  const all = props.getProperties();
+  const cutoff = Date.now() - LINE_TICKET_TTL_DAYS * 86400000;
+
+  const keys = Object.keys(all);
+  for (let i = 0; i < keys.length; i++) {
+    if (keys[i].indexOf('line_ticket_') !== 0) continue;
+    const parts = String(all[keys[i]]).split('|');
+    if (parts[0] !== userId) continue;
+    if (parseInt(parts[1] || '0', 10) < cutoff) continue;
+    return keys[i].replace('line_ticket_', '');
+  }
+  return '';
+}
+
+/** คืน userId ของตั๋ว หรือสตริงว่างถ้าไม่มีหรือหมดอายุ */
+function readLineTicket_(ticket) {
+  const raw = PropertiesService.getScriptProperties()
+    .getProperty('line_ticket_' + ticket);
+  if (!raw) return '';
+
+  const parts = String(raw).split('|');
+  const issuedAt = parseInt(parts[1] || '0', 10);
+  if (Date.now() - issuedAt > LINE_TICKET_TTL_DAYS * 86400000) return '';
+
+  return parts[0] || '';
+}
+
+function purgeExpiredLineTickets_(props) {
+  const all = props.getProperties();
+  const cutoff = Date.now() - LINE_TICKET_TTL_DAYS * 86400000;
+
+  Object.keys(all).forEach(function (key) {
+    if (key.indexOf('line_ticket_') !== 0) return;
+    const issuedAt = parseInt(String(all[key]).split('|')[1] || '0', 10);
+    if (issuedAt < cutoff) props.deleteProperty(key);
+  });
 }
 
 /** จำกัดจำนวนข้อความที่ส่งถึงแอดมินได้ต่อชั่วโมง — กันกลุ่มทีมท่วม */
