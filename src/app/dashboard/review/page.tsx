@@ -15,6 +15,7 @@ import {
   isTerminal,
   type Referral,
 } from "@/lib/referral-types";
+import { findSimilarCases } from "@/lib/similar-cases";
 import { ReviewList } from "./ReviewList";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +49,23 @@ export default async function ReviewPage() {
   const open = referrals
     .filter(needsAnswer)
     .sort((a, b) => b.elapsedBusinessHours - a.elapsedBusinessHours);
+
+  /**
+   * คลังเคสที่ตอบไปแล้ว ใช้หาเคสคล้ายกัน
+   *
+   * ไม่ต้องอ่านชีตเพิ่ม — loadReferrals() ดึงมาทั้งหมดอยู่แล้ว
+   * และหน้านี้เคยทิ้งเคสที่ตอบแล้วไปเปล่า ๆ
+   *
+   * คำนวณที่ฝั่งเซิร์ฟเวอร์แล้วส่งไปแค่ 3 เคสต่อรายการ ไม่ส่งคลังทั้งก้อน
+   * ลงไปให้เบราว์เซอร์ — เล็กกว่ามาก และคำตอบเก่าของเคสที่ไม่เกี่ยวข้อง
+   * ไม่ควรถูกส่งไปที่เครื่องผู้ใช้ตั้งแต่แรก
+   */
+  const pool = referrals.filter(
+    (r) =>
+      (r.referralType === "REGIMEN_CONSULT" ||
+        r.referralType === "CHEMO_ADMISSION") &&
+      r.adviceRecord.trim().length > 0,
+  );
 
   const answered = referrals.filter(
     (r) =>
@@ -127,6 +145,7 @@ export default async function ReviewPage() {
                 clinicalQuestion: r.clinicalQuestion,
                 adviceRecord: r.adviceRecord,
                 note: r.note,
+                similar: findSimilarCases(r, pool),
               }))}
               defaultAnsweredBy={session.username}
               defaultWardPhone={config["chemo_ward_phone"] ?? ""}

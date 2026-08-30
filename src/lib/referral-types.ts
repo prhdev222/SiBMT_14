@@ -422,6 +422,13 @@ export interface Referral {
   clinicalQuestion: string;
   /** คำตอบที่บันทึกไว้แล้ว — ว่าง = ยังไม่มีใครตอบ */
   adviceRecord: string;
+  /**
+   * รหัสย่อสูตรยาที่หยิบจากคลัง คั่นด้วยจุลภาค
+   *
+   * ว่างได้เสมอ — กลุ่มที่ 2 รับคำถามทั่วไปด้วย ไม่ใช่ทุกเคสจะมีสูตรยา
+   * และเคสที่ resident พิมพ์ชื่อสูตรเองก็จะว่าง (ดู similar-cases.ts)
+   */
+  adviceRegimens: string;
 }
 
 /**

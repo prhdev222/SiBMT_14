@@ -4,6 +4,7 @@ import { useActionState, useMemo, useRef, useState } from "react";
 import { saveAdviceAction, type AdviceState } from "./actions";
 import { DocButtons } from "@/components/DocButtons";
 import type { ChemoRegimen } from "@/lib/referral-repository";
+import type { SimilarCase } from "@/lib/similar-cases";
 import {
   STATUS_LABEL_TH,
   STATUS_COLOR,
@@ -29,6 +30,8 @@ export interface ReviewCase {
   clinicalQuestion: string;
   adviceRecord: string;
   note: string;
+  /** เคสเก่าที่คล้ายกัน คำนวณมาแล้วฝั่งเซิร์ฟเวอร์ — ว่างได้ */
+  similar: SimilarCase[];
 }
 
 /**
@@ -360,6 +363,8 @@ function ReviewCard({
                   </label>
                 </div>
 
+                <SimilarCases cases={item.similar} />
+
                 <AttendingApproval attendings={attendings} />
 
                 <label className="block text-sm">
@@ -582,6 +587,99 @@ function OpdVisitFields() {
         วันนัดนี้เป็นการมาประเมินความพร้อมก่อน ยังไม่ใช่วัน admit —
         ข้อความในอีเมลจะระบุไว้ให้แล้ว
       </p>
+    </div>
+  );
+}
+
+/**
+ * เคสเก่าที่คล้ายกัน — พับไว้เสมอ ต้องกดถึงจะเห็น
+ *
+ * ⚠️ พับไว้โดยเจตนา ไม่ใช่เพื่อประหยัดพื้นที่
+ *
+ * ถ้าเอาคำตอบเก่ามากางตรงหน้าก่อนที่ผู้ตอบจะคิดเอง สิ่งที่ได้คือการลอก
+ * ไม่ใช่การตัดสินใจ — การต้องกดเปิดทำให้เป็นการเลือกที่จะดู ไม่ใช่การถูกยัดให้ดู
+ *
+ * ด้วยเหตุผลเดียวกันจึงไม่มีปุ่ม "ใช้คำตอบนี้" — คัดลอกเองได้ แต่ระบบ
+ * จะไม่เติมลงช่องคำตอบให้ ทุกตัวอักษรที่ส่งออกไปต้องผ่านมือคนตอบ
+ *
+ * และไม่แสดงสถิติแบบ "3 จาก 4 เคสใช้ R-CHOP" — ที่จำนวนหลักหน่วย
+ * ตัวเลขแบบนั้นอ่านเหมือนหลักฐานแต่เป็นความบังเอิญ
+ */
+function SimilarCases({ cases }: { cases: SimilarCase[] }) {
+  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  if (cases.length === 0) return null;
+
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-zinc-50">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="w-full px-3 py-2.5 text-left text-sm flex items-center justify-between gap-2 hover:bg-zinc-100 transition-colors rounded-lg"
+      >
+        <span className="font-medium text-zinc-800">
+          เคสคล้ายกันที่เคยตอบไว้ ({cases.length})
+        </span>
+        <span className="text-xs text-blue-600 shrink-0">
+          {open ? "ย่อ ▲" : "ดู ▼"}
+        </span>
+      </button>
+
+      {open && (
+        <div className="px-3 pb-3 space-y-2">
+          <p className="text-xs text-zinc-600">
+            เป็นข้อมูลประกอบเท่านั้น — แนวทางการรักษาเปลี่ยนตามเวลา
+            กรุณาดูวันที่ของแต่ละเคสประกอบ และตัดสินใจจากเคสตรงหน้าเสมอ
+          </p>
+
+          {cases.map((c) => {
+            const isOpen = expanded === c.referralId;
+            return (
+              <div
+                key={c.referralId}
+                className="rounded-lg bg-white border border-zinc-200 p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-zinc-900 truncate">
+                      {c.diagnosis || "ไม่ระบุการวินิจฉัย"}
+                    </p>
+                    <p className="text-xs text-zinc-500 mt-0.5">
+                      {c.submittedAt}
+                      {c.insuranceScheme && ` · ${c.insuranceScheme}`}
+                      {c.adviceRegimens && ` · ${c.adviceRegimens}`}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setExpanded(isOpen ? null : c.referralId)}
+                    className="shrink-0 text-xs font-medium text-blue-600 hover:underline"
+                  >
+                    {isOpen ? "ย่อ" : "อ่านเต็ม"}
+                  </button>
+                </div>
+
+                {/* เหตุผลที่จับคู่ — ถ้าไม่บอก ผู้ตอบต้องเชื่อโดยไม่มีทางตรวจ */}
+                {c.reasons.length > 0 && (
+                  <p className="text-xs text-zinc-500 mt-1.5">
+                    จับคู่จาก: {c.reasons.join(" · ")}
+                  </p>
+                )}
+
+                <p
+                  className={`text-sm text-zinc-700 mt-2 whitespace-pre-wrap leading-relaxed ${
+                    isOpen ? "" : "line-clamp-2"
+                  }`}
+                >
+                  {c.adviceRecord}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
