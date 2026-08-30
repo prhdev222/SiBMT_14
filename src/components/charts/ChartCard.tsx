@@ -114,7 +114,7 @@ export function ChartCard({
     >
       <div className="flex items-start justify-between gap-2 mb-3">
         <h3
-          className={`font-semibold text-zinc-900 ${dense ? "text-xs text-zinc-500 font-medium" : "text-sm"}`}
+          className={`min-w-0 font-semibold text-zinc-900 ${dense ? "text-xs text-zinc-500 font-medium" : "text-sm"}`}
         >
           {title}
         </h3>
@@ -222,7 +222,14 @@ function Expanded({
         // ต่อเมื่อคลิกโดนฉากหลัง เพราะเนื้อหาอยู่ใน div ชั้นใน
         if (e.target === ref.current) ref.current?.close();
       }}
-      className="w-[92vw] max-w-4xl max-h-[85vh] rounded-xl border border-zinc-200 p-0 backdrop:bg-zinc-900/50"
+      /*
+        m-auto จำเป็น ไม่ใช่ของแถม
+
+        เบราว์เซอร์จัดกึ่งกลางให้ <dialog> ด้วย margin:auto ของมันเอง
+        แต่ Tailwind รีเซ็ต margin ของทุกอย่างเป็น 0 ทับไปตั้งแต่ต้น
+        หน้าต่างจึงไปเกาะมุมซ้ายบนของจอ — เห็นชัดที่สุดบนมือถือ
+      */
+      className="m-auto w-[92vw] max-w-4xl max-h-[85vh] rounded-xl border border-zinc-200 p-0 backdrop:bg-zinc-900/50"
       aria-label={title}
     >
       <div className="p-5 sm:p-6 overflow-y-auto max-h-[85vh]">
@@ -259,7 +266,7 @@ function ShapeToggle({
   onChange: (s: "bar" | "pie") => void;
 }) {
   const style = (active: boolean) =>
-    `px-2 py-1 text-sm leading-none transition-colors ${
+    `px-3 py-2 sm:px-2 sm:py-1 text-sm leading-none transition-colors ${
       active
         ? "bg-zinc-100 text-zinc-900"
         : "text-zinc-400 hover:text-zinc-700"
@@ -315,7 +322,7 @@ function IconButton({
       disabled={disabled}
       title={title}
       aria-label={label}
-      className="rounded-md border border-zinc-200 px-2 py-1 text-sm text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 disabled:opacity-50 transition-colors"
+      className="rounded-md border border-zinc-200 px-3 py-2 sm:px-2 sm:py-1 text-sm text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 disabled:opacity-50 transition-colors"
     >
       {children}
     </button>

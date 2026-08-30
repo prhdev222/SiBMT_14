@@ -191,20 +191,27 @@ export function DashboardClient({ referrals }: { referrals: Referral[] }) {
       </div>
 
       {/* filters */}
+      {/*
+        min-w-0 บนทุกช่องเลือกไม่ใช่ของประดับ
+
+        ช่อง select มีความกว้างตามธรรมชาติของมันเองตามตัวเลือกที่ยาวที่สุด
+        และคอลัมน์ของ grid จะขยายตามนั้นเสมอถ้าไม่สั่ง min-w-0
+        — บนจอ 375px ตัวเลือกภาษาไทยยาว ๆ ดันช่องกว้าง 376px จนหน้าเลื่อนซ้ายขวาได้
+      */}
       <div className="rounded-xl bg-white border border-zinc-200 p-4 grid gap-3 sm:grid-cols-6">
         <input
           type="text"
           placeholder="ค้นหา referral ID หรือหน่วยงาน"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="sm:col-span-2 rounded-md border border-zinc-300 px-3 py-2 text-sm"
+          className="sm:col-span-2 w-full min-w-0 rounded-md border border-zinc-300 px-3 py-2 text-sm"
         />
         <select
           value={referralType}
           onChange={(e) =>
             setReferralType(e.target.value as ReferralType | "all")
           }
-          className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
+          className="w-full min-w-0 rounded-md border border-zinc-300 px-3 py-2 text-sm"
         >
           <option value="all">ทุกกลุ่มงาน</option>
           {REFERRAL_TYPES_ORDERED.map((t) => (
@@ -217,7 +224,7 @@ export function DashboardClient({ referrals }: { referrals: Referral[] }) {
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value as Status | "all")}
-          className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
+          className="w-full min-w-0 rounded-md border border-zinc-300 px-3 py-2 text-sm"
         >
           <option value="all">สถานะทั้งหมด</option>
           {STATUSES.map((s) => (
@@ -231,7 +238,7 @@ export function DashboardClient({ referrals }: { referrals: Referral[] }) {
           onChange={(e) =>
             setDiseaseGroup(e.target.value as DiseaseGroup | "all")
           }
-          className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
+          className="w-full min-w-0 rounded-md border border-zinc-300 px-3 py-2 text-sm"
         >
           <option value="all">กลุ่มโรคทั้งหมด</option>
           {DISEASE_GROUPS.map((d) => (
@@ -243,7 +250,7 @@ export function DashboardClient({ referrals }: { referrals: Referral[] }) {
         <select
           value={assignedTo}
           onChange={(e) => setAssignedTo(e.target.value)}
-          className="sm:col-span-2 rounded-md border border-zinc-300 px-3 py-2 text-sm"
+          className="sm:col-span-2 w-full min-w-0 rounded-md border border-zinc-300 px-3 py-2 text-sm"
         >
           <option value="all">ผู้รับผิดชอบทั้งหมด</option>
           <option value="unassigned">ยังไม่มอบหมาย</option>

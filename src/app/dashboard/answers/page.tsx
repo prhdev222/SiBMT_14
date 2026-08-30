@@ -1,8 +1,8 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { loadReferrals } from "@/lib/referral-repository";
 import { requireSession } from "@/lib/session";
 import { SessionBar } from "@/components/SessionBar";
+import { PageHeader } from "@/components/PageHeader";
 import { REFERRAL_TYPE_META } from "@/lib/referral-types";
 import { questionTypeLabel } from "@/lib/question-types";
 import { AnswersClient, type AnsweredCase } from "./AnswersClient";
@@ -59,30 +59,17 @@ export default async function AnswersPage() {
         <SessionBar username={session.username} />
       </div>
 
-      <header className="bg-white border-b border-zinc-200 print:border-none">
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm text-zinc-500">กลุ่มที่ 2 และ 3</p>
-            <h1 className="text-lg sm:text-xl font-bold text-zinc-900">
-              คำตอบที่ตอบแล้ว
-            </h1>
-          </div>
-          <div className="flex items-center gap-4 print:hidden">
-            <Link
-              href="/dashboard/stats"
-              className="text-sm font-medium text-blue-600 hover:underline whitespace-nowrap"
-            >
-              สถิติ
-            </Link>
-            <Link
-              href="/dashboard"
-              className="text-sm font-medium text-blue-600 hover:underline whitespace-nowrap"
-            >
-              กลับ Dashboard
-            </Link>
-          </div>
+        <div className="print:hidden">
+          <PageHeader
+            eyebrow="กลุ่มที่ 2 และ 3"
+            title="คำตอบที่ตอบแล้ว"
+            width="max-w-3xl"
+            links={[
+              { href: "/dashboard/stats", label: "สถิติ" },
+              { href: "/dashboard", label: "กลับ Dashboard" },
+            ]}
+          />
         </div>
-      </header>
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-6 space-y-4">
         {isSampleData && (

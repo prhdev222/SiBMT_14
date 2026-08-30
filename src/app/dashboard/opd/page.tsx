@@ -1,8 +1,8 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { loadReferrals } from "@/lib/referral-repository";
 import { requireSession } from "@/lib/session";
 import { SessionBar } from "@/components/SessionBar";
+import { PageHeader } from "@/components/PageHeader";
 import { CONTACT } from "@/lib/config";
 import { formatThaiDate } from "@/lib/thai-date";
 
@@ -55,22 +55,14 @@ export default async function OpdVisitsPage() {
     <div className="flex flex-col flex-1 bg-zinc-50">
       <SessionBar username={session.username} />
 
-      <header className="bg-white border-b border-zinc-200">
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm text-zinc-500">กลุ่มที่ 3</p>
-            <h1 className="text-lg sm:text-xl font-bold text-zinc-900">
-              นัดตรวจ OPD โลหิตวิทยา
-            </h1>
-          </div>
-          <Link
-            href="/dashboard"
-            className="text-sm font-medium text-blue-600 hover:underline whitespace-nowrap"
-          >
-            กลับ Dashboard
-          </Link>
-        </div>
-      </header>
+        <PageHeader
+          eyebrow="กลุ่มที่ 3"
+          title="นัดตรวจ OPD โลหิตวิทยา"
+          width="max-w-3xl"
+          links={[
+            { href: "/dashboard", label: "กลับ Dashboard" },
+          ]}
+        />
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-6 space-y-4">
         {isSampleData && (

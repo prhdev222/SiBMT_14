@@ -135,10 +135,18 @@ function ReviewCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="font-mono text-xs text-zinc-500">{item.referralId}</p>
-            <p className="font-semibold text-zinc-900 mt-0.5 truncate">
+            {/*
+              การวินิจฉัยตัดบรรทัดได้บนมือถือ ไม่ตัดคำทิ้ง
+
+              บนจอ 375px ป้ายสถานะกินที่ไปเกินครึ่ง เหลือให้ชื่อโรคไม่ถึงยี่สิบตัวอักษร
+              แล้ว "Multiple myeloma, IgG kappa" กลายเป็น "Multiple myeloma, IgG ka…"
+              ซึ่งเป็นข้อความที่คนกวาดสายตาหาเคสของตัวเองต้องอ่าน — ตัดไม่ได้
+              บนจอกว้างยังตัดเหมือนเดิม เพราะที่นั่นมีที่พอและแถวที่สูงเท่ากันอ่านง่ายกว่า
+            */}
+            <p className="font-semibold text-zinc-900 mt-0.5 sm:truncate">
               {item.diagnosis || item.diseaseGroup || item.groupTitle}
             </p>
-            <p className="text-sm text-zinc-600 truncate">
+            <p className="text-sm text-zinc-600 sm:truncate">
               กลุ่มที่ {item.groupNumber} · {item.referrerOrg}
             </p>
           </div>

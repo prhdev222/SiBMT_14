@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { DashboardClient } from "@/components/DashboardClient";
 import { SessionBar } from "@/components/SessionBar";
+import { PageHeader } from "@/components/PageHeader";
 import { loadConfigValues, loadReferrals } from "@/lib/referral-repository";
 import { requireSession } from "@/lib/session";
 
@@ -23,54 +23,18 @@ export default async function DashboardPage() {
     <div className="flex flex-col flex-1 bg-zinc-50">
       <SessionBar username={session.username} />
 
-      <header className="bg-white border-b border-zinc-200">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm text-zinc-500">สำหรับบุคลากรภายใน</p>
-            <h1 className="text-lg sm:text-xl font-bold text-zinc-900">
-              Dashboard — Referral Queue
-            </h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/dashboard/appointments"
-              className="text-sm font-medium text-blue-600 hover:underline whitespace-nowrap"
-            >
-              นัดกลุ่มที่ 1
-            </Link>
-            <Link
-              href="/dashboard/review"
-              className="text-sm font-medium text-blue-600 hover:underline whitespace-nowrap"
-            >
-              ตอบคำปรึกษา
-            </Link>
-            <Link
-              href="/dashboard/opd"
-              className="text-sm font-medium text-blue-600 hover:underline whitespace-nowrap"
-            >
-              นัดตรวจ OPD
-            </Link>
-            <Link
-              href="/dashboard/stats"
-              className="text-sm font-medium text-blue-600 hover:underline whitespace-nowrap"
-            >
-              สถิติและรายงาน
-            </Link>
-            <Link
-              href="/dashboard/schedule"
-              className="text-sm font-medium text-blue-600 hover:underline whitespace-nowrap"
-            >
-              ตารางออกตรวจ Fellow
-            </Link>
-            <Link
-              href="/"
-              className="text-sm font-medium text-zinc-500 hover:text-blue-600 hover:underline whitespace-nowrap"
-            >
-              กลับหน้าแรก
-            </Link>
-          </div>
-        </div>
-      </header>
+        <PageHeader
+          eyebrow="สำหรับบุคลากรภายใน"
+          title="Dashboard — Referral Queue"
+          links={[
+            { href: "/dashboard/appointments", label: "นัดกลุ่มที่ 1" },
+            { href: "/dashboard/review", label: "ตอบคำปรึกษา" },
+            { href: "/dashboard/opd", label: "นัดตรวจ OPD" },
+            { href: "/dashboard/stats", label: "สถิติและรายงาน" },
+            { href: "/dashboard/schedule", label: "ตารางออกตรวจ Fellow" },
+            { href: "/", label: "กลับหน้าแรก", muted: true },
+          ]}
+        />
 
       <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-6 space-y-4">
         {error && (
