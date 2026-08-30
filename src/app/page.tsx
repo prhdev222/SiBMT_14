@@ -166,11 +166,6 @@ export default function Home() {
           </Link>
         </section>
       </main>
-
-      <footer className="border-t border-zinc-200 py-4 text-center text-xs text-zinc-400">
-        MVP — ระบบสนับสนุน workflow การส่งต่อผู้ป่วย
-        ไม่ใช่ระบบวินิจฉัยโรคหรือเวชระเบียนหลัก
-      </footer>
     </div>
   );
 }
