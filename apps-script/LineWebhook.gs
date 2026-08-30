@@ -79,6 +79,17 @@ const LINE_WHOAMI_KEYWORD = '#id';
 /** จำนวนครั้งที่ค้นสถานะได้ต่อหนึ่งคู่สนทนา ต่อหนึ่งชั่วโมง */
 const LINE_LOOKUP_LIMIT_PER_HOUR = 20;
 
+/**
+ * จำนวนข้อความที่คนหนึ่งส่งถึงแอดมินได้ต่อชั่วโมง
+ *
+ * ต่ำกว่าการค้นสถานะมาก เพราะปลายทางคือกลุ่ม LINE ของแอดมิน ไม่ใช่การอ่านชีต
+ * — คนที่พิมพ์รัวโดยไม่ตั้งใจไม่ควรทำให้กลุ่มทีมท่วม
+ */
+const LINE_CONTACT_LIMIT_PER_HOUR = 5;
+
+/** สั้นกว่านี้ถือว่าเป็นคำทักทายหรือพิมพ์พลาด ไม่ส่งต่อให้แอดมิน */
+const LINE_CONTACT_MIN_CHARS = 10;
+
 function handleLineWebhook_(body) {
   (body.events || []).forEach(function (event) {
     try {
@@ -124,7 +135,14 @@ function handleLineEvent_(event) {
     // พิมพ์รหัสมาแต่ผิดรูป — บอกรูปแบบให้ ไม่ปล่อยเงียบ
     if (LINE_REFERRAL_ID_LOOSE.test(text)) {
       replyLineMessage_(event.replyToken, buildBadFormatReply_());
+      return;
     }
+
+    // ไม่ใช่รหัสอ้างอิง — เป็นคำถามหรือข้อความทั่วไป ส่งต่อให้แอดมิน
+    //
+    // เดิมตรงนี้ return เงียบ ๆ แพทย์ต้นทางที่พิมพ์คำถามเข้ามาจึงไม่ได้อะไรกลับเลย
+    // ซึ่งอ่านได้อย่างเดียวว่าไม่มีใครอยู่ แย่กว่าการตอบว่าไม่เข้าใจเสียอีก
+    forwardToAdmin_(event, text, id);
     return;
   }
 
@@ -250,6 +268,98 @@ function lineLookupAllowed_(sourceId) {
 
   const current = parseInt(cache.get(key) || '0', 10);
   if (current >= LINE_LOOKUP_LIMIT_PER_HOUR) return false;
+
+  cache.put(key, String(current + 1), 3600);
+  return true;
+}
+
+/**
+ * ส่งข้อความที่บอทตอบเองไม่ได้ ต่อให้กลุ่มแอดมิน แล้วตอบรับแพทย์ต้นทาง
+ *
+ * ⚠️ ไม่บันทึกลงชีต เหมือนหน้า /contact — นี่คือการแจ้งให้คนรู้ ไม่ใช่การเปิดเคส
+ * คำถามทางคลินิกต้องเข้ากลุ่มที่ 2 ซึ่งมีเลขที่อ้างอิงและกรอบเวลาจริง
+ *
+ * ⚠️ แอดมินตอบกลับได้ก็ต่อเมื่อเปิด Chat ใน LINE Official Account Manager
+ * ถ้าปิดอยู่ ข้อความจะถึงกลุ่มแอดมินแต่ตอบกลับในแชทนั้นไม่ได้
+ * ตัวบอทเองตอบแทนไม่ได้ เพราะ replyToken ใช้ได้ครั้งเดียวและหมดอายุใน 1 นาที
+ */
+function forwardToAdmin_(event, text, sourceId) {
+  if (text.length < LINE_CONTACT_MIN_CHARS) {
+    replyLineMessage_(
+      event.replyToken,
+      'พิมพ์รหัสอ้างอิงเพื่อเช็คสถานะ เช่น HEM-20260822-0001\n\n' +
+      'หรือพิมพ์คำถามมาได้เลย ระบบจะส่งต่อให้แพทย์แอดมินกลาง'
+    );
+    return;
+  }
+
+  if (!lineContactAllowed_(sourceId)) {
+    replyLineMessage_(
+      event.replyToken,
+      'ส่งข้อความถี่เกินไป กรุณารอสักครู่\n\n' +
+      'ถ้าเร่งด่วน โทร ' + CONTACT_PHONE + ' (จันทร์-ศุกร์ 08:00-16:00 น.)'
+    );
+    return;
+  }
+
+  const who = lineDisplayName_(sourceId);
+
+  pushLineMessage_(
+    '💬 มีคนทักเข้ามาทาง LINE OA\n\n' +
+    'จาก: ' + who + '\n\n' +
+    text.slice(0, 1200) + '\n\n' +
+    '──────────\n' +
+    'ตอบกลับได้ที่แอป LINE Official Account Manager → แชท\n' +
+    'ถ้าเป็นคำถามทางคลินิก แนะนำให้เขาส่งผ่านกลุ่มที่ 2 จะได้เข้าคิวและมีคนตอบตามกรอบเวลา',
+    'red'
+  );
+
+  replyLineMessage_(
+    event.replyToken,
+    'ส่งข้อความถึงแพทย์แอดมินกลางแล้ว\n' +
+    'จะติดต่อกลับในเวลาราชการ (จันทร์-ศุกร์ 08:00-16:00 น.)\n\n' +
+    '🔒 กรุณาอย่าพิมพ์ชื่อ-สกุล เลข HN หรือเลขบัตรประชาชนของผู้ป่วยทาง LINE\n\n' +
+    'ถ้าเป็นคำถามเรื่องสูตรยาหรืออยากปรึกษาก่อนส่งตัว ส่งผ่านกลุ่มที่ 2 จะเร็วกว่า\n' +
+    SITE_URL + '/refer/regimen-consult'
+  );
+}
+
+/**
+ * ชื่อที่ผู้ใช้ตั้งไว้ใน LINE — ให้แอดมินหาแชทถูกคนใน OA Manager
+ *
+ * ไม่ใช่ข้อมูลผู้ป่วย เป็นชื่อบัญชี LINE ของแพทย์ต้นทางเอง
+ * ถ้าเรียกไม่สำเร็จก็ไม่เป็นไร ใช้ id ที่ปิดกลางไว้แทน ดีกว่าไม่ส่งอะไรเลย
+ */
+function lineDisplayName_(userId) {
+  const token = PropertiesService.getScriptProperties()
+    .getProperty('LINE_CHANNEL_ACCESS_TOKEN');
+  if (!token) return maskLineId_(userId);
+
+  try {
+    const response = UrlFetchApp.fetch(
+      'https://api.line.me/v2/bot/profile/' + encodeURIComponent(userId),
+      {
+        method: 'get',
+        headers: { Authorization: 'Bearer ' + token },
+        muteHttpExceptions: true,
+      }
+    );
+    if (response.getResponseCode() !== 200) return maskLineId_(userId);
+    const name = JSON.parse(response.getContentText()).displayName;
+    return name ? name + ' (' + maskLineId_(userId) + ')' : maskLineId_(userId);
+  } catch (err) {
+    console.warn('อ่านชื่อ LINE ไม่สำเร็จ: ' + err);
+    return maskLineId_(userId);
+  }
+}
+
+/** จำกัดจำนวนข้อความที่ส่งถึงแอดมินได้ต่อชั่วโมง — กันกลุ่มทีมท่วม */
+function lineContactAllowed_(sourceId) {
+  const cache = CacheService.getScriptCache();
+  const key = 'line_contact_' + sourceId;
+
+  const current = parseInt(cache.get(key) || '0', 10);
+  if (current >= LINE_CONTACT_LIMIT_PER_HOUR) return false;
 
   cache.put(key, String(current + 1), 3600);
   return true;
