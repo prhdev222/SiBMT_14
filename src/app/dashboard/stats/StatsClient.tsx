@@ -17,6 +17,8 @@ export interface ExportRow {
   insuranceScheme: string;
   comorbidity: string;
   clinicalQuestion: string;
+  /** ชื่อไทยของประเภทคำถาม แปลงมาแล้วจากฝั่งเซิร์ฟเวอร์ */
+  questionType: string;
   adviceRecord: string;
   adviceRegimens: string;
   answeredBy: string;
@@ -31,7 +33,7 @@ export interface ExportRow {
 const CASE_HEADERS = [
   "referral_id", "submitted_at", "group", "status", "disease_group",
   "diagnosis", "stage", "insurance_scheme", "comorbidity",
-  "clinical_question", "advice_record", "advice_regimens",
+  "clinical_question", "question_type", "advice_record", "advice_regimens",
   "answered_by", "attending", "elapsed_business_hours",
   "referrer_org", "referrer_phone", "appointment_date", "fellow_assigned",
 ];
@@ -39,7 +41,7 @@ const CASE_HEADERS = [
 const caseRow = (r: ExportRow) => [
   r.referralId, r.submittedAt, r.groupNumber, r.status, r.diseaseGroup,
   r.diagnosis, r.stage, r.insuranceScheme, r.comorbidity,
-  r.clinicalQuestion, r.adviceRecord, r.adviceRegimens,
+  r.clinicalQuestion, r.questionType, r.adviceRecord, r.adviceRegimens,
   r.answeredBy, r.attending, r.elapsedBusinessHours,
   r.referrerOrg, r.referrerPhone, r.appointmentDate, r.fellowAssigned,
 ];
@@ -77,6 +79,7 @@ export function StatsClient({
       ...section("กลุ่มโรค", stats.byDiseaseGroup),
       ...section("สิทธิการรักษา", stats.byInsurance),
       ...section("สูตรยาที่เลือก", stats.byRegimen),
+      ...section("ประเภทคำถาม", stats.byQuestionType),
       ...section("รายเดือน", stats.byMonth),
     ];
     downloadCsv(
@@ -139,6 +142,17 @@ export function StatsClient({
         กลุ่มงานเป็นตัวตนถาวร สีจึงผูกกับเลขกลุ่ม ไม่ใช่อันดับ —
         กลุ่มที่ 2 เป็นสีส้มเสมอ ไม่ว่าจะมีเคสมากหรือน้อยกว่ากลุ่มอื่น
       */}
+      {/*
+        อยู่นอกตารางสองคอลัมน์เพราะเป็นคำถามที่หน้านี้ตอบตรงที่สุด —
+        "ที่ปรึกษาเข้ามาถามเรื่องอะไร" ซึ่งเป็นคนละเรื่องกับ "เป็นโรคอะไร"
+      */}
+      <Card title="ประเภทคำถามที่ปรึกษาเข้ามา">
+        <CategoryBars
+          data={stats.byQuestionType}
+          emptyText="ยังไม่มีเคสที่บันทึกประเภทคำถาม — เคสที่ตอบก่อนมีช่องนี้จะไม่มีค่าย้อนหลัง"
+        />
+      </Card>
+
       <Card title="แยกตามกลุ่มงาน">
         <CategoryBars
           data={stats.byType.map((r, i) => ({ ...r, seriesIndex: i }))}

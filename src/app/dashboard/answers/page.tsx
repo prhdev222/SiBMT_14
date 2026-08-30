@@ -4,6 +4,7 @@ import { loadReferrals } from "@/lib/referral-repository";
 import { requireSession } from "@/lib/session";
 import { SessionBar } from "@/components/SessionBar";
 import { REFERRAL_TYPE_META } from "@/lib/referral-types";
+import { questionTypeLabel } from "@/lib/question-types";
 import { AnswersClient, type AnsweredCase } from "./AnswersClient";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +47,7 @@ export default async function AnswersPage() {
       clinicalQuestion: r.clinicalQuestion,
       adviceRecord: r.adviceRecord,
       adviceRegimens: r.adviceRegimens,
+      questionType: questionTypeLabel(r.questionType),
       answeredBy: r.answeredBy,
       attending: r.adviceAttending,
       referrerOrg: r.referrerOrg,

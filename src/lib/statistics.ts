@@ -26,6 +26,7 @@ import {
   type Referral,
   type ReferralType,
 } from "./referral-types";
+import { questionTypeLabel } from "./question-types";
 
 export interface CountRow {
   label: string;
@@ -45,6 +46,13 @@ export interface Statistics {
   byDiseaseGroup: CountRow[];
   byInsurance: CountRow[];
   byRegimen: CountRow[];
+  /**
+   * ประเภทคำถาม — นับเฉพาะเคสที่ตอบแล้ว
+   *
+   * ค่านี้เกิดตอนตอบ เคสที่ยังไม่ตอบจึงยังไม่มีประเภท การนับรวมเข้าไปด้วย
+   * จะทำให้ดูเหมือนมีคำถามประเภท "ว่าง" เพิ่มขึ้นทุกครั้งที่งานค้าง
+   */
+  byQuestionType: CountRow[];
   byMonth: CountRow[];
 }
 
@@ -112,6 +120,9 @@ export function buildStatistics(all: Referral[]): Statistics {
       answeredCases.flatMap((r) =>
         r.adviceRegimens.split(",").map((s) => s.trim()),
       ),
+    ),
+    byQuestionType: tally(
+      answeredCases.map((r) => questionTypeLabel(r.questionType)),
     ),
     byMonth: monthlyCounts(referrals),
   };

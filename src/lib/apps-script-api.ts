@@ -112,6 +112,13 @@ export interface AdviceInput {
   /** HH:mm */
   visitTime: string;
   visitDoctor: string;
+  /**
+   * ประเภทคำถามที่ผู้ตอบจัดให้ — id จาก question-types.ts
+   *
+   * เก็บฝั่งผู้ตอบเพราะคนที่อ่านคำถามจบแล้วรู้ว่าถามอะไรจริง ๆ
+   * และไม่ต้องแก้ Google Form ซึ่งทุกครั้งที่แก้จะกระทบหัวคอลัมน์ในชีต
+   */
+  questionType: string;
 }
 
 export interface AdviceResult {

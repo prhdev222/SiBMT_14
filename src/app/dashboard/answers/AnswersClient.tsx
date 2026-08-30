@@ -17,6 +17,8 @@ export interface AnsweredCase {
   clinicalQuestion: string;
   adviceRecord: string;
   adviceRegimens: string;
+  /** ชื่อไทยของประเภทคำถาม แปลงมาแล้วจากฝั่งเซิร์ฟเวอร์ — ว่างได้ */
+  questionType: string;
   answeredBy: string;
   attending: string;
   referrerOrg: string;
@@ -25,7 +27,7 @@ export interface AnsweredCase {
 const HEADERS = [
   "referral_id", "submitted_at", "group", "disease_group", "diagnosis",
   "stage", "insurance_scheme", "comorbidity", "treatment_summary",
-  "clinical_question", "advice_record", "advice_regimens",
+  "clinical_question", "question_type", "advice_record", "advice_regimens",
   "answered_by", "attending", "referrer_org",
 ];
 
@@ -52,7 +54,8 @@ export function AnswersClient({ cases }: { cases: AnsweredCase[] }) {
         c.diagnosis.toLowerCase().includes(q) ||
         c.diseaseGroup.toLowerCase().includes(q) ||
         c.adviceRecord.toLowerCase().includes(q) ||
-        c.adviceRegimens.toLowerCase().includes(q)
+        c.adviceRegimens.toLowerCase().includes(q) ||
+        c.questionType.toLowerCase().includes(q)
       );
     });
   }, [cases, query, group]);
@@ -65,7 +68,7 @@ export function AnswersClient({ cases }: { cases: AnsweredCase[] }) {
         filtered.map((c) => [
           c.referralId, c.submittedAt, c.groupNumber, c.diseaseGroup,
           c.diagnosis, c.stage, c.insuranceScheme, c.comorbidity,
-          c.treatmentSummary, c.clinicalQuestion, c.adviceRecord,
+          c.treatmentSummary, c.clinicalQuestion, c.questionType, c.adviceRecord,
           c.adviceRegimens, c.answeredBy, c.attending, c.referrerOrg,
         ]),
       ),
@@ -145,6 +148,7 @@ export function AnswersClient({ cases }: { cases: AnsweredCase[] }) {
 
               <p className="text-xs text-zinc-500 mt-0.5">
                 กลุ่มที่ {c.groupNumber} · {c.submittedAt}
+                {c.questionType && ` · ${c.questionType}`}
                 {c.insuranceScheme && ` · ${c.insuranceScheme}`}
                 {c.adviceRegimens && ` · ${c.adviceRegimens}`}
               </p>
@@ -219,6 +223,7 @@ function Analysis({ cases }: { cases: AnsweredCase[] }) {
           seriesIndex: i,
         }))
         .filter((r) => r.count > 0),
+      byQuestionType: tally(cases.map((c) => c.questionType)),
       byDisease: tally(cases.map((c) => c.diseaseGroup)),
       byRegimen: tally(
         cases.flatMap((c) => c.adviceRegimens.split(",").map((x) => x.trim())),
@@ -249,6 +254,12 @@ function Analysis({ cases }: { cases: AnsweredCase[] }) {
         <div className="px-4 pb-4 grid gap-4 sm:grid-cols-2">
           <Panel title="แยกตามกลุ่มงาน">
             <CategoryBars data={summary.byGroup} max={cases.length} />
+          </Panel>
+          <Panel title="ประเภทคำถาม">
+            <CategoryBars
+              data={summary.byQuestionType}
+              emptyText="ยังไม่มีเคสที่บันทึกประเภทคำถาม"
+            />
           </Panel>
           <Panel title="กลุ่มโรค">
             <CategoryBars data={summary.byDisease} />

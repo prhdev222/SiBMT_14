@@ -174,6 +174,7 @@ function buildAnonymizedRow_(r) {
     clinical_question: r['clinical_question'] || '',
     advice_record: r['advice_record'] || '',
     advice_regimens: r['advice_regimens'] || '',
+    advice_question_type: r['advice_question_type'] || '',
   };
 
   return ADVICE_LIBRARY_COLUMNS.map(function (c) { return values[c]; });

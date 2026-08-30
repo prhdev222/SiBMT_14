@@ -429,6 +429,12 @@ export interface Referral {
    * และเคสที่ resident พิมพ์ชื่อสูตรเองก็จะว่าง (ดู similar-cases.ts)
    */
   adviceRegimens: string;
+  /**
+   * ประเภทคำถามที่ resident จัดให้ตอนตอบ — id จาก question-types.ts
+   *
+   * ว่างได้ — เคสที่ตอบก่อนมีช่องนี้จะไม่มีค่าตลอดไป
+   */
+  questionType: string;
   /** ชื่อผู้ตอบที่กรอกในฟอร์ม — ไม่ใช่ username ที่ล็อกอิน */
   answeredBy: string;
   /**

@@ -5,6 +5,7 @@ import { saveAdviceAction, type AdviceState } from "./actions";
 import { DocButtons } from "@/components/DocButtons";
 import type { ChemoRegimen } from "@/lib/referral-repository";
 import type { SimilarCase } from "@/lib/similar-cases";
+import { QUESTION_TYPES } from "@/lib/question-types";
 import {
   STATUS_LABEL_TH,
   STATUS_COLOR,
@@ -246,6 +247,38 @@ function ReviewCard({
                 disabled={pending}
                 className={`space-y-3 transition-opacity ${pending ? "opacity-50" : ""}`}
               >
+                {/*
+                  ไม่มีค่าตั้งต้น — ต้องเลือกเอง
+
+                  ถ้าตั้งค่าแรกไว้ให้ คนที่รีบจะกดบันทึกโดยไม่ได้ดู
+                  แล้วสถิติจะบอกว่าคำถามส่วนใหญ่เป็นประเภทนั้น
+                  ทั้งที่จริงแปลว่า "ไม่มีใครเลือก"
+                */}
+                <label className="block text-sm">
+                  <span className="block font-medium text-zinc-700 mb-1">
+                    ประเภทคำถาม <span className="text-red-600">*</span>
+                  </span>
+                  <select
+                    name="questionType"
+                    required
+                    defaultValue=""
+                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 bg-white"
+                  >
+                    <option value="" disabled>
+                      — เลือกประเภท —
+                    </option>
+                    {QUESTION_TYPES.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.labelTh}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="block text-xs text-zinc-500 mt-1">
+                    ใช้ทำสถิติว่าที่ปรึกษาเข้ามาส่วนใหญ่ถามเรื่องอะไร —
+                    ไม่ได้ส่งไปให้แพทย์ต้นทางเห็น
+                  </span>
+                </label>
+
                 <label className="block text-sm">
                   <span className="block font-medium text-zinc-700 mb-1">
                     คำตอบถึงแพทย์ต้นทาง <span className="text-red-600">*</span>

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { saveAdvice } from "@/lib/apps-script-api";
 import { loadAttendings } from "@/lib/referral-repository";
 import { requireSession } from "@/lib/session";
+import { QUESTION_TYPES } from "@/lib/question-types";
 
 /**
  * บันทึกคำตอบของอาจารย์
@@ -76,6 +77,7 @@ export async function saveAdviceAction(
   const visitTime = String(formData.get("visitTime") ?? "").trim();
   const visitDoctor = String(formData.get("visitDoctor") ?? "").trim();
   const regimens = String(formData.get("regimens") ?? "").trim();
+  const questionType = String(formData.get("questionType") ?? "").trim();
 
   if (!referralId) return { ok: false, message: "ไม่พบเลขที่อ้างอิงของเคส" };
   if (!advice) return { ok: false, message: "กรุณาพิมพ์คำตอบก่อนบันทึก" };
@@ -92,6 +94,14 @@ export async function saveAdviceAction(
   if (!wardPhone) return { ok: false, message: "กรุณากรอกเบอร์วอร์ดเคมีบำบัด" };
   if (!attending)
     return { ok: false, message: "กรุณาระบุอาจารย์ผู้ให้คำปรึกษา" };
+
+  // ตรวจว่าเป็น id ที่รู้จักจริง ไม่ใช่แค่ว่ามีค่า
+  //
+  // ค่าที่ไม่อยู่ในรายการจะกลายเป็นหมวดใหม่ในกราฟทันทีโดยไม่มีใครสั่ง
+  // และแก้ย้อนหลังไม่ได้เพราะคลังถาวรเก็บ id ที่บันทึกไปแล้ว
+  if (!QUESTION_TYPES.some((t) => t.id === questionType)) {
+    return { ok: false, message: "กรุณาเลือกประเภทคำถาม" };
+  }
   // ประตูบานเดียวที่กั้นไม่ให้คำตอบออกไปโดยยังไม่ผ่านอาจารย์
   // ตรวจซ้ำที่เซิร์ฟเวอร์เพราะ required ใน HTML ปิดได้ด้วย devtools
   if (!approved)
@@ -168,6 +178,7 @@ export async function saveAdviceAction(
       fileBase64,
       attending,
       regimens,
+      questionType,
       // ส่งเฉพาะเมื่อเลือกสถานะนัดตรวจ — สถานะอื่นกรอกช่องนี้ไว้ก็ไม่นับ
       visitDate: status === "Readiness Visit Scheduled" ? visitDate : "",
       visitTime: status === "Readiness Visit Scheduled" ? visitTime : "",

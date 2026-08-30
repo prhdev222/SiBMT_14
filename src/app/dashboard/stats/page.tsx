@@ -10,6 +10,7 @@ import {
   isTerminal,
   type Referral,
 } from "@/lib/referral-types";
+import { questionTypeLabel } from "@/lib/question-types";
 import { StatsClient, type ExportRow } from "./StatsClient";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +39,7 @@ function toExportRow(r: Referral): ExportRow {
     insuranceScheme: r.insuranceScheme,
     comorbidity: r.comorbidity,
     clinicalQuestion: r.clinicalQuestion,
+    questionType: questionTypeLabel(r.questionType),
     adviceRecord: r.adviceRecord,
     adviceRegimens: r.adviceRegimens,
     answeredBy: r.answeredBy,
