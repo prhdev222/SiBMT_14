@@ -106,7 +106,13 @@ function checkCodeFiles() {
 
   if (stale.length === 0 && blankSheetKeys.length === 0) {
     console.log('✅ โค้ดครบทุกไฟล์ ไม่มีอะไรขาด');
-    console.log('เวอร์ชันที่ deploy อยู่: ' + API_VERSION);
+    console.log('');
+    // ⚠️ อ่านค่าจากโค้ดในหน้าจอ ไม่ใช่จากตัวที่ deploy อยู่จริง
+    // สองอย่างนี้ต่างกันได้เสมอ และเป็นสาเหตุที่พบบ่อยที่สุดของอาการ
+    // "แก้โค้ดแล้วแต่ไม่มีอะไรเปลี่ยน" — จึงต้องบอกวิธียืนยันไว้ตรงนี้
+    console.log('โค้ดในหน้าจอเป็นเวอร์ชัน: ' + API_VERSION);
+    console.log('⚠️ ยังไม่ได้แปลว่า deploy แล้ว — ต้องกด New version ก่อน');
+    console.log('   ยืนยันโดยเปิด URL ของ Web App แล้วดูบรรทัด version:');
     return;
   }
 
