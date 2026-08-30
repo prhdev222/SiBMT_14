@@ -199,6 +199,11 @@ function setupTriggers() {
   ScriptApp.newTrigger('sendDailyBatch').timeBased().atHour(BATCH_HOUR).everyDays(1)
     .inTimezone(TIMEZONE).create();
 
+  // รอบเดียวกับ resident แต่คนละข้อความ เพราะคนละปลายทางและคนละเนื้อหา
+  // (ดู sendFellowDailyBatch ใน Notify.gs)
+  ScriptApp.newTrigger('sendFellowDailyBatch').timeBased().atHour(BATCH_HOUR).everyDays(1)
+    .inTimezone(TIMEZONE).create();
+
   // ถอดชื่อและสรุปสถิติ เดือนละครั้ง วันที่ 1 ตอนตี 2
   ScriptApp.newTrigger('anonymizeExpired').timeBased().onMonthDay(1).atHour(2)
     .inTimezone(TIMEZONE).create();
@@ -498,7 +503,7 @@ function runSelfTest() {
   // เปลี่ยนคนดูแลเมื่อไหร่ คนใหม่ต้องรัน setupTriggers() เองอีกครั้ง
   const EXPECTED_TRIGGERS = [
     'onFormSubmit', 'recalculateSla', 'sendRedAlert',
-    'sendDailyBatch', 'anonymizeExpired', 'buildMonthlyStats',
+    'sendDailyBatch', 'sendFellowDailyBatch', 'anonymizeExpired', 'buildMonthlyStats',
   ];
   const installed = ScriptApp.getProjectTriggers().map(function (t) {
     return t.getHandlerFunction();

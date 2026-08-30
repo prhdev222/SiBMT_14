@@ -352,12 +352,98 @@ function sendDailyBatch() {
  *          referrerOrg: string, patientSex: string, patientAge: string,
  *          diagnosis: string}} booking ผลจาก bookTransplantSlot_
  */
+/**
+ * วันนัดใกล้พอที่จะรอรอบ 10:00 น. ไม่ได้หรือยัง
+ *
+ * นับเป็นวันปฏิทิน ไม่ใช่วันทำการ โดยเจตนา — จองบ่ายวันศุกร์ให้มาวันจันทร์
+ * ถ้านับวันทำการจะเหลือ "1 วัน" แล้วผ่านเกณฑ์ ทั้งที่ fellow มีเวลาเตรียมตัว
+ * จริงแค่เช้าวันจันทร์ก่อนคลินิกเริ่ม
+ */
+function isUrgentClinicDate_(clinicDate) {
+  const date = toDate_(clinicDate);
+  if (!date) return true; // อ่านวันไม่ออก แจ้งทันทีไว้ก่อน ปลอดภัยกว่าเงียบ
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+
+  const days = Math.round((date.getTime() - today.getTime()) / 86400000);
+  return days <= FELLOW_URGENT_DAYS;
+}
+
+/**
+ * สรุปนัดใหม่ของ fellow รอบเดียวตอน 10:00 น. พร้อมรอบของ resident
+ *
+ * ⚠️ ทำไมต้องรวมรอบ
+ *
+ * การยิงทีละนัดทำให้จำนวนข้อความ LINE โตตามจำนวนเคส ซึ่งเป็นจุดเดียวในระบบ
+ * ที่โตแบบนั้น — 300 เคสต่อเดือนคือ 300 ข้อความ ส่วนรอบรวมคือ 22 ไม่ว่าจะกี่เคส
+ *
+ * นัดที่ใกล้ถึงภายใน FELLOW_URGENT_DAYS วันไม่ผ่านทางนี้ ถูกแจ้งทันทีไปแล้ว
+ * ตอนจอง (ดู notifyFellowOfBooking_) เพราะรอรอบถัดไปอาจสายเกินไป
+ *
+ * ใช้คอลัมน์ fellow_notified_at กันแจ้งซ้ำ แทนการเดาจากช่วงเวลา —
+ * รอบที่ล้มไปหนึ่งวันจะเก็บตกให้เองในรอบถัดไป ไม่มีนัดไหนหายไปเงียบ ๆ
+ */
+function sendFellowDailyBatch() {
+  const holidays = loadHolidays_();
+  const now = new Date();
+  if (!isWorkingDay_(now, holidays)) return;
+
+  const sheet = getSheet_(SHEETS.referrals);
+  const map = ensureColumns_(sheet, ['fellow_notified_at']);
+  const rows = readRows_(sheet);
+
+  const fresh = rows.filter(function (r) {
+    if (String(r['referral_type']) !== TYPES.transplant) return false;
+    if (String(r['status']) !== 'Appointment Confirmed') return false;
+    if (!r['appointment_date']) return false;
+    if (String(r['fellow_notified_at'] || '').trim()) return false;
+    return true;
+  });
+
+  if (fresh.length === 0) return;
+
+  fresh.sort(function (a, b) {
+    return String(a['appointment_date']).localeCompare(String(b['appointment_date']));
+  });
+
+  let message = '🧬 นัดใหม่ของ fellow ' + formatThaiDate_(now) + '\n';
+  message += '────────────────\n';
+  message += 'มีผู้ป่วยจองคิวเข้ามา ' + fresh.length + ' ราย\n\n';
+
+  fresh.forEach(function (r) {
+    message +=
+      '• ' + formatThaiDate_(toDate_(r['appointment_date'])) +
+        ' — ' + (r['fellow_assigned'] || '-') + '\n' +
+      '  ' + (r['referral_id'] || '-') + ' · ' +
+        (r['patient_sex'] || '-') + ' อายุ ' + (r['patient_age'] || '-') + ' ปี\n' +
+      '  ' + (r['diagnosis'] || '-') + '\n' +
+      '  จาก ' + (r['referrer_org'] || '-') + '\n\n';
+  });
+
+  message += 'เบอร์แพทย์ต้นทางและรายละเอียดโรค ดูที่\n' + SITE_URL + '/dashboard/appointments';
+
+  pushLineMessage_(message, 'fellow');
+
+  // ประทับเวลาหลังส่งสำเร็จเท่านั้น — ถ้า push ล้ม ให้รอบถัดไปลองใหม่
+  fresh.forEach(function (r) {
+    setCell_(sheet, map, r._row, 'fellow_notified_at', now);
+  });
+
+  console.log('แจ้ง fellow รอบรวมแล้ว ' + fresh.length + ' นัด');
+}
+
 function notifyFellowOfBooking_(booking) {
   // การแจ้งเตือนล้มเหลวต้องไม่ทำให้การจองที่เขียนลงชีตแล้วกลายเป็นล้มเหลวตามไปด้วย
   // แพทย์ต้นทางได้เลขนัดไปแล้ว ถ้าโยน error ต่อ หน้าเว็บจะบอกว่าจองไม่สำเร็จทั้งที่สำเร็จ
   try {
+    // นัดที่ยังอีกหลายวัน รอรอบ 10:00 น. ได้ — sendFellowDailyBatch() จะเก็บไปเอง
+    // ยิงทีละนัดทำให้จำนวนข้อความโตตามจำนวนเคส ซึ่งเป็นตัวเดียวในระบบที่โตแบบนั้น
+    if (!isUrgentClinicDate_(booking.clinicDate)) return;
+
     const message =
-      '🧬 มีผู้ป่วยจองคิวมาพบ\n' +
+      '🧬 มีผู้ป่วยจองคิวมาพบ (นัดใกล้ถึงแล้ว)\n' +
       '────────────────\n' +
       'แพทย์ผู้ตรวจ: ' + (booking.fellowName || '-') + '\n' +
       'วันนัด: ' + formatThaiDate_(booking.clinicDate) + ' เวลา 08:00 น.\n' +
@@ -370,10 +456,41 @@ function notifyFellowOfBooking_(booking) {
       '\nรายละเอียดเพิ่มเติม: ' + DASHBOARD_URL;
 
     pushLineMessage_(message, 'fellow');
+
+    // ประทับว่าแจ้งแล้ว ไม่งั้นรอบ 10:00 น. จะหยิบนัดนี้ไปแจ้งซ้ำอีกครั้ง
+    markFellowNotified_(booking.referralId);
   } catch (err) {
     console.error(
       'แจ้ง fellow ไม่สำเร็จ (' + (booking && booking.referralId) + '): ' + err
     );
+  }
+}
+
+/**
+ * ประทับ fellow_notified_at ให้เคสหนึ่ง จากเลขที่อ้างอิง
+ *
+ * แยกเป็นฟังก์ชันเพราะ notifyFellowOfBooking_() ได้มาแต่ก้อนข้อมูลการจอง
+ * ไม่ได้ถือเลขแถวไว้ — และมันทำงานนอกล็อกโดยตั้งใจ (ดู bookTransplantSlot_)
+ * จึงต้องหาแถวเองอีกครั้ง
+ *
+ * ล้มเหลวได้โดยไม่ทำให้อะไรพัง — ผลที่แย่ที่สุดคือ fellow ได้ข้อความซ้ำหนึ่งครั้ง
+ * ซึ่งดีกว่าการทำให้การแจ้งเตือนทั้งก้อนล้ม
+ */
+function markFellowNotified_(referralId) {
+  if (!referralId) return;
+  try {
+    const sheet = getSheet_(SHEETS.referrals);
+    const map = ensureColumns_(sheet, ['fellow_notified_at']);
+    const rows = readRows_(sheet);
+
+    for (let i = 0; i < rows.length; i++) {
+      if (String(rows[i]['referral_id'] || '').trim() === referralId) {
+        setCell_(sheet, map, rows[i]._row, 'fellow_notified_at', new Date());
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn('ประทับ fellow_notified_at ไม่สำเร็จ (' + referralId + '): ' + err);
   }
 }
 

@@ -25,6 +25,9 @@ const SYSTEM_COLUMNS = [
   'alert_level',
   'yellow_alert_sent_at',
   'red_alert_sent_at',
+  // ประทับเวลาที่แจ้ง fellow แล้ว — กันแจ้งซ้ำและกันตกหล่นเมื่อรอบใดรอบหนึ่งล้ม
+  // ใช้แนวเดียวกับ yellow/red_alert_sent_at ที่มีอยู่แล้ว
+  'fellow_notified_at',
   'possible_duplicate_of',
   'advice_record',
   'incomplete_reason',
