@@ -110,6 +110,18 @@ const LINE_TICKET_PATTERN = /^#([A-Z2-9]{4})\s+([\s\S]+)$/;
 const LINE_TICKET_TTL_DAYS = 7;
 
 /**
+ * บทสนทนายัง "เปิด" อยู่กี่วันหลังแอดมินตอบครั้งล่าสุด
+ *
+ * ระหว่างนี้แพทย์ต้นทางพิมพ์อะไรมาก็ส่งต่อให้แอดมินเลย ไม่ต้องมีคำนำหน้า
+ * พ้นช่วงนี้ถือว่าเรื่องจบแล้ว ข้อความใหม่จะถูกชี้กลับไปกลุ่มที่ 2 ตามปกติ
+ *
+ * สั้นกว่าอายุตั๋วโดยตั้งใจ — ตั๋วมีไว้ให้แอดมินตามไปตอบทีหลังได้ถึงเจ็ดวัน
+ * แต่ "ทุกอย่างที่คนนี้พิมพ์วิ่งเข้ากลุ่มแอดมิน" ไม่ควรค้างนานขนาดนั้น
+ * ไม่งั้นคำถามทางคลินิกของเขาตลอดสัปดาห์จะไหลไปหาแอดมินแทนกลุ่มที่ 2
+ */
+const LINE_CHAT_OPEN_DAYS = 2;
+
+/**
  * ข้อความที่ปุ่มบน rich menu ส่งมา
  *
  * จับแบบ "มีคำนี้อยู่ในข้อความ" ไม่ใช่เท่ากันเป๊ะ เพราะข้อความบนปุ่มถูกแก้ได้
@@ -227,6 +239,14 @@ function handleLineEvent_(event) {
     // พิมพ์รหัสมาแต่ผิดรูป — บอกรูปแบบให้ ไม่ปล่อยเงียบ
     if (LINE_REFERRAL_ID_LOOSE.test(text)) {
       replyLineMessage_(event.replyToken, buildBadFormatReply_());
+      return;
+    }
+
+    // อยู่ระหว่างคุยกับแอดมินอยู่แล้ว — ส่งต่อเลย ไม่ต้องมีคำนำหน้า
+    // บอทบอกไว้เองว่า "พิมพ์ตอบกลับในแชทนี้ได้เลย" ถ้าไม่ทำก็เท่ากับโกหก
+    const openTicket = findOpenChat_(id);
+    if (openTicket) {
+      relayToAdmin_(event, text, id, openTicket);
       return;
     }
 
@@ -674,10 +694,72 @@ function handleAdminReply_(event, text, sourceId) {
     'พิมพ์ตอบกลับในแชทนี้ได้เลย ระบบจะส่งต่อให้'
   );
 
+  // เปิดบทสนทนาไว้ ให้ผู้ถามพิมพ์ตอบกลับได้โดยไม่ต้องเริ่มโฟลว์ใหม่
+  touchTicketReply_(ticket);
+
   replyLineMessage_(
     event.replyToken,
-    '✅ ส่งถึงผู้ถาม (#' + ticket + ') แล้ว'
+    '✅ ส่งถึงผู้ถาม (#' + ticket + ') แล้ว\n' +
+    'เขาพิมพ์ตอบกลับได้อีก ' + LINE_CHAT_OPEN_DAYS + ' วัน แล้วจะเข้ากลุ่มนี้อัตโนมัติ'
   );
+}
+
+/** ส่งข้อความของผู้ถามเข้ากลุ่มแอดมิน ระหว่างที่บทสนทนายังเปิดอยู่ */
+function relayToAdmin_(event, text, userId, ticket) {
+  if (!lineContactAllowed_(userId)) {
+    replyLineMessage_(event.replyToken,
+      'ส่งข้อความถี่เกินไป กรุณารอสักครู่\n\n' +
+      'ถ้าเร่งด่วน โทร ' + CONTACT_PHONE + ' (จันทร์-ศุกร์ 08:00-16:00 น.)');
+    return;
+  }
+
+  pushLineMessage_(
+    '💬 #' + ticket + ' ตอบกลับมา\n\n' +
+    'จาก: ' + lineDisplayName_(userId) + '\n\n' +
+    text.slice(0, 1200) + '\n\n' +
+    '──────────\n' +
+    'ตอบต่อ: #' + ticket + ' ตามด้วยข้อความ',
+    'red'
+  );
+
+  // ไม่ตอบอะไรกลับให้ผู้ถาม — เขาเพิ่งพิมพ์เอง รู้อยู่แล้วว่าส่งไปแล้ว
+  // ข้อความ "ได้รับแล้ว" ทุกครั้งจะทำให้แชทเต็มไปด้วยเสียงตอบรับของบอท
+}
+
+/**
+ * ตั๋วนี้ยังอยู่ในช่วงที่แพทย์ต้นทางพิมพ์ต่อได้ไหม
+ *
+ * นับจากเวลาที่แอดมิน "ตอบครั้งล่าสุด" ไม่ใช่เวลาที่ออกตั๋ว —
+ * เรื่องที่ส่งไปแล้วแอดมินยังไม่ตอบ ยังไม่ถือว่าเป็นบทสนทนา
+ * ข้อความถัดไปของคนนั้นจึงยังควรถูกคัดกรองตามปกติ
+ */
+function findOpenChat_(userId) {
+  const props = PropertiesService.getScriptProperties();
+  const all = props.getProperties();
+  const cutoff = Date.now() - LINE_CHAT_OPEN_DAYS * 86400000;
+
+  const keys = Object.keys(all);
+  for (let i = 0; i < keys.length; i++) {
+    if (keys[i].indexOf('line_ticket_') !== 0) continue;
+    const parts = String(all[keys[i]]).split('|');
+    if (parts[0] !== userId) continue;
+    const lastReply = parseInt(parts[2] || '0', 10);
+    if (lastReply && lastReply >= cutoff) {
+      return keys[i].replace('line_ticket_', '');
+    }
+  }
+  return '';
+}
+
+/** ประทับว่าแอดมินเพิ่งตอบตั๋วนี้ — ใช้ต่ออายุบทสนทนา */
+function touchTicketReply_(ticket) {
+  const props = PropertiesService.getScriptProperties();
+  const key = 'line_ticket_' + ticket;
+  const raw = props.getProperty(key);
+  if (!raw) return;
+
+  const parts = String(raw).split('|');
+  props.setProperty(key, parts[0] + '|' + (parts[1] || Date.now()) + '|' + Date.now());
 }
 
 /** ปลายทางนี้อยู่ใน LINE_TARGET_ADMIN หรือไม่ */
