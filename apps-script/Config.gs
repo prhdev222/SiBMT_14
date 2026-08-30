@@ -18,6 +18,7 @@ const SHEETS = {
   indications: 'transplant_indications', // เกณฑ์ปลูกถ่าย แก้ได้เมื่อแนวทางเปลี่ยน
   regimens: 'chemo_regimens',      // คลังสูตรยา แก้/เพิ่ม/ลดได้เมื่อแนวทางเปลี่ยน
   attendings: 'attendings',        // รายชื่ออาจารย์ผู้ให้คำปรึกษา หมุนเวียนทุกปี
+  lineLinks: 'line_links',         // แพทย์ต้นทางที่ผูกบัญชี LINE ไว้รับคำตอบ
 };
 
 /**
@@ -260,6 +261,9 @@ const SITE_URL = 'https://sibmt-refer.uradev222.workers.dev';
 
 /** URL ของ dashboard ที่แนบไปกับข้อความ LINE และอีเมลทุกฉบับ */
 const DASHBOARD_URL = SITE_URL + '/dashboard';
+
+/** basic ID ของ LINE OA — ต้องตรงกับ LINE_OA ใน src/lib/config.ts */
+const LINE_OA_ID = '@900eojoi';
 
 /** เบอร์ติดต่อสำรอง แสดงในข้อความตอบกลับอัตโนมัติ */
 const CONTACT_PHONE = '02-419-9903';

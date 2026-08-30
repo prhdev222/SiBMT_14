@@ -628,3 +628,93 @@ function notifyFellowOfReschedule_(booking) {
     console.error('แจ้งเลื่อนนัดให้ fellow ไม่สำเร็จ: ' + err);
   }
 }
+
+/**
+ * ส่งรหัสยืนยันการผูกบัญชี LINE ไปที่อีเมลที่ลงทะเบียนไว้
+ *
+ * ⚠️ ปลายทางมาจากชีตเสมอ ไม่ใช่จากสิ่งที่ผู้ใช้พิมพ์เข้ามา
+ * นี่คือสิ่งเดียวที่ทำให้การผูกด้วยเบอร์โทรปลอดภัย
+ */
+function sendLinkCodeEmail_(email, code) {
+  try {
+    MailApp.sendEmail({
+      to: email,
+      subject: 'รหัสยืนยันการผูก LINE — ระบบส่งต่อผู้ป่วยโลหิตวิทยา ศิริราช',
+      body:
+        'มีการขอผูกบัญชี LINE กับอีเมลนี้\n\n' +
+        'รหัสยืนยัน: ' + code + '\n' +
+        '(ใช้ได้ 10 นาที)\n\n' +
+        'นำรหัสนี้ไปพิมพ์ในแชท LINE ของระบบเพื่อยืนยัน\n\n' +
+        'ผูกแล้วจะได้อะไร: เมื่อทีมตอบคำปรึกษา ระบบจะส่งลิงก์เปิดคำตอบ\n' +
+        'มาที่ LINE ให้ทันที ไม่ต้องค้นอีเมลอีก (อีเมลยังส่งตามปกติ)\n\n' +
+        '⚠️ หากท่านไม่ได้เป็นผู้ขอ กรุณาเพิกเฉยต่ออีเมลนี้\n' +
+        'ไม่มีการผูกบัญชีใดเกิดขึ้นจนกว่าจะมีผู้กรอกรหัสนี้\n\n' +
+        '--\n' +
+        'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช\n' +
+        'อีเมลนี้ส่งจากระบบอัตโนมัติ กรุณาอย่าตอบกลับ',
+    });
+  } catch (err) {
+    console.error('ส่งรหัสผูกบัญชีไม่สำเร็จ: ' + err);
+  }
+}
+
+/**
+ * เด้งลิงก์คำตอบเข้า LINE ของแพทย์ต้นทางที่ผูกบัญชีไว้
+ *
+ * ⚠️ ส่งแค่ "ลิงก์" ไม่ส่งเนื้อคำตอบ — PDPA-003 ห้ามข้อมูลผู้ป่วยใน LINE
+ * เนื้อหาอยู่บนเว็บหลัง token ที่เดาไม่ได้
+ *
+ * ไม่ผูกไว้ก็ไม่เกิดอะไรขึ้น เงียบไป แล้วเขาได้อีเมลตามปกติ
+ * ล้มเหลวได้โดยไม่ทำให้การบันทึกคำตอบล้มตาม
+ */
+function notifyReferrerOnLine_(row, answerToken) {
+  try {
+    const userId = findLineUserByPhone_(row['referrer_phone']);
+    if (!userId) return;
+
+    const token = PropertiesService.getScriptProperties()
+      .getProperty('LINE_CHANNEL_ACCESS_TOKEN');
+    if (!token) return;
+
+    const referralId = String(row['referral_id'] || '').trim();
+    sendOneLineMessage_(token, userId, [
+      linkButtonMessage_(
+        'ทีมโลหิตวิทยาตอบคำปรึกษา ' + referralId + ' แล้ว',
+        'เปิดคำตอบ',
+        SITE_URL + '/answer/' + answerToken
+      ),
+    ]);
+  } catch (err) {
+    console.error('เด้งลิงก์คำตอบเข้า LINE ไม่สำเร็จ: ' + err);
+  }
+}
+
+/** ส่ง message object ชุดหนึ่งไปหาปลายทางเดียว — ใช้ตอนต้องแนบปุ่ม */
+function sendOneLineMessage_(token, to, messages) {
+  try {
+    const response = UrlFetchApp.fetch(LINE_PUSH_ENDPOINT, {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + token },
+      payload: JSON.stringify({ to: to, messages: messages.slice(0, 5) }),
+      muteHttpExceptions: true,
+    });
+    if (response.getResponseCode() !== 200) {
+      console.error('ส่ง LINE ไม่สำเร็จ (' + response.getResponseCode() + '): ' +
+        response.getContentText());
+    }
+  } catch (err) {
+    console.error('ส่ง LINE ไม่สำเร็จ ปลายทาง ' + to + ': ' + err);
+  }
+}
+
+/** คำชวนผูก LINE ท้ายอีเมล — จุดที่คนกำลังรู้สึกถึงความยุ่งยากพอดี */
+function buildLineLinkInvite_() {
+  return (
+    '--- ครั้งหน้าไม่ต้องเปิดอีเมล ---\n\n' +
+    'ผูก LINE ครั้งเดียว แล้วคำตอบจะเด้งเข้า LINE พร้อมปุ่มเปิดอ่านทันที\n' +
+    '  1. แอด LINE ' + LINE_OA_ID + '\n' +
+    '  2. กดปุ่ม "ผูกบัญชี" (หรือพิมพ์ว่า ผูกบัญชี)\n' +
+    '  3. พิมพ์เบอร์โทรที่ใช้ส่งเคส แล้วกรอกรหัสที่ส่งมาทางอีเมล\n\n'
+  );
+}

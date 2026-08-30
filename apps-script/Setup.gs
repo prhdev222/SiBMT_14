@@ -41,12 +41,15 @@ function setupSheets() {
 
   createIfMissing_(ss, SHEETS.attendings, ATTENDING_COLUMNS);
 
+  createIfMissing_(ss, SHEETS.lineLinks, LINE_LINK_COLUMNS);
+
   console.log('สร้างชีตและคอลัมน์เรียบร้อย');
   console.log('ต้องกรอกเพิ่ม:');
   console.log('  • ' + SHEETS.holidays + ' — วันหยุดนักขัตฤกษ์');
   console.log('  • ' + SHEETS.config + ' — ชื่อผู้รับผิดชอบ');
   console.log('  • ' + SHEETS.regimens + ' — วาง docs/chemo_regimens.tsv (204 สูตร)');
   console.log('  • ' + SHEETS.attendings + ' — พิมพ์ชื่ออาจารย์ผู้ให้คำปรึกษา');
+  console.log('  • ' + SHEETS.lineLinks + ' — ระบบเขียนเอง ไม่ต้องกรอก (ดูได้ว่าใครผูก LINE ไว้)');
 }
 
 /**
@@ -57,6 +60,19 @@ function setupSheets() {
  * แท็บที่ยังไม่ได้กรอกไม่ควรทำให้ทั้งระบบตอบคำปรึกษาไม่ได้
  */
 const ATTENDING_COLUMNS = ['name', 'active', 'note'];
+
+/**
+ * แพทย์ต้นทางที่ผูกบัญชี LINE ไว้ เพื่อรับลิงก์คำตอบโดยไม่ต้องเปิดอีเมล
+ *
+ * ⚠️ เป็นข้อมูลส่วนบุคคลของ "บุคลากรทางการแพทย์" ไม่ใช่ของผู้ป่วย
+ * ความอ่อนไหวต่ำกว่ามาก แต่ยังต้องอยู่ในนโยบายการเก็บและมีวิธีให้เลิกผูกได้เอง
+ *
+ * เก็บเป็นแท็บ ไม่ใช่ Script Properties โดยเจตนา — แอดมินต้องเห็นว่าใครผูกไว้บ้าง
+ * และต้องปิดให้ได้เมื่อแพทย์ทำมือถือหาย ถ้าซ่อนไว้จะไม่มีใครแตะได้เลย
+ */
+const LINE_LINK_COLUMNS = [
+  'line_user_id', 'referrer_phone', 'referrer_email', 'linked_at', 'active',
+];
 
 /**
  * คลังสูตรยาเคมีบำบัด — อ่านจากชีต แก้/เพิ่ม/ลดได้โดยไม่ต้อง deploy

@@ -135,6 +135,8 @@ const LINE_ADMIN_PREFIX_BARE = /^(admin|แอดมิน)[\s:：,-]*$/i;
 const LINE_BUTTON_UNSURE = 'ไม่แน่ใจว่าเข้ากลุ่มไหน';
 const LINE_BUTTON_CONTACT = 'ติดต่อเจ้าหน้าที่';
 const LINE_BUTTON_MYCASES = 'เคสของฉัน';
+const LINE_BUTTON_LINK = 'ผูกบัญชี';
+const LINE_BUTTON_UNLINK = 'เลิกผูก';
 
 /**
  * ค้นเคสด้วยเบอร์โทรได้กี่ครั้งต่อชั่วโมง
@@ -244,6 +246,24 @@ function handleLineEvent_(event) {
 
   if (matchesButton_(text, LINE_BUTTON_MYCASES)) {
     startMyCasesFlow_(event, id);
+    return;
+  }
+
+  if (matchesButton_(text, LINE_BUTTON_UNLINK)) {
+    handleUnlink_(event, id);
+    return;
+  }
+
+  if (matchesButton_(text, LINE_BUTTON_LINK)) {
+    // "ผูกบัญชี ใหม่" = ตั้งใจผูกเบอร์ใหม่ทับของเดิม ข้ามหน้าจอที่บอกว่าผูกแล้ว
+    if (text.indexOf('ใหม่') !== -1) {
+      writeContactFlow_(id, { step: 'linkPhone' });
+      replyLineMessage_(event.replyToken, [withQuickReply_(
+        { type: 'text', text: 'พิมพ์เบอร์โทรที่ต้องการผูกใหม่ครับ' },
+        cancelQuickReply_())]);
+      return;
+    }
+    startLinkFlow_(event, id);
     return;
   }
 
@@ -658,6 +678,16 @@ function startContactFlow_(event, userId) {
 }
 
 function advanceContactFlow_(event, flow, text, userId) {
+  if (flow.step === 'linkPhone') {
+    handleLinkPhone_(event, text, userId);
+    return;
+  }
+
+  if (flow.step === 'linkCode') {
+    handleLinkCode_(event, text, userId);
+    return;
+  }
+
   if (flow.step === 'myCasesPhone') {
     handleMyCasesPhone_(event, text, userId);
     return;
@@ -1060,4 +1090,220 @@ function buildWhoAmIReply_(sourceType, id) {
     'นำไปวางที่ Apps Script → Project Settings → Script Properties\n' +
     'ชื่อ: ' + target
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* ผูกบัญชี LINE เพื่อรับลิงก์คำตอบโดยไม่ต้องเปิดอีเมล                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * ⚠️ หัวใจของความปลอดภัยอยู่ที่ "รหัสไปที่อีเมล ไม่ได้ไปที่ LINE"
+ *
+ * คนที่พิมพ์เบอร์ของคนอื่นจะไม่มีวันได้รหัส เพราะรหัสวิ่งไปที่อีเมล
+ * ที่ลงทะเบียนไว้กับเคสของเบอร์นั้น การผูกสำเร็จจึงพิสูจน์ได้จริงว่า
+ * คนที่กำลังคุยอยู่เข้าถึงอีเมลนั้นได้ — เท่ากับเป็นเจ้าของเคสเหล่านั้น
+ *
+ * เบอร์อย่างเดียวไม่พอ เพราะเบอร์แพทย์อยู่บนใบ refer และทำเนียบโรงพยาบาล
+ */
+function startLinkFlow_(event, userId) {
+  const existing = findLineLink_(userId);
+  if (existing) {
+    replyLineMessage_(event.replyToken, [withQuickReply_(
+      { type: 'text', text:
+        'บัญชีนี้ผูกไว้แล้วครับ ✓\n\n' +
+        'เบอร์ที่ผูก: ' + maskPhone_(existing['referrer_phone']) + '\n\n' +
+        'เมื่อมีคำตอบใหม่ ระบบจะส่งลิงก์มาที่แชทนี้ให้อัตโนมัติ' },
+      [{ label: 'ผูกเบอร์ใหม่', text: 'ผูกบัญชี ใหม่' },
+       { label: 'เลิกผูก', text: 'เลิกผูก' }])]);
+    return;
+  }
+
+  writeContactFlow_(userId, { step: 'linkPhone' });
+  replyLineMessage_(event.replyToken, [withQuickReply_(
+    { type: 'text', text:
+      'ผูกบัญชีครั้งเดียว แล้วครั้งหน้าไม่ต้องเปิดอีเมลอีก\n\n' +
+      'พิมพ์เบอร์โทรที่ใช้ตอนส่งเคสเข้ามาครับ\n' +
+      'ระบบจะส่งรหัส 6 หลักไปที่อีเมลที่ลงทะเบียนไว้ แล้วนำรหัสนั้นมาพิมพ์ที่นี่' },
+    cancelQuickReply_())]);
+}
+
+/** ปิดกลางเบอร์ก่อนแสดง — ยืนยันได้ว่าเบอร์ไหนโดยไม่เปิดเผยทั้งเบอร์ */
+function maskPhone_(phone) {
+  const d = digitsOnly_(phone);
+  return d.length < 6 ? d : d.slice(0, 3) + 'xxx' + d.slice(-3);
+}
+
+function handleLinkPhone_(event, text, userId) {
+  const digits = digitsOnly_(text);
+  if (digits.length < 9) {
+    replyLineMessage_(event.replyToken, [withQuickReply_(
+      { type: 'text', text: 'เบอร์โทรไม่ครบ กรุณาพิมพ์ใหม่ เช่น 081-234-5678' },
+      cancelQuickReply_())]);
+    return;
+  }
+
+  if (!lineCasesLookupAllowed_(userId)) {
+    clearContactFlow_(userId);
+    replyLineMessage_(event.replyToken,
+      'ลองบ่อยเกินไป กรุณารออีกสักครู่');
+    return;
+  }
+
+  const email = findEmailByPhone_(digits);
+  if (!email) {
+    clearContactFlow_(userId);
+    replyLineMessage_(event.replyToken, [withQuickReply_(
+      { type: 'text', text:
+        'ไม่พบเคสของเบอร์นี้ หรือเคสของเบอร์นี้ไม่มีอีเมลบันทึกไว้\n\n' +
+        'ตรวจว่าเป็นเบอร์เดียวกับที่กรอกตอนส่งเคสหรือไม่' },
+      [{ label: 'ขอติดต่อเจ้าหน้าที่', text: 'ติดต่อเจ้าหน้าที่' }])]);
+    return;
+  }
+
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  CacheService.getScriptCache().put(
+    'line_link_' + userId,
+    JSON.stringify({ code: code, phone: digits, email: email }),
+    600
+  );
+  writeContactFlow_(userId, { step: 'linkCode' });
+
+  sendLinkCodeEmail_(email, code);
+
+  // ไม่บอกว่าอีเมลอะไร — คนที่พิมพ์เบอร์อาจไม่ใช่เจ้าของ
+  replyLineMessage_(event.replyToken, [withQuickReply_(
+    { type: 'text', text:
+      'ส่งรหัส 6 หลักไปที่อีเมลที่ลงทะเบียนไว้กับเบอร์นี้แล้ว\n\n' +
+      'กรุณาพิมพ์รหัสที่ได้รับ (ใช้ได้ 10 นาที)\n' +
+      'ตรวจโฟลเดอร์จดหมายขยะด้วยหากไม่พบ' },
+    cancelQuickReply_())]);
+}
+
+function handleLinkCode_(event, text, userId) {
+  const raw = CacheService.getScriptCache().get('line_link_' + userId);
+  if (!raw) {
+    clearContactFlow_(userId);
+    replyLineMessage_(event.replyToken, [withQuickReply_(
+      { type: 'text', text: 'รหัสหมดอายุแล้ว (ใช้ได้ 10 นาที) กรุณาเริ่มใหม่' },
+      [{ label: 'ผูกบัญชีใหม่', text: 'ผูกบัญชี' }])]);
+    return;
+  }
+
+  const pending = JSON.parse(raw);
+  if (digitsOnly_(text) !== pending.code) {
+    replyLineMessage_(event.replyToken, [withQuickReply_(
+      { type: 'text', text: 'รหัสไม่ถูกต้อง กรุณาพิมพ์ใหม่' },
+      cancelQuickReply_())]);
+    return;
+  }
+
+  saveLineLink_(userId, pending.phone, pending.email);
+  CacheService.getScriptCache().remove('line_link_' + userId);
+  clearContactFlow_(userId);
+
+  replyLineMessage_(event.replyToken,
+    'ผูกบัญชีเรียบร้อยแล้ว ✓\n\n' +
+    'ตั้งแต่นี้ไป เมื่อทีมตอบคำปรึกษาเคสของเบอร์ ' + maskPhone_(pending.phone) +
+    '\nระบบจะส่งลิงก์เปิดคำตอบมาที่แชทนี้ให้ทันที ไม่ต้องเปิดอีเมลอีก\n\n' +
+    'อีเมลยังส่งตามปกติเหมือนเดิม\n' +
+    'ต้องการเลิกผูกเมื่อไร พิมพ์ "เลิกผูก" ได้เลย');
+}
+
+function handleUnlink_(event, userId) {
+  clearContactFlow_(userId);
+  const removed = removeLineLink_(userId);
+  replyLineMessage_(event.replyToken,
+    removed
+      ? 'เลิกผูกบัญชีแล้ว ✓\n\nคำตอบจะส่งทางอีเมลอย่างเดียวเหมือนเดิม'
+      : 'บัญชีนี้ยังไม่ได้ผูกไว้ครับ');
+}
+
+/* ---------- อ่าน/เขียนแท็บ line_links ---------- */
+
+/** แถวที่ผูกไว้ของ LINE id นี้ — คืน null ถ้าไม่มีหรือถูกปิดไว้ */
+function findLineLink_(userId) {
+  try {
+    const rows = readRows_(getSheet_(SHEETS.lineLinks));
+    for (let i = 0; i < rows.length; i++) {
+      if (String(rows[i]['line_user_id'] || '').trim() !== userId) continue;
+      const active = String(rows[i]['active'] || '').toLowerCase();
+      if (active === 'no' || active === 'false') continue;
+      return rows[i];
+    }
+  } catch (err) {
+    console.warn('อ่าน line_links ไม่สำเร็จ: ' + err);
+  }
+  return null;
+}
+
+/** LINE id ของแพทย์ต้นทางที่ผูกเบอร์นี้ไว้ — ใช้ตอนมีคำตอบใหม่ */
+function findLineUserByPhone_(phone) {
+  const digits = digitsOnly_(phone);
+  if (digits.length < 9) return '';
+  try {
+    const rows = readRows_(getSheet_(SHEETS.lineLinks));
+    for (let i = 0; i < rows.length; i++) {
+      if (digitsOnly_(rows[i]['referrer_phone']) !== digits) continue;
+      const active = String(rows[i]['active'] || '').toLowerCase();
+      if (active === 'no' || active === 'false') continue;
+      return String(rows[i]['line_user_id'] || '').trim();
+    }
+  } catch (err) {
+    console.warn('อ่าน line_links ไม่สำเร็จ: ' + err);
+  }
+  return '';
+}
+
+/**
+ * บันทึกการผูก — ทับของเดิมของ LINE id นั้นถ้ามี
+ *
+ * ทับแทนการเพิ่มแถวใหม่ เพราะคนเปลี่ยนเบอร์หรือเปลี่ยนเครื่องแล้วผูกซ้ำ
+ * ไม่ควรมีสองแถวที่ขัดกันเอง แล้วโค้ดต้องเดาว่าอันไหนจริง
+ */
+function saveLineLink_(userId, phone, email) {
+  const sheet = getSheet_(SHEETS.lineLinks);
+  const map = ensureColumns_(sheet, LINE_LINK_COLUMNS);
+  const rows = readRows_(sheet);
+
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i]['line_user_id'] || '').trim() === userId) {
+      setCell_(sheet, map, rows[i]._row, 'referrer_phone', phone);
+      setCell_(sheet, map, rows[i]._row, 'referrer_email', email);
+      setCell_(sheet, map, rows[i]._row, 'linked_at', new Date());
+      setCell_(sheet, map, rows[i]._row, 'active', 'yes');
+      return;
+    }
+  }
+
+  sheet.appendRow([userId, phone, email, new Date(), 'yes']);
+}
+
+/** ปิดการผูก — ไม่ลบแถว เพื่อให้ยังตรวจสอบย้อนหลังได้ว่าเคยผูกเมื่อไร */
+function removeLineLink_(userId) {
+  const sheet = getSheet_(SHEETS.lineLinks);
+  const map = ensureColumns_(sheet, LINE_LINK_COLUMNS);
+  const rows = readRows_(sheet);
+
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i]['line_user_id'] || '').trim() !== userId) continue;
+    if (String(rows[i]['active'] || '').toLowerCase() === 'no') continue;
+    setCell_(sheet, map, rows[i]._row, 'active', 'no');
+    return true;
+  }
+  return false;
+}
+
+/** อีเมลที่ลงทะเบียนไว้กับเบอร์นี้ — เอาจากเคสล่าสุดที่มีอีเมล */
+function findEmailByPhone_(digits) {
+  const rows = readRows_(getSheet_(SHEETS.referrals)).filter(function (r) {
+    return digitsOnly_(r['referrer_phone']) === digits &&
+      String(r['referrer_email'] || '').trim();
+  });
+  if (rows.length === 0) return '';
+
+  rows.sort(function (a, b) {
+    const x = toDate_(a['submitted_at']), y = toDate_(b['submitted_at']);
+    return (y ? y.getTime() : 0) - (x ? x.getTime() : 0);
+  });
+  return String(rows[0]['referrer_email']).trim();
 }

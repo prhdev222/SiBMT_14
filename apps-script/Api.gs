@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-08-30 phoneLookup';
+const API_VERSION = '2026-08-30 answerLink';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -139,6 +139,9 @@ const ADVICE_CONTACT_COLUMNS = [
   'advice_file_name', 'advice_file_url',
   'advice_attending', 'advice_approved_at',
   'appointment_date', 'appointment_note',
+  // ลิงก์เปิดคำตอบบนเว็บ ใช้กลไกเดียวกับ manage_token ของกลุ่ม 1
+  // เนื้อคำตอบจึงไม่ต้องอยู่ใน LINE ซึ่ง PDPA-003 ห้ามไว้
+  'answer_token',
 ];
 
 /**
@@ -454,6 +457,14 @@ function saveAdvice_(payload) {
       String(payload.attending || '').trim());
     setCell_(sheet, map2, match._row, 'advice_approved_at', now);
 
+    // ลิงก์เปิดคำตอบ — ออกครั้งเดียวแล้วใช้ซ้ำได้ ไม่สร้างใหม่ทุกครั้ง
+    // เพราะลิงก์เดิมที่ส่งไปแล้วต้องเปิดได้ตลอด ไม่ใช่ตายทันทีที่มีคนแก้แถว
+    let answerToken = String(match['answer_token'] || '').trim();
+    if (!answerToken) {
+      answerToken = generateManageToken_();
+      setCell_(sheet, map2, match._row, 'answer_token', answerToken);
+    }
+
     // นัดประเมินความพร้อมที่ OPD 700 — เฉพาะกลุ่ม 3 ที่เลือกสถานะนัดตรวจ
     //
     // เขียนลง appointment_date เหมือนกลุ่ม 1 ได้อย่างปลอดภัย เพราะ countBookings()
@@ -484,8 +495,12 @@ function saveAdvice_(payload) {
         fileUrl: attachment ? attachment.url : '',
         attending: String(payload.attending || '').trim(),
         visit: visit,
+        answerUrl: SITE_URL + '/answer/' + answerToken,
       });
     }
+
+    // เด้งเข้า LINE ให้คนที่ผูกบัญชีไว้ — ไม่ผูกก็ยังได้อีเมลตามปกติ
+    notifyReferrerOnLine_(match, answerToken);
 
     return {
       referralId: referralId,
@@ -569,6 +584,11 @@ function sendAdviceEmail_(email, data) {
     buildVisitBlock_(data.visit) +
     buildAttachmentBlock_(data) +
     buildAdviceContactBlock_(data) +
+    (data.answerUrl
+      ? '--- เปิดคำตอบนี้บนเว็บ ---\n' + data.answerUrl + '\n' +
+        '(ลิงก์นี้เปิดได้เฉพาะผู้ที่มีลิงก์ ส่งต่อให้ทีมดูได้)\n\n'
+      : '') +
+    buildLineLinkInvite_() +
     'กรุณาอย่าส่งชื่อ-สกุล หรือเลข HN ของผู้ป่วยทางอีเมลนี้\n\n' +
     '--\n' +
     'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช\n' +

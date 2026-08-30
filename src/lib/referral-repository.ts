@@ -228,6 +228,30 @@ export async function loadTransplantIndications(): Promise<
   }
 }
 
+/**
+ * เปิดคำตอบด้วย token จากลิงก์ในอีเมลหรือ LINE
+ *
+ * ⚠️ token คือสิ่งเดียวที่กั้นอยู่ — ใช้กลไกเดียวกับลิงก์จัดการนัดของกลุ่ม 1
+ * (32 ตัวอักษร เดาไม่ได้ในทางปฏิบัติ) หน้าที่แสดงผลจึงต้อง noindex
+ * และห้ามมีข้อมูลที่ระบุตัวผู้ป่วย ซึ่งระบบนี้ไม่เคยเก็บอยู่แล้ว
+ *
+ * เทียบ token แบบตรงตัว ไม่ใช่ค้นบางส่วน — token สั้นกว่าที่ควรจะเป็น
+ * แม้แต่ตัวเดียวไม่ควรเปิดเคสของคนอื่นได้
+ */
+export async function loadReferralByAnswerToken(
+  token: string,
+): Promise<Referral | null> {
+  if (!readCredentials() || token.length < 16) return null;
+
+  try {
+    const rows = await readSheetRows(REFERRALS_SHEET);
+    const row = rows.find((r) => text(r["answer_token"]) === token);
+    return row ? toReferral(row) : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface ChemoRegimen {
   diseaseGroup: string;
   abbr: string;
