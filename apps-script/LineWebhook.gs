@@ -109,6 +109,34 @@ const LINE_TICKET_PATTERN = /^#([A-Z2-9]{4})\s+([\s\S]+)$/;
  */
 const LINE_TICKET_TTL_DAYS = 7;
 
+/**
+ * ข้อความที่ปุ่มบน rich menu ส่งมา
+ *
+ * จับแบบ "มีคำนี้อยู่ในข้อความ" ไม่ใช่เท่ากันเป๊ะ เพราะข้อความบนปุ่มถูกแก้ได้
+ * จากหน้า LINE OA Manager โดยไม่มีใครมาบอกโค้ด — ให้ทนต่อการเติมอีโมจิ
+ * หรือเว้นวรรคเพิ่มได้บ้าง
+ */
+const LINE_BUTTON_UNSURE = 'ไม่แน่ใจว่าเข้ากลุ่มไหน';
+const LINE_BUTTON_CONTACT = 'ติดต่อเจ้าหน้าที่';
+
+/** พิมพ์คำใดคำหนึ่งนี้เพื่อออกจากโฟลว์ที่ค้างอยู่ */
+const LINE_CANCEL_WORDS = ['ยกเลิก', 'เลิก', 'cancel'];
+
+/**
+ * หัวข้อที่เลือกได้ในโฟลว์ติดต่อเจ้าหน้าที่
+ *
+ * มีแค่สามเรื่องโดยเจตนา — สองข้อแรกคือปัญหาของระบบที่กลุ่มที่ 2 รับไม่ได้จริง ๆ
+ * ข้อสามเป็นทางออกสำหรับเรื่องที่คาดไม่ถึง ไม่ใช่ช่องรับคำถามทางคลินิก
+ */
+const LINE_CONTACT_TOPICS = {
+  '1': 'ส่งข้อมูลเข้าระบบไม่ได้',
+  '2': 'สอบถามสถานะ referral ที่เกินกรอบเวลาแล้ว',
+  '3': 'อื่น ๆ',
+};
+
+/** โฟลว์ค้างไว้ได้นานแค่ไหน — ตอบสองสามคำถามไม่ควรเกินนี้ */
+const LINE_FLOW_TTL_SECONDS = 1800;
+
 function handleLineWebhook_(body) {
   (body.events || []).forEach(function (event) {
     try {
@@ -155,6 +183,32 @@ function handleLineEvent_(event) {
   // และคนในกลุ่มเปิด dashboard ดูได้อยู่แล้ว ต่างจากแพทย์ต้นทาง
   if (source.type !== 'user') return;
 
+  if (LINE_CANCEL_WORDS.indexOf(text) !== -1) {
+    clearContactFlow_(id);
+    replyLineMessage_(event.replyToken, 'ยกเลิกแล้ว พิมพ์ใหม่ได้ทุกเมื่อ');
+    return;
+  }
+
+  // ปุ่ม rich menu — ข้อความสำเร็จรูปที่ปุ่มส่งมา
+  if (matchesButton_(text, LINE_BUTTON_UNSURE)) {
+    clearContactFlow_(id);
+    replyLineMessage_(event.replyToken, buildUnsureGroupReply_());
+    return;
+  }
+
+  if (matchesButton_(text, LINE_BUTTON_CONTACT)) {
+    startContactFlow_(event, id);
+    return;
+  }
+
+  // อยู่ระหว่างตอบคำถามของโฟลว์ติดต่อเจ้าหน้าที่ — ต้องมาก่อนการค้นรหัส
+  // เพราะขั้นตอนหนึ่งของโฟลว์คือให้พิมพ์รหัสอ้างอิงพอดี
+  const flow = readContactFlow_(id);
+  if (flow) {
+    advanceContactFlow_(event, flow, text, id);
+    return;
+  }
+
   const matched = text.match(LINE_REFERRAL_ID_PATTERN);
   if (!matched) {
     // พิมพ์รหัสมาแต่ผิดรูป — บอกรูปแบบให้ ไม่ปล่อยเงียบ
@@ -163,11 +217,12 @@ function handleLineEvent_(event) {
       return;
     }
 
-    // ไม่ใช่รหัสอ้างอิง — เป็นคำถามหรือข้อความทั่วไป ส่งต่อให้แอดมิน
+    // คำถามลอย ๆ — ชี้ไปกลุ่มที่ 2 ไม่ส่งต่อให้แอดมิน
     //
-    // เดิมตรงนี้ return เงียบ ๆ แพทย์ต้นทางที่พิมพ์คำถามเข้ามาจึงไม่ได้อะไรกลับเลย
-    // ซึ่งอ่านได้อย่างเดียวว่าไม่มีใครอยู่ แย่กว่าการตอบว่าไม่เข้าใจเสียอีก
-    forwardToAdmin_(event, text, id);
+    // เดิมตรงนี้ส่งเข้ากลุ่มแอดมินทุกข้อความ ซึ่งย้อนกลับไปหาปัญหาเดิมพอดี
+    // คือแอดมินต้องคอยตอบคำถามจิปาถะ ทั้งที่กลุ่มที่ 2 รับคำถามแบบนี้อยู่แล้ว
+    // และตอบได้ดีกว่าเพราะมีเลขที่อ้างอิง เข้าคิว และมีกรอบเวลา
+    replyLineMessage_(event.replyToken, buildUnsureGroupReply_());
     return;
   }
 
@@ -298,59 +353,192 @@ function lineLookupAllowed_(sourceId) {
   return true;
 }
 
+/** ปุ่มบน rich menu ถูกแก้ข้อความได้ จึงจับแบบมีคำนี้อยู่ ไม่ใช่เท่ากันเป๊ะ */
+function matchesButton_(text, keyword) {
+  return text.indexOf(keyword) !== -1;
+}
+
 /**
- * ส่งข้อความที่บอทตอบเองไม่ได้ ต่อให้กลุ่มแอดมิน แล้วตอบรับแพทย์ต้นทาง
+ * คำตอบสำหรับคนที่ไม่แน่ใจว่าเข้ากลุ่มไหน และสำหรับคำถามลอย ๆ ทั่วไป
  *
- * ⚠️ ไม่บันทึกลงชีต เหมือนหน้า /contact — นี่คือการแจ้งให้คนรู้ ไม่ใช่การเปิดเคส
- * คำถามทางคลินิกต้องเข้ากลุ่มที่ 2 ซึ่งมีเลขที่อ้างอิงและกรอบเวลาจริง
- *
- * ⚠️ แอดมินตอบกลับได้ก็ต่อเมื่อเปิด Chat ใน LINE Official Account Manager
- * ถ้าปิดอยู่ ข้อความจะถึงกลุ่มแอดมินแต่ตอบกลับในแชทนั้นไม่ได้
- * ตัวบอทเองตอบแทนไม่ได้ เพราะ replyToken ใช้ได้ครั้งเดียวและหมดอายุใน 1 นาที
+ * ชี้ไปกลุ่มที่ 2 ไม่ส่งต่อให้แอดมิน — กลุ่มที่ 2 รับคำถามก่อนตัดสินใจส่งตัว
+ * อยู่แล้ว และตอบได้ดีกว่าเพราะคำถามจะได้เลขที่อ้างอิง เข้าคิว
+ * และมีแพทย์ประจำบ้านตอบตามกรอบเวลา ต่างจากการทักแอดมินซึ่งไม่มีอะไรรับประกัน
  */
-function forwardToAdmin_(event, text, sourceId) {
-  if (text.length < LINE_CONTACT_MIN_CHARS) {
-    replyLineMessage_(
-      event.replyToken,
-      'พิมพ์รหัสอ้างอิงเพื่อเช็คสถานะ เช่น HEM-20260822-0001\n\n' +
-      'หรือพิมพ์คำถามมาได้เลย ระบบจะส่งต่อให้แพทย์แอดมินกลาง'
-    );
+function buildUnsureGroupReply_() {
+  return (
+    'ถ้ายังไม่แน่ใจว่าเคสเข้ากลุ่มไหน หรืออยากถามก่อนตัดสินใจส่งตัว\n' +
+    'ให้ส่งผ่าน "กลุ่มที่ 2" ได้เลยครับ\n\n' +
+    'กลุ่มที่ 2 รับทั้งเรื่องสูตรยาเคมีบำบัด และคำถามอื่น เช่น\n' +
+    '  • เคสนี้ควร refer หรือไม่\n' +
+    '  • ขณะนี้มีการศึกษาวิจัย (clinical trial) ที่เหมาะกับผู้ป่วยหรือไม่\n\n' +
+    'เขียนคำถามลงในช่อง "สิ่งที่ต้องการปรึกษา" ได้เลย\n' +
+    SITE_URL + '/refer/regimen-consult\n\n' +
+    'ส่งทางนั้นแล้วคำถามจะได้เลขที่อ้างอิง และมีแพทย์ตอบกลับภายใน 3 วันทำการ'
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* โฟลว์ "ขอติดต่อเจ้าหน้าที่"                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * ถามทีละคำถามจนได้ข้อมูลครบ แล้วค่อยส่งเข้ากลุ่มแอดมิน
+ *
+ * ⚠️ ตั้งใจให้ถามหลายขั้น ไม่ใช่รับข้อความเดียวจบ
+ *
+ * ข้อความลอย ๆ ที่ส่งเข้ากลุ่มแอดมินโดยไม่มีเบอร์โทรและไม่มีหัวข้อ
+ * จบลงด้วยการที่แอดมินต้องไล่ถามกลับเองทีละอย่าง ซึ่งคือภาระที่ระบบนี้
+ * ตั้งใจจะลด การถามให้ครบตั้งแต่ต้นทำให้แอดมินอ่านครั้งเดียวแล้วโทรได้เลย
+ *
+ * เก็บสถานะใน CacheService ไม่ใช่ Script Properties เพราะโฟลว์ที่ค้างครึ่งทาง
+ * ควรหายไปเอง ต่างจากตั๋วตอบกลับที่ต้องอยู่ข้ามวัน
+ */
+function startContactFlow_(event, userId) {
+  writeContactFlow_(userId, { step: 'topic' });
+
+  replyLineMessage_(
+    event.replyToken,
+    'ต้องการติดต่อเจ้าหน้าที่เรื่องอะไรครับ — พิมพ์เลข 1-3\n\n' +
+    '1. ' + LINE_CONTACT_TOPICS['1'] + '\n' +
+    '2. ' + LINE_CONTACT_TOPICS['2'] + '\n' +
+    '3. ' + LINE_CONTACT_TOPICS['3'] + '\n\n' +
+    'ถ้าเป็นคำถามทางคลินิกหรือไม่แน่ใจว่าเคสเข้ากลุ่มไหน ให้ส่งผ่านกลุ่มที่ 2 แทน\n' +
+    SITE_URL + '/refer/regimen-consult\n\n' +
+    '(พิมพ์ "ยกเลิก" เพื่อออก)'
+  );
+}
+
+function advanceContactFlow_(event, flow, text, userId) {
+  if (flow.step === 'topic') {
+    if (!LINE_CONTACT_TOPICS[text]) {
+      replyLineMessage_(event.replyToken,
+        'กรุณาพิมพ์เลข 1, 2 หรือ 3 เท่านั้น\n\n' +
+        '1. ' + LINE_CONTACT_TOPICS['1'] + '\n' +
+        '2. ' + LINE_CONTACT_TOPICS['2'] + '\n' +
+        '3. ' + LINE_CONTACT_TOPICS['3']);
+      return;
+    }
+
+    flow.topic = text;
+
+    // เฉพาะเรื่องสถานะเคสที่ต้องรู้ว่าเคสไหน อีกสองเรื่องยังไม่มีเคสให้อ้างถึง
+    if (text === '2') {
+      flow.step = 'referralId';
+      writeContactFlow_(userId, flow);
+      replyLineMessage_(event.replyToken,
+        'กรุณาพิมพ์รหัสอ้างอิงของเคส\n' +
+        'เช่น HEM-20260822-0001\n\n' +
+        'คัดลอกจากอีเมลที่ระบบส่งให้ได้เลย');
+      return;
+    }
+
+    flow.step = 'phone';
+    writeContactFlow_(userId, flow);
+    replyLineMessage_(event.replyToken, 'กรุณาพิมพ์เบอร์โทรที่ให้ติดต่อกลับ');
     return;
   }
 
-  if (!lineContactAllowed_(sourceId)) {
-    replyLineMessage_(
-      event.replyToken,
-      'ส่งข้อความถี่เกินไป กรุณารอสักครู่\n\n' +
-      'ถ้าเร่งด่วน โทร ' + CONTACT_PHONE + ' (จันทร์-ศุกร์ 08:00-16:00 น.)'
-    );
+  if (flow.step === 'referralId') {
+    const matched = text.match(LINE_REFERRAL_ID_PATTERN);
+    if (!matched) {
+      replyLineMessage_(event.replyToken,
+        'รูปแบบรหัสไม่ถูกต้อง\n' +
+        'ต้องเป็น HEM-ปีเดือนวัน-เลข 4 หลัก เช่น HEM-20260822-0001\n\n' +
+        'ถ้าหารหัสไม่เจอ พิมพ์ "-" เพื่อข้ามได้');
+      if (text !== '-') return;
+    }
+    flow.referralId = matched ? matched[0].toUpperCase() : '(ไม่ทราบรหัส)';
+    flow.step = 'phone';
+    writeContactFlow_(userId, flow);
+    replyLineMessage_(event.replyToken, 'กรุณาพิมพ์เบอร์โทรที่ให้ติดต่อกลับ');
     return;
   }
 
-  const who = lineDisplayName_(sourceId);
-  const ticket = issueLineTicket_(sourceId);
+  if (flow.step === 'phone') {
+    // นับเฉพาะตัวเลข เพราะคนพิมพ์ 08x-xxx-xxxx บ้าง 08x xxx xxxx บ้าง
+    const digits = text.replace(/\D/g, '');
+    if (digits.length < 9) {
+      replyLineMessage_(event.replyToken,
+        'เบอร์โทรไม่ครบ กรุณาพิมพ์ใหม่\n' +
+        'เช่น 081-234-5678 หรือ 02-419-9903 ต่อ 123');
+      return;
+    }
+    flow.phone = text;
+    flow.step = 'detail';
+    writeContactFlow_(userId, flow);
+    replyLineMessage_(event.replyToken,
+      'พิมพ์รายละเอียดที่ต้องการแจ้งได้เลยครับ\n\n' +
+      '🔒 กรุณาอย่าพิมพ์ชื่อ-สกุล เลข HN หรือเลขบัตรประชาชนของผู้ป่วย');
+    return;
+  }
+
+  if (flow.step === 'detail') {
+    flow.detail = text;
+    clearContactFlow_(userId);
+    sendContactToAdmin_(event, flow, userId);
+    return;
+  }
+
+  // สถานะที่โค้ดไม่รู้จัก — ล้างทิ้งดีกว่าปล่อยให้ผู้ใช้ติดอยู่ในโฟลว์ที่ไปต่อไม่ได้
+  clearContactFlow_(userId);
+  replyLineMessage_(event.replyToken, 'ขออภัย เกิดข้อผิดพลาด กรุณากดปุ่มติดต่อเจ้าหน้าที่ใหม่');
+}
+
+/** ส่งเรื่องที่ถามครบแล้วเข้ากลุ่มแอดมิน พร้อมตั๋วให้ตอบกลับได้ */
+function sendContactToAdmin_(event, flow, userId) {
+  if (!lineContactAllowed_(userId)) {
+    replyLineMessage_(event.replyToken,
+      'ส่งเรื่องถี่เกินไป กรุณารอสักครู่\n\n' +
+      'ถ้าเร่งด่วน โทร ' + CONTACT_PHONE + ' (จันทร์-ศุกร์ 08:00-16:00 น.)');
+    return;
+  }
+
+  const who = lineDisplayName_(userId);
+  const ticket = issueLineTicket_(userId);
 
   pushLineMessage_(
-    '💬 มีคนทักเข้ามาทาง LINE OA\n\n' +
+    '📨 มีเรื่องแจ้งจากแพทย์ต้นทาง\n\n' +
+    'เรื่อง: ' + (LINE_CONTACT_TOPICS[flow.topic] || 'ไม่ระบุ') + '\n' +
+    (flow.referralId ? 'เคส: ' + flow.referralId + '\n' : '') +
+    'โทรกลับ: ' + flow.phone + '\n' +
     'จาก: ' + who + '\n\n' +
-    text.slice(0, 1200) + '\n\n' +
+    String(flow.detail || '').slice(0, 1200) + '\n\n' +
     '──────────\n' +
     'ตอบกลับ: พิมพ์ในกลุ่มนี้ได้เลย\n\n' +
     '   #' + ticket + ' ตามด้วยข้อความที่จะตอบ\n\n' +
     'บอทจะส่งข้อความนั้นถึงเขาให้ (ตั๋วใช้ได้ ' + LINE_TICKET_TTL_DAYS + ' วัน)\n' +
-    '🔒 อย่าพิมพ์ข้อมูลผู้ป่วยในคำตอบ\n' +
-    'ถ้าเป็นคำถามทางคลินิก แนะนำให้เขาส่งผ่านกลุ่มที่ 2 จะได้เข้าคิวและมีคนตอบตามกรอบเวลา',
+    '🔒 อย่าพิมพ์ข้อมูลผู้ป่วยในคำตอบ',
     'red'
   );
 
   replyLineMessage_(
     event.replyToken,
-    'ส่งข้อความถึงแพทย์แอดมินกลางแล้ว\n' +
-    'จะติดต่อกลับในเวลาราชการ (จันทร์-ศุกร์ 08:00-16:00 น.)\n\n' +
-    '🔒 กรุณาอย่าพิมพ์ชื่อ-สกุล เลข HN หรือเลขบัตรประชาชนของผู้ป่วยทาง LINE\n\n' +
-    'ถ้าเป็นคำถามเรื่องสูตรยาหรืออยากปรึกษาก่อนส่งตัว ส่งผ่านกลุ่มที่ 2 จะเร็วกว่า\n' +
-    SITE_URL + '/refer/regimen-consult'
+    'ส่งเรื่องถึงแพทย์แอดมินกลางแล้ว ✓\n\n' +
+    'เรื่อง: ' + (LINE_CONTACT_TOPICS[flow.topic] || '-') + '\n' +
+    (flow.referralId ? 'เคส: ' + flow.referralId + '\n' : '') +
+    'โทรกลับ: ' + flow.phone + '\n\n' +
+    'จะติดต่อกลับในเวลาราชการ (จันทร์-ศุกร์ 08:00-16:00 น.)'
   );
+}
+
+function readContactFlow_(userId) {
+  const raw = CacheService.getScriptCache().get('line_flow_' + userId);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    return null;
+  }
+}
+
+function writeContactFlow_(userId, flow) {
+  CacheService.getScriptCache()
+    .put('line_flow_' + userId, JSON.stringify(flow), LINE_FLOW_TTL_SECONDS);
+}
+
+function clearContactFlow_(userId) {
+  CacheService.getScriptCache().remove('line_flow_' + userId);
 }
 
 /**
