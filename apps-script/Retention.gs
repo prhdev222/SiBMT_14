@@ -6,6 +6,10 @@
  * หลักการ: ไม่ลบทั้งแถวทิ้ง แต่ถอดคอลัมน์ที่โยงกลับหาผู้ป่วยได้ออก
  * แล้วย้ายส่วนที่เหลือไปเก็บถาวรใน advice_library
  * ทำให้ยังใช้ย้อนดูว่าเคยตอบเคสลักษณะนี้อย่างไร โดยไม่เหลือข้อมูลส่วนบุคคล
+ *
+ * ⚠️ กำหนดเวลามีสองแบบ ดูเหตุผลที่ isExpired_()
+ *   กลุ่มที่ 2, 3  — 12 เดือนหลังปิดเคส (RETENTION_MONTHS)
+ *   กลุ่มที่ 1     — 30 วันหลังเลยวันนัด (APPOINTMENT_RETENTION_DAYS)
  */
 
 function anonymizeExpired() {
@@ -14,13 +18,7 @@ function anonymizeExpired() {
   const rows = readRows_(sheet);
   if (rows.length === 0) return;
 
-  const cutoff = new Date();
-  cutoff.setMonth(cutoff.getMonth() - RETENTION_MONTHS);
-
-  const expired = rows.filter(function (r) {
-    const closedAt = toDate_(r['closed_at']);
-    return closedAt && closedAt < cutoff;
-  });
+  const expired = rows.filter(isExpired_);
 
   if (expired.length === 0) {
     console.log('ไม่มีเคสที่ครบกำหนดถอดชื่อ');
@@ -50,6 +48,65 @@ function anonymizeExpired() {
     });
 
   console.log('ถอดชื่อและย้ายเข้าคลังแล้ว ' + expired.length + ' เคส');
+}
+
+/**
+ * เคสนี้ครบกำหนดถอดชื่อหรือยัง
+ *
+ * มีสองกฎ ไม่ใช่กฎเดียว เพราะสองกลุ่มนี้ "จบ" คนละแบบ
+ *
+ * กลุ่มที่ 2 และ 3 จบเมื่อมีคนตอบ ระบบจึงรู้เวลาจบจาก closed_at
+ * กลุ่มที่ 1 ไม่มีใครมากดปิด — วันที่ผู้ป่วยมาตามนัดคือวันที่เคสจบในความเป็นจริง
+ * แต่ไม่มีอะไรในระบบบันทึกว่ามาจริงหรือไม่ จึงถือวันนัดเป็นวันจบ
+ *
+ * ⚠️ ครบกฎใดกฎหนึ่งก็ถือว่าครบกำหนด ไม่ต้องครบทั้งสอง
+ * นัดที่ถูกยกเลิกจะมี closed_at ด้วย ถ้าต้องครบทั้งสองกฎ เคสที่ยกเลิกก่อนถึง
+ * วันนัดจะรอจนเลยวันที่ไม่มีใครไปแล้ว ซึ่งเก็บข้อมูลไว้นานกว่าที่จำเป็น
+ */
+function isExpired_(r) {
+  const closedCutoff = new Date();
+  closedCutoff.setMonth(closedCutoff.getMonth() - RETENTION_MONTHS);
+
+  const closedAt = toDate_(r['closed_at']);
+  if (closedAt && closedAt < closedCutoff) return true;
+
+  if (String(r['referral_type'] || '') !== TYPES.transplant) return false;
+
+  const visitCutoff = new Date();
+  visitCutoff.setDate(visitCutoff.getDate() - APPOINTMENT_RETENTION_DAYS);
+
+  const appointment = toDate_(r['appointment_date']);
+  return Boolean(appointment && appointment < visitCutoff);
+}
+
+/**
+ * ดูว่ารอบถัดไปจะถอดชื่อเคสไหนบ้าง โดยยังไม่แตะข้อมูล
+ *
+ * ⚠️ รันอันนี้ก่อนเสมอ หลังแก้กฎการเก็บข้อมูล
+ *
+ * anonymizeExpired() ลบแถวจริงและกู้คืนไม่ได้ กฎที่เขียนผิดไปวันเดียว
+ * อาจกวาดเคสที่ยังต้องใช้ไปทั้งชุดโดยไม่มีใครรู้จนกว่าจะมีคนมาตามหา
+ */
+function previewRetention() {
+  const rows = readRows_(getSheet_(SHEETS.referrals));
+  const expired = rows.filter(isExpired_);
+
+  console.log('เคสทั้งหมดในชีต: ' + rows.length);
+  console.log('รอบถัดไปจะถอดชื่อและย้ายเข้าคลัง: ' + expired.length + ' เคส');
+
+  expired.slice(0, 30).forEach(function (r) {
+    console.log(
+      '  แถว ' + r._row + ' · ' + (r['referral_id'] || '(ไม่มีรหัส)') +
+      ' · ' + (r['referral_type'] || '?') +
+      ' · สถานะ ' + (r['status'] || '?') +
+      ' · วันนัด ' + (r['appointment_date'] || '-') +
+      ' · ปิดเมื่อ ' + (r['closed_at'] || '-')
+    );
+  });
+
+  if (expired.length > 30) {
+    console.log('  ... และอีก ' + (expired.length - 30) + ' เคส');
+  }
 }
 
 /**
@@ -155,6 +212,13 @@ function ensureLibraryHeader_(library) {
  * ที่แปลง:    อายุจริง → ช่วงอายุ, วันที่ → เหลือเฉพาะปี
  * ที่เก็บต่อ:  โรคร่วม สิทธิการรักษา และสูตรยาที่เลือก — ไม่ระบุตัวผู้ป่วย
  *             แต่เป็นสิ่งเดียวที่อธิบายได้ว่าทำไมเคสนั้นถึงถูกตอบแบบนั้น
+ *
+ * ⚠️ กลุ่มที่ 1 เหลือแค่ว่า "ปีนั้นนัดผ่านระบบนี้กี่เคส" แยกตามโรคและช่วงอายุ
+ *
+ * ไม่เก็บ fellow_assigned ตามมติอาจารย์ 30 ส.ค. 2569 และไม่เก็บ appointment_date
+ * เพราะวันนัดแบบเต็มคือวันที่ผู้ป่วยคนหนึ่งมาโรงพยาบาลจริง ซึ่งพอรวมกับโรค
+ * และช่วงอายุแล้วแคบพอจะชี้ตัวได้ในโรคที่พบไม่บ่อย — เหลือปีจึงปลอดภัยกว่า
+ * และตอบคำถามที่ต้องการได้ครบอยู่แล้ว
  */
 function buildAnonymizedRow_(r) {
   const submittedAt = toDate_(r['submitted_at'] || r['Timestamp']);

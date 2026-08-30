@@ -28,7 +28,8 @@ function checkCodeFiles() {
     'Config.gs': [
       'TIMEZONE', 'SHEETS', 'ATTACHMENT', 'BUSINESS', 'ESCALATION',
       'BATCH_HOUR', 'FELLOW_URGENT_DAYS', 'DUPLICATE_WINDOW_DAYS',
-      'RETENTION_MONTHS', 'TYPES', 'TYPE_FROM_FORM_LABEL', 'GROUP_NUMBER',
+      'RETENTION_MONTHS', 'APPOINTMENT_RETENTION_DAYS',
+      'TYPES', 'TYPE_FROM_FORM_LABEL', 'GROUP_NUMBER',
       'SLOT_RELEASING_STATUSES', 'TERMINAL_STATUSES', 'IDENTIFYING_COLUMNS',
       'ADVICE_LIBRARY_COLUMNS', 'FORM_COLUMNS_REQUIRED', 'FORM_COLUMNS_OPTIONAL',
       'MERGED_COLUMNS', 'SITE_URL', 'DASHBOARD_URL', 'LINE_OA_ID', 'CONTACT_PHONE',
@@ -67,7 +68,8 @@ function checkCodeFiles() {
     ],
     'OnFormSubmit.gs': ['onFormSubmit', 'SYSTEM_COLUMNS'],
     'Retention.gs': [
-      'anonymizeExpired', 'buildAnonymizedRow_', 'trashAttachments_',
+      'anonymizeExpired', 'isExpired_', 'previewRetention',
+      'buildAnonymizedRow_', 'trashAttachments_',
       'sweepOldAttachments', 'verifyLibraryHasNoIdentifiers',
     ],
     'Sla.gs': ['recalculateSla', 'sendRedAlert'],
