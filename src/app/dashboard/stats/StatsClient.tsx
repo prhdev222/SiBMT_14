@@ -3,6 +3,8 @@
 import { downloadCsv, fileStamp, toCsv } from "@/lib/csv";
 import type { CountRow, Statistics } from "@/lib/statistics";
 import { businessDaysText } from "@/lib/referral-types";
+import { CategoryBars } from "@/components/charts/CategoryBars";
+import { MonthlyBars } from "@/components/charts/MonthlyBars";
 
 export interface ExportRow {
   referralId: string;
@@ -129,23 +131,40 @@ export function StatsClient({
         </p>
       </section>
 
+      <Card title="จำนวนเคสที่ส่งเข้ามาแต่ละเดือน">
+        <MonthlyBars data={stats.byMonth} />
+      </Card>
+
+      {/*
+        กลุ่มงานเป็นตัวตนถาวร สีจึงผูกกับเลขกลุ่ม ไม่ใช่อันดับ —
+        กลุ่มที่ 2 เป็นสีส้มเสมอ ไม่ว่าจะมีเคสมากหรือน้อยกว่ากลุ่มอื่น
+      */}
+      <Card title="แยกตามกลุ่มงาน">
+        <CategoryBars
+          data={stats.byType.map((r, i) => ({ ...r, seriesIndex: i }))}
+          max={stats.total}
+        />
+      </Card>
+
       <div className="grid gap-4 sm:grid-cols-2">
-        <Table title="แยกตามกลุ่มงาน" rows={stats.byType} total={stats.total} />
-        <Table title="แยกตามสถานะ" rows={stats.byStatus} total={stats.total} />
-        <Table title="กลุ่มโรค" rows={stats.byDiseaseGroup} total={stats.total} />
-        <Table
-          title="สิทธิการรักษา"
-          rows={stats.byInsurance}
-          total={stats.total}
-          empty="ยังไม่มีเคสที่ระบุสิทธิ — ฟอร์มเพิ่งเริ่มถามคำถามนี้"
-        />
-        <Table
-          title="สูตรยาที่เลือกบ่อย"
-          rows={stats.byRegimen}
-          total={stats.answered}
-          empty="ยังไม่มีเคสที่เลือกสูตรยาจากคลัง"
-        />
-        <Table title="เคสต่อเดือน" rows={stats.byMonth} total={stats.total} />
+        <Card title="แยกตามสถานะ">
+          <CategoryBars data={stats.byStatus} />
+        </Card>
+        <Card title="กลุ่มโรค">
+          <CategoryBars data={stats.byDiseaseGroup} />
+        </Card>
+        <Card title="สิทธิการรักษา">
+          <CategoryBars
+            data={stats.byInsurance}
+            emptyText="ยังไม่มีเคสที่ระบุสิทธิ — ฟอร์มเพิ่งเริ่มถามคำถามนี้"
+          />
+        </Card>
+        <Card title="สูตรยาที่เลือกบ่อย">
+          <CategoryBars
+            data={stats.byRegimen}
+            emptyText="ยังไม่มีเคสที่เลือกสูตรยาจากคลัง"
+          />
+        </Card>
       </div>
     </div>
   );
@@ -191,48 +210,17 @@ function Download({ onClick, label }: { onClick: () => void; label: string }) {
   );
 }
 
-function Table({
+function Card({
   title,
-  rows,
-  total,
-  empty = "ยังไม่มีข้อมูล",
+  children,
 }: {
   title: string;
-  rows: CountRow[];
-  total: number;
-  empty?: string;
+  children: React.ReactNode;
 }) {
   return (
     <section className="rounded-xl bg-white border border-zinc-200 p-4">
-      <h2 className="font-semibold text-zinc-900 text-sm mb-2">{title}</h2>
-      {rows.length === 0 ? (
-        <p className="text-sm text-zinc-500">{empty}</p>
-      ) : (
-        <ul className="space-y-1.5">
-          {rows.slice(0, 10).map((r) => (
-            <li key={r.label} className="text-sm">
-              <div className="flex justify-between gap-3">
-                <span className="text-zinc-700 min-w-0 truncate">{r.label}</span>
-                <span className="text-zinc-900 font-medium tabular-nums shrink-0">
-                  {r.count}
-                </span>
-              </div>
-              {/* แถบสัดส่วน — อ่านเร็วกว่าตัวเลขเมื่อเทียบกันหลายรายการ */}
-              <div className="h-1 bg-zinc-100 rounded-full mt-1 overflow-hidden">
-                <div
-                  className="h-full bg-blue-400 rounded-full"
-                  style={{ width: `${total > 0 ? (r.count / total) * 100 : 0}%` }}
-                />
-              </div>
-            </li>
-          ))}
-          {rows.length > 10 && (
-            <li className="text-xs text-zinc-500 pt-1">
-              และอีก {rows.length - 10} รายการ — ดูครบในไฟล์ CSV
-            </li>
-          )}
-        </ul>
-      )}
+      <h2 className="font-semibold text-zinc-900 text-sm mb-3">{title}</h2>
+      {children}
     </section>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { downloadCsv, fileStamp, toCsv } from "@/lib/csv";
+import { CategoryBars } from "@/components/charts/CategoryBars";
 
 export interface AnsweredCase {
   referralId: string;
@@ -120,6 +121,8 @@ export function AnswersClient({ cases }: { cases: AnsweredCase[] }) {
         </p>
       </section>
 
+      <Analysis cases={filtered} />
+
       {filtered.length === 0 ? (
         <p className="rounded-xl bg-white border border-zinc-200 p-8 text-center text-sm text-zinc-600">
           ไม่พบเคสที่ตรงกับที่ค้น
@@ -179,6 +182,107 @@ export function AnswersClient({ cases }: { cases: AnsweredCase[] }) {
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * สรุปภาพรวมของคำตอบที่กำลังดูอยู่
+ *
+ * ⚠️ คิดจากผลที่กรองอยู่ ไม่ใช่ทั้งคลัง โดยตั้งใจ
+ *
+ * ประโยชน์ของหน้านี้คือ "กรองเฉพาะ Lymphoma แล้วดูว่าเราตอบอะไรไปบ้าง"
+ * ถ้าสรุปยอดจากทั้งคลังเสมอ ตัวเลขจะไม่เกี่ยวกับสิ่งที่อยู่ตรงหน้าเลย
+ *
+ * พับไว้เพราะคนที่เข้ามาพิมพ์รายงานไม่ได้ต้องการเห็นตัวเลขก่อน
+ * และตอนพิมพ์ก็ซ่อนทั้งกล่อง — รายงานควรมีเนื้อคำตอบ ไม่ใช่แผงวิเคราะห์
+ */
+function Analysis({ cases }: { cases: AnsweredCase[] }) {
+  const [open, setOpen] = useState(false);
+
+  const summary = useMemo(() => {
+    const tally = (values: string[]) => {
+      const map = new Map<string, number>();
+      for (const v of values) {
+        const k = v.trim();
+        if (k) map.set(k, (map.get(k) ?? 0) + 1);
+      }
+      return [...map.entries()]
+        .map(([label, count]) => ({ label, count }))
+        .sort((a, b) => b.count - a.count);
+    };
+
+    return {
+      byGroup: [2, 3]
+        .map((n, i) => ({
+          label: `กลุ่มที่ ${n}`,
+          count: cases.filter((c) => c.groupNumber === n).length,
+          seriesIndex: i,
+        }))
+        .filter((r) => r.count > 0),
+      byDisease: tally(cases.map((c) => c.diseaseGroup)),
+      byRegimen: tally(
+        cases.flatMap((c) => c.adviceRegimens.split(",").map((x) => x.trim())),
+      ),
+      byInsurance: tally(cases.map((c) => c.insuranceScheme)),
+    };
+  }, [cases]);
+
+  if (cases.length === 0) return null;
+
+  return (
+    <section className="rounded-xl bg-white border border-zinc-200 print:hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="w-full px-4 py-3 text-left flex items-center justify-between gap-2 hover:bg-zinc-50 transition-colors rounded-xl"
+      >
+        <span className="font-semibold text-zinc-900 text-sm">
+          วิเคราะห์คำตอบที่แสดงอยู่ ({cases.length} เคส)
+        </span>
+        <span className="text-xs text-blue-600 shrink-0">
+          {open ? "ย่อ ▲" : "ดู ▼"}
+        </span>
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 grid gap-4 sm:grid-cols-2">
+          <Panel title="แยกตามกลุ่มงาน">
+            <CategoryBars data={summary.byGroup} max={cases.length} />
+          </Panel>
+          <Panel title="กลุ่มโรค">
+            <CategoryBars data={summary.byDisease} />
+          </Panel>
+          <Panel title="สูตรยาที่แนะนำบ่อย">
+            <CategoryBars
+              data={summary.byRegimen}
+              emptyText="ยังไม่มีเคสที่เลือกสูตรยาจากคลัง"
+            />
+          </Panel>
+          <Panel title="สิทธิการรักษา">
+            <CategoryBars
+              data={summary.byInsurance}
+              emptyText="ยังไม่มีเคสที่ระบุสิทธิ"
+            />
+          </Panel>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Panel({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border border-zinc-200 p-3">
+      <h3 className="text-xs font-medium text-zinc-500 mb-2">{title}</h3>
+      {children}
+    </div>
   );
 }
 
