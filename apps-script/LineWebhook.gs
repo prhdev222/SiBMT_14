@@ -110,16 +110,20 @@ const LINE_TICKET_PATTERN = /^#([A-Z2-9]{4})\s+([\s\S]+)$/;
 const LINE_TICKET_TTL_DAYS = 7;
 
 /**
- * บทสนทนายัง "เปิด" อยู่กี่วันหลังแอดมินตอบครั้งล่าสุด
+ * คำนำหน้าที่แพทย์ต้นทางใช้ส่งข้อความถึงแอดมิน เช่น "admin ขอบคุณครับ"
  *
- * ระหว่างนี้แพทย์ต้นทางพิมพ์อะไรมาก็ส่งต่อให้แอดมินเลย ไม่ต้องมีคำนำหน้า
- * พ้นช่วงนี้ถือว่าเรื่องจบแล้ว ข้อความใหม่จะถูกชี้กลับไปกลุ่มที่ 2 ตามปกติ
+ * ⚠️ ต้องมีคำนำหน้าเสมอ ไม่ส่งต่อให้อัตโนมัติ
  *
- * สั้นกว่าอายุตั๋วโดยตั้งใจ — ตั๋วมีไว้ให้แอดมินตามไปตอบทีหลังได้ถึงเจ็ดวัน
- * แต่ "ทุกอย่างที่คนนี้พิมพ์วิ่งเข้ากลุ่มแอดมิน" ไม่ควรค้างนานขนาดนั้น
- * ไม่งั้นคำถามทางคลินิกของเขาตลอดสัปดาห์จะไหลไปหาแอดมินแทนกลุ่มที่ 2
+ * เคยทำเป็นส่งต่อทุกข้อความหลังแอดมินตอบ แต่แบบนั้นแรงเกินไป — คนที่คุยจบแล้ว
+ * แล้วพิมพ์คำถามใหม่ หรือพิมพ์อะไรผิดแชท จะเด้งเข้ากลุ่มแอดมินโดยไม่ตั้งใจ
+ * ซึ่งคือภาระที่แอดมินขอไม่ให้มีตั้งแต่ต้น
+ *
+ * การต้องพิมพ์คำนำหน้าเป็นการบอกเจตนาชัดเจนว่า "อันนี้คุยกับแอดมินนะ"
  */
-const LINE_CHAT_OPEN_DAYS = 2;
+const LINE_ADMIN_PREFIX = /^(admin|แอดมิน)[\s:：,-]+([\s\S]+)$/i;
+
+/** พิมพ์คำนำหน้ามาแต่ไม่มีข้อความต่อท้าย */
+const LINE_ADMIN_PREFIX_BARE = /^(admin|แอดมิน)[\s:：,-]*$/i;
 
 /**
  * ข้อความที่ปุ่มบน rich menu ส่งมา
@@ -242,11 +246,17 @@ function handleLineEvent_(event) {
       return;
     }
 
-    // อยู่ระหว่างคุยกับแอดมินอยู่แล้ว — ส่งต่อเลย ไม่ต้องมีคำนำหน้า
-    // บอทบอกไว้เองว่า "พิมพ์ตอบกลับในแชทนี้ได้เลย" ถ้าไม่ทำก็เท่ากับโกหก
-    const openTicket = findOpenChat_(id);
-    if (openTicket) {
-      relayToAdmin_(event, text, id, openTicket);
+    // ตั้งใจส่งถึงแอดมิน — ต้องพิมพ์คำนำหน้าเท่านั้น ไม่ส่งต่อให้เอง
+    const addressed = text.match(LINE_ADMIN_PREFIX);
+    if (addressed) {
+      relayToAdmin_(event, addressed[2].trim(), id);
+      return;
+    }
+    if (LINE_ADMIN_PREFIX_BARE.test(text)) {
+      replyLineMessage_(event.replyToken,
+        'พิมพ์ข้อความต่อท้ายด้วยครับ\n\n' +
+        '   admin ตามด้วยข้อความที่จะส่ง\n\n' +
+        'เช่น  admin ขอบคุณครับ แล้วจะลองใหม่');
       return;
     }
 
@@ -593,7 +603,9 @@ function sendContactToAdmin_(event, flow, userId) {
     'เรื่อง: ' + (LINE_CONTACT_TOPICS[flow.topic] || '-') + '\n' +
     (flow.referralId ? 'เคส: ' + flow.referralId + '\n' : '') +
     'โทรกลับ: ' + flow.phone + '\n\n' +
-    'จะติดต่อกลับในเวลาราชการ (จันทร์-ศุกร์ 08:00-16:00 น.)'
+    'จะติดต่อกลับในเวลาราชการ (จันทร์-ศุกร์ 08:00-16:00 น.)\n\n' +
+    'อยากส่งข้อความเพิ่ม พิมพ์ admin นำหน้า เช่น\n' +
+    '   admin ลืมบอกว่า…'
   );
 }
 
@@ -691,21 +703,36 @@ function handleAdminReply_(event, text, sourceId) {
     userId,
     '💬 ตอบจากแพทย์แอดมินกลาง\n\n' + reply.slice(0, 1200) + '\n\n' +
     '──────────\n' +
-    'พิมพ์ตอบกลับในแชทนี้ได้เลย ระบบจะส่งต่อให้'
+    'ถ้าจะตอบกลับ พิมพ์ admin นำหน้า เช่น\n' +
+    '   admin ขอบคุณครับ\n' +
+    '(ข้อความที่ไม่มี admin นำหน้า จะไม่ถูกส่งถึงแอดมิน)'
   );
-
-  // เปิดบทสนทนาไว้ ให้ผู้ถามพิมพ์ตอบกลับได้โดยไม่ต้องเริ่มโฟลว์ใหม่
-  touchTicketReply_(ticket);
 
   replyLineMessage_(
     event.replyToken,
-    '✅ ส่งถึงผู้ถาม (#' + ticket + ') แล้ว\n' +
-    'เขาพิมพ์ตอบกลับได้อีก ' + LINE_CHAT_OPEN_DAYS + ' วัน แล้วจะเข้ากลุ่มนี้อัตโนมัติ'
+    '✅ ส่งถึงผู้ถาม (#' + ticket + ') แล้ว'
   );
 }
 
-/** ส่งข้อความของผู้ถามเข้ากลุ่มแอดมิน ระหว่างที่บทสนทนายังเปิดอยู่ */
-function relayToAdmin_(event, text, userId, ticket) {
+/**
+ * ส่งข้อความที่ขึ้นต้นด้วย "admin" ของผู้ถาม เข้ากลุ่มแอดมิน
+ *
+ * ใช้ตั๋วเดิมของคนนั้นถ้ายังไม่หมดอายุ เพื่อให้แอดมินเห็นว่าต่อจากเรื่องไหน
+ * ถ้าไม่มีตั๋ว แปลว่ายังไม่เคยแจ้งเรื่องอะไรไว้ — พาไปเริ่มที่ปุ่มติดต่อเจ้าหน้าที่
+ * เพราะที่นั่นจะถามหัวข้อและเบอร์โทรให้ครบก่อน แอดมินจะได้ไม่ต้องไล่ถามเอง
+ */
+function relayToAdmin_(event, text, userId) {
+  const ticket = findActiveTicket_(PropertiesService.getScriptProperties(), userId);
+  if (!ticket) {
+    replyLineMessage_(event.replyToken, [withQuickReply_(
+      { type: 'text', text:
+        'ยังไม่มีเรื่องที่คุยค้างไว้กับแอดมินครับ\n\n' +
+        'กดปุ่มด้านล่างเพื่อแจ้งเรื่องใหม่ ระบบจะถามหัวข้อและเบอร์ติดต่อกลับให้ครบ' },
+      [{ label: 'ขอติดต่อเจ้าหน้าที่', text: 'ติดต่อเจ้าหน้าที่' }]
+    )]);
+    return;
+  }
+
   if (!lineContactAllowed_(userId)) {
     replyLineMessage_(event.replyToken,
       'ส่งข้อความถี่เกินไป กรุณารอสักครู่\n\n' +
@@ -726,41 +753,6 @@ function relayToAdmin_(event, text, userId, ticket) {
   // ข้อความ "ได้รับแล้ว" ทุกครั้งจะทำให้แชทเต็มไปด้วยเสียงตอบรับของบอท
 }
 
-/**
- * ตั๋วนี้ยังอยู่ในช่วงที่แพทย์ต้นทางพิมพ์ต่อได้ไหม
- *
- * นับจากเวลาที่แอดมิน "ตอบครั้งล่าสุด" ไม่ใช่เวลาที่ออกตั๋ว —
- * เรื่องที่ส่งไปแล้วแอดมินยังไม่ตอบ ยังไม่ถือว่าเป็นบทสนทนา
- * ข้อความถัดไปของคนนั้นจึงยังควรถูกคัดกรองตามปกติ
- */
-function findOpenChat_(userId) {
-  const props = PropertiesService.getScriptProperties();
-  const all = props.getProperties();
-  const cutoff = Date.now() - LINE_CHAT_OPEN_DAYS * 86400000;
-
-  const keys = Object.keys(all);
-  for (let i = 0; i < keys.length; i++) {
-    if (keys[i].indexOf('line_ticket_') !== 0) continue;
-    const parts = String(all[keys[i]]).split('|');
-    if (parts[0] !== userId) continue;
-    const lastReply = parseInt(parts[2] || '0', 10);
-    if (lastReply && lastReply >= cutoff) {
-      return keys[i].replace('line_ticket_', '');
-    }
-  }
-  return '';
-}
-
-/** ประทับว่าแอดมินเพิ่งตอบตั๋วนี้ — ใช้ต่ออายุบทสนทนา */
-function touchTicketReply_(ticket) {
-  const props = PropertiesService.getScriptProperties();
-  const key = 'line_ticket_' + ticket;
-  const raw = props.getProperty(key);
-  if (!raw) return;
-
-  const parts = String(raw).split('|');
-  props.setProperty(key, parts[0] + '|' + (parts[1] || Date.now()) + '|' + Date.now());
-}
 
 /** ปลายทางนี้อยู่ใน LINE_TARGET_ADMIN หรือไม่ */
 function isAdminTarget_(sourceId) {
