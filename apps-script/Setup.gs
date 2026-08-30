@@ -69,6 +69,10 @@ function checkCodeFiles() {
       'LINE_ADMIN_PREFIX', 'LINE_BUTTON_MYANSWERS', 'LINE_CONTACT_TOPICS',
     ],
     'OnFormSubmit.gs': ['onFormSubmit', 'SYSTEM_COLUMNS'],
+    'GroupQuery.gs': [
+      'handleGroupQuery_', 'isStaffGroup_', 'parseQueryDate_',
+      'buildAppointmentReply_', 'buildPendingReply_',
+    ],
     'Retention.gs': [
       'anonymizeExpired', 'isExpired_', 'previewRetention',
       'buildAnonymizedRow_', 'trashAttachments_',
