@@ -8,6 +8,15 @@
  * ⚠️ ตัวเลขทั้งหมดครอบคลุมเฉพาะเคสที่ยังอยู่ในชีต — เคสที่ปิดเกิน 12 เดือน
  * ถูกย้ายเข้าคลังถาวรไปแล้ว (PDPA-005) สถิติหน้านี้จึงเป็นภาพของ 12 เดือนล่าสุด
  * ไม่ใช่ตั้งแต่เปิดระบบ
+ *
+ * ⚠️ นับเฉพาะกลุ่มที่ 1–3 ไม่รวมกลุ่มที่ 4
+ *
+ * กลุ่มที่ 4 ไม่มีทางเข้าสู่ระบบนี้เลย — ไม่มี Google Form และ TYPE_FROM_FORM_LABEL
+ * แปลงได้แค่กลุ่ม 2 กับ 3 (มติอาจารย์ 2 ส.ค. 2569 ให้ไปใช้ระบบนัดหมายของโรงพยาบาล)
+ * ยอดจึงเป็นศูนย์ตลอดไปโดยการออกแบบ
+ *
+ * กรองทิ้งที่ต้นทางแทนการซ่อนเฉพาะกราฟ เพื่อให้ทุกตัวเลขในหน้านี้นับจากชุดเดียวกัน
+ * — ถ้ากรองแค่บางกราฟ ผลรวมของแท่งจะไม่เท่ากับ "เคสทั้งหมด" แล้วอ่านไม่ตรงกัน
  */
 
 import {
@@ -68,7 +77,9 @@ function median(values: number[]): number | null {
     : Math.round(((sorted[mid - 1] + sorted[mid]) / 2) * 10) / 10;
 }
 
-export function buildStatistics(referrals: Referral[]): Statistics {
+export function buildStatistics(all: Referral[]): Statistics {
+  const referrals = all.filter((r) => r.referralType !== "GENERAL_OPD");
+
   const answeredCases = referrals.filter(
     (r) => r.adviceRecord.trim().length > 0,
   );
@@ -77,7 +88,9 @@ export function buildStatistics(referrals: Referral[]): Statistics {
     .map((r) => r.elapsedBusinessHours)
     .filter((h) => h > 0);
 
-  const byType: CountRow[] = REFERRAL_TYPES_ORDERED.map((t: ReferralType) => ({
+  const byType: CountRow[] = REFERRAL_TYPES_ORDERED.filter(
+    (t) => t !== "GENERAL_OPD",
+  ).map((t: ReferralType) => ({
     label: `กลุ่มที่ ${REFERRAL_TYPE_META[t].groupNumber} — ${REFERRAL_TYPE_META[t].titleTh}`,
     count: referrals.filter((r) => r.referralType === t).length,
   }));

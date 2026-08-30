@@ -212,15 +212,19 @@ function Download({ onClick, label }: { onClick: () => void; label: string }) {
 
 function Card({
   title,
+  note,
   children,
 }: {
   title: string;
+  /** คำอธิบายใต้กราฟ — ใช้เมื่อตัวเลขอาจถูกอ่านผิดถ้าไม่มีบริบท */
+  note?: string;
   children: React.ReactNode;
 }) {
   return (
     <section className="rounded-xl bg-white border border-zinc-200 p-4">
       <h2 className="font-semibold text-zinc-900 text-sm mb-3">{title}</h2>
       {children}
+      {note && <p className="text-xs text-zinc-500 mt-3">ⓘ {note}</p>}
     </section>
   );
 }
