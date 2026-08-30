@@ -7,9 +7,7 @@
  * แล้วย้ายส่วนที่เหลือไปเก็บถาวรใน advice_library
  * ทำให้ยังใช้ย้อนดูว่าเคยตอบเคสลักษณะนี้อย่างไร โดยไม่เหลือข้อมูลส่วนบุคคล
  *
- * ⚠️ กำหนดเวลามีสองแบบ ดูเหตุผลที่ isExpired_()
- *   กลุ่มที่ 2, 3  — 12 เดือนหลังปิดเคส (RETENTION_MONTHS)
- *   กลุ่มที่ 1     — 30 วันหลังเลยวันนัด (APPOINTMENT_RETENTION_DAYS)
+ * ⚠️ ทุกกลุ่มเก็บ 12 เดือนเท่ากัน แต่นับจากคนละวัน ดูเหตุผลที่ isExpired_()
  */
 
 function anonymizeExpired() {
@@ -53,30 +51,28 @@ function anonymizeExpired() {
 /**
  * เคสนี้ครบกำหนดถอดชื่อหรือยัง
  *
- * มีสองกฎ ไม่ใช่กฎเดียว เพราะสองกลุ่มนี้ "จบ" คนละแบบ
+ * 12 เดือนเท่ากันทุกกลุ่ม แต่ต้องดูสองคอลัมน์ เพราะสองกลุ่มนี้ "จบ" คนละแบบ
  *
  * กลุ่มที่ 2 และ 3 จบเมื่อมีคนตอบ ระบบจึงรู้เวลาจบจาก closed_at
- * กลุ่มที่ 1 ไม่มีใครมากดปิด — วันที่ผู้ป่วยมาตามนัดคือวันที่เคสจบในความเป็นจริง
- * แต่ไม่มีอะไรในระบบบันทึกว่ามาจริงหรือไม่ จึงถือวันนัดเป็นวันจบ
+ * กลุ่มที่ 1 ไม่มีใครมากดปิด สถานะค้างที่ 'Appointment Confirmed' ตั้งแต่วันจอง
+ * closed_at จึงว่างตลอดกาล — วันที่ผู้ป่วยมาตามนัดคือวันที่เคสจบในความเป็นจริง
+ * จึงนับจากวันนัดแทน (ไม่มีอะไรในระบบบันทึกว่ามาจริงหรือไม่ ถือว่ามาตามนัด)
  *
- * ⚠️ ครบกฎใดกฎหนึ่งก็ถือว่าครบกำหนด ไม่ต้องครบทั้งสอง
- * นัดที่ถูกยกเลิกจะมี closed_at ด้วย ถ้าต้องครบทั้งสองกฎ เคสที่ยกเลิกก่อนถึง
- * วันนัดจะรอจนเลยวันที่ไม่มีใครไปแล้ว ซึ่งเก็บข้อมูลไว้นานกว่าที่จำเป็น
+ * ⚠️ ครบเงื่อนไขใดเงื่อนไขหนึ่งก็ถือว่าครบกำหนด ไม่ต้องครบทั้งสอง
+ * นัดที่ถูกยกเลิกจะมี closed_at ด้วย ถ้าต้องครบทั้งสอง เคสที่ยกเลิกไปแล้ว
+ * จะถูกยืดอายุตามวันนัดที่ไม่มีใครไป ซึ่งเก็บข้อมูลไว้นานกว่าที่จำเป็น
  */
 function isExpired_(r) {
-  const closedCutoff = new Date();
-  closedCutoff.setMonth(closedCutoff.getMonth() - RETENTION_MONTHS);
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - RETENTION_MONTHS);
 
   const closedAt = toDate_(r['closed_at']);
-  if (closedAt && closedAt < closedCutoff) return true;
+  if (closedAt && closedAt < cutoff) return true;
 
   if (String(r['referral_type'] || '') !== TYPES.transplant) return false;
 
-  const visitCutoff = new Date();
-  visitCutoff.setDate(visitCutoff.getDate() - APPOINTMENT_RETENTION_DAYS);
-
   const appointment = toDate_(r['appointment_date']);
-  return Boolean(appointment && appointment < visitCutoff);
+  return Boolean(appointment && appointment < cutoff);
 }
 
 /**
