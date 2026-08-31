@@ -26,8 +26,6 @@ const GROUP_QUERY_PENDING = /^(เคสค้าง|งานค้าง|ค�
 /** คำที่ขอการ์ดปุ่มกด — ตัวที่ทำให้ไม่ต้องจำคำสั่งอีกเลย */
 const GROUP_QUERY_MENU = /^(เมนู|menu|คำสั่ง)\s*$/i;
 
-/** ค่าที่ติดไปกับปุ่มปฏิทิน แล้ววิ่งกลับมาใน postback */
-const GROUP_QUERY_PICKER_DATA = 'action=appointmentDate';
 
 /**
  * ปุ่มทั้งหมดที่มี — ⚠️ template แบบปุ่มรับได้มากสุด 4 ปุ่ม ป้ายยาวได้ 20 ตัวอักษร
@@ -35,21 +33,6 @@ const GROUP_QUERY_PICKER_DATA = 'action=appointmentDate';
 const GROUP_QUERY_APPOINTMENT_ACTIONS = [
   { label: 'นัดวันนี้', text: 'นัดวันนี้' },
   { label: 'นัดพรุ่งนี้', text: 'นัดพรุ่งนี้' },
-  /*
-   * ปุ่มเปิดปฏิทินของ LINE เอง
-   *
-   * ⚠️ ปุ่มแบบ message ส่งได้แต่ข้อความตายตัว เลือกวันที่ไม่ได้
-   *
-   * ทางเลือกคือปุ่มที่ส่งคำว่า "นัด" เฉย ๆ แล้วบอทตอบสอนวิธีพิมพ์
-   * ซึ่งจบลงที่ผู้ใช้ต้องพิมพ์อยู่ดี — datetimepicker เปิดปฏิทินให้เลือกเลย
-   * ไม่มีทางพิมพ์วันที่ผิดรูปแบบ และไม่มีปัญหาเรื่อง พ.ศ./ค.ศ. เพราะ LINE
-   * ส่งกลับมาเป็น yyyy-MM-dd เสมอ
-   */
-  {
-    label: 'เลือกวันที่',
-    picker: true,
-    data: GROUP_QUERY_PICKER_DATA,
-  },
 ];
 const GROUP_QUERY_PENDING_ACTIONS = [
   { label: 'เคสค้าง', text: 'เคสค้าง' },
@@ -164,49 +147,11 @@ function buildMenuMessage_(actions) {
     template: {
       type: 'buttons',
       text: 'กดปุ่มด้านล่างได้เลย ไม่ต้องพิมพ์\n(ปักหมุดข้อความนี้ไว้ จะได้กดได้ตลอด)',
-      actions: actions.map(toLineAction_),
+      actions: actions.map(function (item) {
+        return { type: 'message', label: item.label.substring(0, 20), text: item.text };
+      }),
     },
   };
-}
-
-/**
- * แปลงรายการปุ่มของเราเป็น action ของ LINE
- *
- * รองรับสองชนิด — ปุ่มที่ส่งข้อความตายตัว กับปุ่มที่เปิดปฏิทิน
- */
-function toLineAction_(item) {
-  if (item.picker) {
-    return {
-      type: 'datetimepicker',
-      label: item.label.substring(0, 20),
-      data: item.data,
-      mode: 'date',
-    };
-  }
-  return { type: 'message', label: item.label.substring(0, 20), text: item.text };
-}
-
-/**
- * ผู้ใช้เลือกวันจากปฏิทินแล้ว
- *
- * ⚠️ ตรวจสิทธิ์กลุ่มซ้ำที่นี่ด้วย ไม่ใช่เชื่อว่ามาจากปุ่มที่เราส่งไปเอง
- *
- * postback ปลอมขึ้นมาได้ถ้ารู้ค่า data และ LINE ก็ส่ง event ชนิดนี้มาจาก
- * ที่ไหนก็ได้ที่บอทอยู่ — ด่านเดียวกับข้อความจึงต้องอยู่ตรงนี้ด้วย
- */
-function handleGroupPostback_(event, sourceId) {
-  if (!isStaffGroup_(sourceId)) return;
-
-  const postback = event.postback || {};
-  if (String(postback.data || '') !== GROUP_QUERY_PICKER_DATA) return;
-
-  const picked = (postback.params || {}).date;
-  const target = picked ? parseQueryDate_(picked) : null;
-  if (!target) return;
-
-  replyLineMessage_(event.replyToken, withQuickReply_(
-    toMessageObject_(buildAppointmentReply_(target)),
-    groupActionsFor_(sourceId)));
 }
 
 /**

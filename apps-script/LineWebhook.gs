@@ -218,13 +218,6 @@ function handleLineEvent_(event) {
     'LINE source: ' + (source.type || '?') + ' ' + id + ' | event: ' + event.type,
   );
 
-  // ปุ่มปฏิทินส่งกลับมาเป็น postback ไม่ใช่ข้อความ — ต้องรับก่อนการตรวจข้อความ
-  // เพราะ event ชนิดนี้ไม่มี event.message เลย จะตกไปที่ return ด้านล่างทั้งหมด
-  if (event.type === 'postback') {
-    handleGroupPostback_(event, id);
-    return;
-  }
-
   const text = event.message && event.message.type === 'text'
     ? String(event.message.text || '').trim()
     : '';
