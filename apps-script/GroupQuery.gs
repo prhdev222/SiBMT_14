@@ -23,6 +23,20 @@ const GROUP_QUERY_APPOINTMENT = /^(นัด|ตาราง)\s*(.*)$/;
 /** คำที่ทำให้บอทตอบเรื่องเคสค้างของ resident */
 const GROUP_QUERY_PENDING = /^(เคสค้าง|งานค้าง|ค้าง|คิว)\s*$/;
 
+/** คำที่ขอการ์ดปุ่มกด — ตัวที่ทำให้ไม่ต้องจำคำสั่งอีกเลย */
+const GROUP_QUERY_MENU = /^(เมนู|menu|คำสั่ง)\s*$/i;
+
+/**
+ * ปุ่มที่ติดไปกับทุกคำตอบ และเป็นปุ่มในการ์ดเมนู
+ *
+ * ⚠️ template แบบปุ่มรับได้มากสุด 4 ปุ่ม และป้ายยาวได้ 20 ตัวอักษร
+ */
+const GROUP_QUERY_ACTIONS = [
+  { label: 'นัดวันนี้', text: 'นัดวันนี้' },
+  { label: 'นัดพรุ่งนี้', text: 'นัดพรุ่งนี้' },
+  { label: 'เคสค้าง', text: 'เคสค้าง' },
+];
+
 /** แสดง fellow มากสุดกี่คนในข้อความเดียว ก่อนยุบเป็น "และอีก N คน" */
 const GROUP_QUERY_MAX_FELLOWS = 6;
 
@@ -39,8 +53,14 @@ const GROUP_QUERY_MAX_FELLOWS = 6;
 function handleGroupQuery_(event, text, sourceId) {
   if (!isStaffGroup_(sourceId)) return false;
 
+  if (GROUP_QUERY_MENU.test(text)) {
+    replyLineMessage_(event.replyToken, buildMenuMessage_());
+    return true;
+  }
+
   if (GROUP_QUERY_PENDING.test(text)) {
-    replyLineMessage_(event.replyToken, buildPendingReply_());
+    replyLineMessage_(event.replyToken, withQuickReply_(
+      toMessageObject_(buildPendingReply_()), GROUP_QUERY_ACTIONS));
     return true;
   }
 
@@ -56,13 +76,55 @@ function handleGroupQuery_(event, text, sourceId) {
       '  นัดวันนี้\n' +
       '  นัดพรุ่งนี้\n' +
       '  นัด 15/9   (วันที่/เดือน)\n' +
-      '  นัด 15/9/69   (ใส่ปี พ.ศ. ได้)',
+      '  นัด 15/9/69   (ใส่ปี พ.ศ. ได้)\n\n' +
+      'หรือพิมพ์ "เมนู" เพื่อขอปุ่มกด',
     );
     return true;
   }
 
-  replyLineMessage_(event.replyToken, buildAppointmentReply_(target));
+  replyLineMessage_(event.replyToken, withQuickReply_(
+    toMessageObject_(buildAppointmentReply_(target)), GROUP_QUERY_ACTIONS));
   return true;
+}
+
+/**
+ * การ์ดปุ่มกดที่เอาไว้ปักหมุด
+ *
+ * ⚠️ นี่คือคำตอบของข้อจำกัดที่ว่า "quick reply ต้องมีคำถามนำก่อน"
+ *
+ * quick reply โผล่หลังบอทตอบเท่านั้น และหายไปทันทีที่มีคนพิมพ์อย่างอื่น
+ * ส่วนการ์ดนี้เป็นข้อความธรรมดาที่อยู่ในห้องแชทถาวร ปุ่มยังกดได้แม้ผ่านไปเป็นเดือน
+ *
+ * วิธีใช้: พิมพ์ "เมนู" หนึ่งครั้ง แล้ว **ปักหมุดข้อความที่บอทตอบ**
+ * จากนั้นทุกคนกดหมุด → กดปุ่ม → ไม่ต้องพิมพ์และไม่ต้องจำคำสั่งอีกเลย
+ *
+ * rich menu ทำแบบนี้ไม่ได้เพราะมีเฉพาะแชทตัวต่อตัว การ์ดนี้จึงทำหน้าที่แทนในกลุ่ม
+ */
+function buildMenuMessage_() {
+  return {
+    type: 'template',
+    altText: 'เมนูคำสั่งของบอท — ปักหมุดข้อความนี้ไว้ได้',
+    template: {
+      type: 'buttons',
+      text: 'กดปุ่มด้านล่างได้เลย ไม่ต้องพิมพ์\n(ปักหมุดข้อความนี้ไว้ จะได้กดได้ตลอด)',
+      actions: GROUP_QUERY_ACTIONS.map(function (a) {
+        return { type: 'message', label: a.label, text: a.text };
+      }),
+    },
+  };
+}
+
+/**
+ * แปลงคำตอบให้เป็น message object เสมอ เพื่อให้แนบ quick reply ได้
+ *
+ * buildAppointmentReply_() คืนได้ทั้งสตริง (เมื่อไม่มีนัด) และ template object
+ * (เมื่อมีนัด) ส่วน withQuickReply_() ต้องการ object เท่านั้น — ถ้าส่งสตริงเข้าไป
+ * จะไปเซ็ต property บนสตริงซึ่ง JavaScript ยอมให้ทำแบบเงียบ ๆ แล้ว quickReply
+ * จะหายไปโดยไม่มี error
+ */
+function toMessageObject_(payload) {
+  if (typeof payload !== 'string') return payload;
+  return { type: 'text', text: payload.substring(0, 4900) };
 }
 
 /**

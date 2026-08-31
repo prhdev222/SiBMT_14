@@ -72,6 +72,7 @@ function checkCodeFiles() {
     'GroupQuery.gs': [
       'handleGroupQuery_', 'isStaffGroup_', 'parseQueryDate_',
       'buildAppointmentReply_', 'buildPendingReply_',
+      'buildMenuMessage_', 'GROUP_QUERY_ACTIONS',
     ],
     'Retention.gs': [
       'anonymizeExpired', 'isExpired_', 'previewRetention',
