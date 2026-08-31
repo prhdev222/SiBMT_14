@@ -72,7 +72,7 @@ function checkCodeFiles() {
     'GroupQuery.gs': [
       'handleGroupQuery_', 'isStaffGroup_', 'parseQueryDate_',
       'buildAppointmentReply_', 'buildPendingReply_',
-      'buildMenuMessage_', 'groupActionsFor_', 'diagnoseGroupQuery',
+      'buildMenuText_', 'replyOrReport_', 'groupActionsFor_', 'diagnoseGroupQuery',
       'GROUP_QUERY_APPOINTMENT_ACTIONS', 'GROUP_QUERY_PENDING_ACTIONS',
     ],
     'Retention.gs': [

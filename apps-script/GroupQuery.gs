@@ -91,16 +91,25 @@ function handleGroupQuery_(event, text, sourceId) {
     return false;
   }
 
-  const actions = groupActionsFor_(sourceId);
-
+  /*
+   * ⚠️ ทุกคำตอบเป็นข้อความธรรมดา ไม่ใช้ template และไม่แนบ quick reply
+   *
+   * บทเรียนจากคืนแรกที่เปิดใช้: template ที่ LINE ไม่ยอมรับจะถูกตอบ 400
+   * แล้ว "ไม่ส่งทั้งข้อความ" — จากในแชทแยกไม่ออกเลยว่าบอทพังหรือกลุ่มผิด
+   * ข้อความธรรมดาคือรูปแบบเดียวที่พิสูจน์แล้วว่าส่งถึงเสมอ (#id ใช้มาตลอด)
+   * ลิงก์วางเป็นบรรทัดท้าย LINE ทำให้กดได้เองอยู่แล้ว
+   *
+   * ⚠️ error ระหว่างสร้างคำตอบต้องไปโผล่ "ในแชท" ไม่ใช่แค่ใน log
+   * เพราะคนที่เจอปัญหาคือคนที่อยู่ในแชท และ log ของ Apps Script
+   * ไม่ใช่ที่ที่ทุกคนเปิดเป็น — ความเงียบคือคำตอบที่แย่ที่สุด
+   */
   if (GROUP_QUERY_MENU.test(text)) {
-    replyLineMessage_(event.replyToken, buildMenuMessage_(actions));
+    replyOrReport_(event.replyToken, buildMenuText_(groupActionsFor_(sourceId)));
     return true;
   }
 
   if (GROUP_QUERY_PENDING.test(text)) {
-    replyLineMessage_(event.replyToken, withQuickReply_(
-      toMessageObject_(buildPendingReply_()), actions));
+    replyOrReport_(event.replyToken, buildPendingReply_);
     return true;
   }
 
@@ -122,49 +131,46 @@ function handleGroupQuery_(event, text, sourceId) {
     return true;
   }
 
-  replyLineMessage_(event.replyToken, withQuickReply_(
-    toMessageObject_(buildAppointmentReply_(target)), actions));
+  replyOrReport_(event.replyToken, function () {
+    return buildAppointmentReply_(target);
+  });
   return true;
 }
 
 /**
- * การ์ดปุ่มกดที่เอาไว้ปักหมุด
+ * ตอบด้วยผลของ builder หรือรายงานข้อผิดพลาดเข้าแชทตรง ๆ
  *
- * ⚠️ นี่คือคำตอบของข้อจำกัดที่ว่า "quick reply ต้องมีคำถามนำก่อน"
- *
- * quick reply โผล่หลังบอทตอบเท่านั้น และหายไปทันทีที่มีคนพิมพ์อย่างอื่น
- * ส่วนการ์ดนี้เป็นข้อความธรรมดาที่อยู่ในห้องแชทถาวร ปุ่มยังกดได้แม้ผ่านไปเป็นเดือน
- *
- * วิธีใช้: พิมพ์ "เมนู" หนึ่งครั้ง แล้ว **ปักหมุดข้อความที่บอทตอบ**
- * จากนั้นทุกคนกดหมุด → กดปุ่ม → ไม่ต้องพิมพ์และไม่ต้องจำคำสั่งอีกเลย
- *
- * rich menu ทำแบบนี้ไม่ได้เพราะมีเฉพาะแชทตัวต่อตัว การ์ดนี้จึงทำหน้าที่แทนในกลุ่ม
+ * รับได้ทั้งข้อความสำเร็จรูปและฟังก์ชัน — ที่ให้ส่งฟังก์ชันเข้ามาเพราะ
+ * การอ่านชีตอาจพังได้ และต้องพังหลังจากที่เรามี replyToken พร้อมจะรายงานแล้ว
  */
-function buildMenuMessage_(actions) {
-  return {
-    type: 'template',
-    altText: 'เมนูคำสั่งของบอท — ปักหมุดข้อความนี้ไว้ได้',
-    template: {
-      type: 'buttons',
-      text: 'กดปุ่มด้านล่างได้เลย ไม่ต้องพิมพ์\n(ปักหมุดข้อความนี้ไว้ จะได้กดได้ตลอด)',
-      actions: actions.map(function (item) {
-        return { type: 'message', label: item.label.substring(0, 20), text: item.text };
-      }),
-    },
-  };
+function replyOrReport_(replyToken, builderOrText) {
+  let text;
+  try {
+    text = typeof builderOrText === 'function' ? builderOrText() : builderOrText;
+  } catch (err) {
+    replyLineMessage_(replyToken,
+      '⚠️ บอทขัดข้อง ตอบไม่ได้: ' + err + '\n' +
+      'แจ้งผู้ดูแลระบบพร้อมข้อความนี้ได้เลย');
+    return;
+  }
+  replyLineMessage_(replyToken, text);
 }
 
 /**
- * แปลงคำตอบให้เป็น message object เสมอ เพื่อให้แนบ quick reply ได้
+ * ข้อความเมนูสำหรับปักหมุด
  *
- * buildAppointmentReply_() คืนได้ทั้งสตริง (เมื่อไม่มีนัด) และ template object
- * (เมื่อมีนัด) ส่วน withQuickReply_() ต้องการ object เท่านั้น — ถ้าส่งสตริงเข้าไป
- * จะไปเซ็ต property บนสตริงซึ่ง JavaScript ยอมให้ทำแบบเงียบ ๆ แล้ว quickReply
- * จะหายไปโดยไม่มี error
+ * เคยเป็นการ์ดปุ่มกด (buttons template) แต่ template คือผู้ต้องสงสัยหลัก
+ * ของอาการ "บอทเงียบทั้งที่ทุกอย่างถูกต้อง" ในคืนเปิดใช้ — ข้อความธรรมดา
+ * แลกความสวยกับความแน่นอนว่าส่งถึง ซึ่งเป็นการแลกที่คุ้มสำหรับระบบงาน
  */
-function toMessageObject_(payload) {
-  if (typeof payload !== 'string') return payload;
-  return { type: 'text', text: payload.substring(0, 4900) };
+function buildMenuText_(actions) {
+  let text = '🤖 คำสั่งที่ใช้ได้ในกลุ่มนี้ — พิมพ์ได้เลย\n────────────────\n';
+  actions.forEach(function (a) {
+    text += '  ' + a.text + '\n';
+  });
+  text += '  นัด 15/9  (ดูวันอื่น ใส่ปี พ.ศ. ได้)\n';
+  text += '\n📌 ปักหมุดข้อความนี้ไว้ให้ทุกคนเห็น';
+  return text;
 }
 
 /**
@@ -291,11 +297,8 @@ function buildAppointmentReply_(date) {
     text += '• และอีก ' + (names.length - GROUP_QUERY_MAX_FELLOWS) + ' คน\n';
   }
 
-  return linkButtonMessage_(
-    text + '\nรายละเอียดโรคและเบอร์แพทย์ต้นทาง',
-    'เปิด dashboard',
-    SITE_URL + '/dashboard/appointments',
-  );
+  return text + '\nรายละเอียดโรคและเบอร์แพทย์ต้นทาง\n' +
+    SITE_URL + '/dashboard/appointments';
 }
 
 /**
@@ -336,11 +339,7 @@ function buildPendingReply_() {
   if (normal > 0) text += '⚪ ยังอยู่ในกรอบเวลา ' + normal + ' เคส\n';
   text += '\nรอนานสุด ' + oldest + ' ชม.ทำการ';
 
-  return linkButtonMessage_(
-    text,
-    'เปิดหน้าตอบคำปรึกษา',
-    SITE_URL + '/dashboard/review',
-  );
+  return text + '\n' + SITE_URL + '/dashboard/review';
 }
 
 /**
