@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-08-30 groupQuery';
+const API_VERSION = '2026-08-31 groupQueryProbe';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -43,13 +43,48 @@ const API_VERSION = '2026-08-30 groupQuery';
  * ไม่บอกว่าเป็นระบบอะไร ไม่แตะชีต ไม่อ่าน Script Properties
  * เลขเวอร์ชันเป็นแค่วันที่ ไม่ได้บอกว่ามีคำสั่งอะไรบ้าง
  */
+/**
+ * หน้าเช็คสุขภาพของ deployment
+ *
+ * ⚠️ รายงานว่า "ไฟล์ไหนอยู่ในเวอร์ชันที่ deploy แล้วบ้าง" ไม่ใช่แค่เลขเวอร์ชัน
+ *
+ * เลขเวอร์ชันอยู่ใน Api.gs ไฟล์เดียว การวาง Api.gs แล้ว deploy จึงทำให้เลขขยับ
+ * ได้แม้ไฟล์อื่นจะยังไม่ถูกวางหรือถูกวางทีหลังโดยไม่ deploy ซ้ำ —
+ * ผลคือ endpoint ดู "ใหม่" ทั้งที่โค้ดครึ่งหนึ่งยังเป็นของเก่า
+ * และอาการที่เกิดคือฟีเจอร์เงียบไปเฉย ๆ โดยไม่มี error ให้เห็นที่ไหนเลย
+ *
+ * typeof บอกได้ตรง ๆ ว่าโค้ดที่กำลังรันอยู่มีฟังก์ชันนั้นไหม
+ */
 function doGet() {
-  return ContentService.createTextOutput(
-    'OK — endpoint นี้รับเฉพาะคำสั่งแบบ POST\n' +
-      'เห็นข้อความนี้แปลว่า deploy สำเร็จและ URL ถูกต้องแล้ว\n' +
-      'version: ' +
-      API_VERSION,
-  ).setMimeType(ContentService.MimeType.TEXT);
+  const parts = [
+    'OK — endpoint นี้รับเฉพาะคำสั่งแบบ POST',
+    'เห็นข้อความนี้แปลว่า deploy สำเร็จและ URL ถูกต้องแล้ว',
+    'version: ' + API_VERSION,
+    '',
+    'ไฟล์ที่อยู่ในเวอร์ชันที่ deploy นี้:',
+  ];
+
+  const required = {
+    'GroupQuery.gs': 'handleGroupQuery_',
+    'LineWebhook.gs': 'handleLineEvent_',
+    'Notify.gs': 'withQuickReply_',
+    'Retention.gs': 'isExpired_',
+    'Setup.gs': 'checkCodeFiles',
+    'Util.gs': 'readRows_',
+  };
+
+  Object.keys(required).forEach(function (file) {
+    let ok = false;
+    try {
+      ok = eval('typeof ' + required[file]) === 'function';
+    } catch (err) {
+      ok = false;
+    }
+    parts.push('  ' + (ok ? '✅' : '❌ ยังไม่ได้ deploy') + ' ' + file);
+  });
+
+  return ContentService.createTextOutput(parts.join('\n'))
+    .setMimeType(ContentService.MimeType.TEXT);
 }
 
 function doPost(e) {
