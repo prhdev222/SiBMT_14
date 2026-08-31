@@ -321,4 +321,4 @@ const DASHBOARD_URL = SITE_URL + '/dashboard';
 const LINE_OA_ID = '@900eojoi';
 
 /** เบอร์ติดต่อสำรอง แสดงในข้อความตอบกลับอัตโนมัติ */
-const CONTACT_PHONE = '02-419-9903';
+const CONTACT_PHONE = '02-419-7642 หรือ 02-419-7644 ต่อ 101-102';
