@@ -98,7 +98,15 @@ const GROUP_QUERY_MAX_FELLOWS = 6;
  * เหตุผลนั้นยังอยู่ — สิ่งที่เปลี่ยนคือ "ตอบเมื่อถูกถามตรง ๆ" ไม่ใช่ "ตอบทุกอย่าง"
  */
 function handleGroupQuery_(event, text, sourceId) {
-  if (!isStaffGroup_(sourceId)) return false;
+  if (!isStaffGroup_(sourceId)) {
+    // เขียน log ไว้เสมอ เพราะการเงียบคืออาการที่ตั้งใจให้เกิดกับห้องที่ไม่รู้จัก
+    // ถ้าไม่บอกว่า "เงียบเพราะอะไร" คนตั้งค่าจะแยกไม่ออกจากกรณีโค้ดพัง
+    console.log(
+      'ไม่ตอบคำสั่งกลุ่ม: ' + sourceId + ' ไม่อยู่ในรายชื่อกลุ่มเจ้าหน้าที่ ' +
+      JSON.stringify(dashboardLineGroups_()),
+    );
+    return false;
+  }
 
   const actions = groupActionsFor_(sourceId);
 
@@ -388,4 +396,47 @@ function buildPendingReply_() {
     'เปิดหน้าตอบคำปรึกษา',
     SITE_URL + '/dashboard/review',
   );
+}
+
+/**
+ * ตรวจว่าทำไมบอทถึงไม่ตอบคำสั่งในกลุ่ม
+ *
+ * ⚠️ รันในหน้าจอได้เลย ไม่ต้อง deploy — อ่าน Script Properties ชุดเดียวกับที่
+ * deployment ใช้ ผลที่ได้จึงตรงกับที่เกิดขึ้นจริงตอนมีคนพิมพ์ในกลุ่ม
+ *
+ * พิมพ์ค่าดิบออกมาด้วย JSON.stringify โดยตั้งใจ เพราะช่องว่างหรือบรรทัดใหม่
+ * ที่ติดมาตอนคัดลอกจะมองไม่เห็นเลยในหน้าตั้งค่า แต่จะโผล่เป็น \n ตรงนี้
+ *
+ * และพิมพ์ "ชื่อคีย์ทั้งหมด" ด้วย เพราะคีย์ที่มีช่องว่างต่อท้าย เช่น
+ * "LINE_TARGET_FELLOW " จะทำให้ getProperty คืน null ทั้งที่หน้าจอดูเหมือนตั้งไว้แล้ว
+ */
+function diagnoseGroupQuery() {
+  const props = PropertiesService.getScriptProperties();
+
+  console.log('ชื่อคีย์ทั้งหมดใน Script Properties:');
+  console.log('  ' + JSON.stringify(props.getKeys()));
+  console.log('');
+
+  ['LINE_TARGET_RESIDENT', 'LINE_TARGET_FELLOW', 'LINE_TARGET_ADMIN']
+    .forEach(function (key) {
+      const raw = props.getProperty(key);
+      console.log(key + ' = ' + (raw === null ? '(ไม่ได้ตั้ง)' : JSON.stringify(raw)));
+    });
+
+  console.log('');
+  const groups = dashboardLineGroups_();
+  console.log('กลุ่มที่ระบบยอมรับ: ' + groups.length + ' กลุ่ม');
+  groups.forEach(function (g) { console.log('  ' + g); });
+
+  console.log('');
+  if (groups.length === 0) {
+    console.log('❌ ไม่มีกลุ่มไหนถูกยอมรับเลย — บอทจะเงียบทุกกลุ่ม');
+    console.log('   สาเหตุที่พบบ่อย:');
+    console.log('   • ค่าที่ใส่ขึ้นต้นด้วย U (บัญชีบุคคล) หรือ R (ห้องแชท)');
+    console.log('     ระบบรับเฉพาะ C ซึ่งคือ "กลุ่ม" เท่านั้น');
+    console.log('   • ชื่อคีย์สะกดผิดหรือมีช่องว่าง — เทียบกับรายการคีย์ด้านบน');
+  } else {
+    console.log('✅ เอา ID ที่บอทตอบตอนพิมพ์ #id มาเทียบกับรายการด้านบน');
+    console.log('   ตรงกันเป๊ะ = บอทต้องตอบ / ไม่ตรง = ใส่ผิดกลุ่ม');
+  }
 }

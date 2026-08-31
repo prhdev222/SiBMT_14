@@ -73,6 +73,7 @@ function checkCodeFiles() {
       'handleGroupQuery_', 'isStaffGroup_', 'parseQueryDate_',
       'buildAppointmentReply_', 'buildPendingReply_',
       'buildMenuMessage_', 'groupActionsFor_', 'handleGroupPostback_',
+      'diagnoseGroupQuery',
       'toLineAction_', 'GROUP_QUERY_PICKER_DATA',
       'GROUP_QUERY_APPOINTMENT_ACTIONS', 'GROUP_QUERY_PENDING_ACTIONS',
     ],
