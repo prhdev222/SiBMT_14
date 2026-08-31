@@ -96,14 +96,32 @@ function linkButtonMessage_(text, label, url) {
 function withQuickReply_(message, items) {
   message.quickReply = {
     items: items.slice(0, 13).map(function (item) {
-      return {
-        type: 'action',
-        action: {
-          type: 'message',
-          label: item.label.substring(0, 20),
-          text: item.text,
-        },
-      };
+      /*
+       * รองรับปุ่มเปิดปฏิทินด้วย ไม่ใช่แค่ปุ่มส่งข้อความ
+       *
+       * ⚠️ เขียนไว้ตรงนี้เอง ไม่เรียก toLineAction_ ของ GroupQuery.gs
+       *
+       * Apps Script ใช้ scope เดียวกันทั้งโปรเจกต์ เรียกข้ามไฟล์ได้ก็จริง
+       * แต่จะทำให้ไฟล์นี้พังทันทีถ้าใครวาง Notify.gs โดยไม่วาง GroupQuery.gs
+       * — โฟลว์เดิมทุกอันที่ใช้ quick reply จะล้มตามไปด้วยโดยไม่เกี่ยวอะไรเลย
+       *
+       * ⚠️ ถ้าไม่แยกชนิด ปุ่มปฏิทินจะกลายเป็น action แบบ message ที่ text
+       * เป็น undefined แล้ว LINE ตอบ 400 และ **ไม่ส่งข้อความนั้นทั้งข้อความ**
+       */
+      const action = item.picker
+        ? {
+            type: 'datetimepicker',
+            label: item.label.substring(0, 20),
+            data: item.data,
+            mode: 'date',
+          }
+        : {
+            type: 'message',
+            label: item.label.substring(0, 20),
+            text: item.text,
+          };
+
+      return { type: 'action', action: action };
     }),
   };
   return message;
