@@ -1152,12 +1152,40 @@ function buildWhoAmIReply_(sourceType, id) {
     user: 'ไม่ต้องใช้ — นี่คือ ID ส่วนตัว ไม่ใช่ของกลุ่ม',
   }[sourceType] || 'LINE_TARGET_*';
 
+  /*
+   * ⚠️ สองบรรทัดท้ายคือเครื่องมือวินิจฉัยที่ทำงานจากในแชทโดยตรง
+   *
+   * ปัญหาที่เจอจริง: LINE อาจชี้ไปที่ deployment เก่าคนละอันกับที่เราแก้
+   * แล้วทุกอย่างที่ตรวจจากหน้าจอ (/exec, checkCodeFiles) จะดูปกติหมด
+   * เพราะไปตรวจอันใหม่ — บรรทัด "เวอร์ชันที่ตอบ" พิมพ์จากโค้ดที่กำลังรัน
+   * ตอบข้อความนี้จริง ๆ จึงโกหกไม่ได้
+   *
+   * ส่วน "สถานะกลุ่ม" รัน isStaffGroup_ กับ id จริงของห้องนี้ ตัดปัญหา
+   * การคัดลอก id ไปเทียบเองซึ่งพลาดช่องว่างที่มองไม่เห็นได้ง่าย
+   */
+  let staffLine = '';
+  if (sourceType === 'group' || sourceType === 'room') {
+    let isStaff = false;
+    try {
+      isStaff = isStaffGroup_(id);
+    } catch (err) {
+      staffLine = '\n\n⚠️ ตรวจสถานะกลุ่มไม่ได้: ' + err;
+    }
+    if (!staffLine) {
+      staffLine = isStaff
+        ? '\n\n✅ ห้องนี้เป็นกลุ่มเจ้าหน้าที่ — คำสั่ง เมนู / เคสค้าง / นัดวันนี้ ใช้ได้'
+        : '\n\n❌ ห้องนี้ไม่อยู่ในกลุ่มเจ้าหน้าที่ — บอทจะไม่ตอบคำสั่งใด ๆ ที่นี่';
+    }
+  }
+
   return (
     'ID ของที่นี่คือ\n' +
     id + '\n\n' +
     'ประเภท: ' + (sourceType || 'ไม่ทราบ') + '\n\n' +
     'นำไปวางที่ Apps Script → Project Settings → Script Properties\n' +
-    'ชื่อ: ' + target
+    'ชื่อ: ' + target +
+    staffLine +
+    '\n\nเวอร์ชันที่ตอบข้อความนี้: ' + API_VERSION
   );
 }
 
