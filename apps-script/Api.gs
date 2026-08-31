@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-08-31 noPicker';
+const API_VERSION = '2026-08-31 wiringProbe';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -81,6 +81,34 @@ function doGet() {
       ok = false;
     }
     parts.push('  ' + (ok ? '✅' : '❌ ยังไม่ได้ deploy') + ' ' + file);
+  });
+
+  /*
+   * ⚠️ "มีไฟล์" ไม่เท่ากับ "ไฟล์เป็นฉบับใหม่"
+   *
+   * handleLineEvent_ มีมาตั้งแต่เวอร์ชันแรก การเช็คว่ามีฟังก์ชันนี้จึงติ๊กถูก
+   * แม้ LineWebhook.gs ที่ deploy อยู่จะเป็นฉบับเก่าที่ไม่เคยเรียก
+   * handleGroupQuery_ เลย — ผลคือคำสั่งในกลุ่มเงียบทั้งหมดโดยไม่มี error
+   *
+   * toString() คืนซอร์สจริงของฟังก์ชันที่กำลังรันอยู่ จึงตรวจได้ว่า
+   * โค้ดสองส่วนถูกต่อเข้าหากันแล้วหรือยัง ไม่ใช่แค่ต่างฝ่ายต่างมีตัวตน
+   */
+  parts.push('');
+  parts.push('การเชื่อมต่อของโค้ด:');
+
+  const wiring = [
+    ['LineWebhook.gs เรียก handleGroupQuery_', 'handleLineEvent_', 'handleGroupQuery_'],
+    ['GroupQuery.gs เรียก dashboardLineGroups_', 'isStaffGroup_', 'dashboardLineGroups_'],
+  ];
+
+  wiring.forEach(function (row) {
+    let ok = false;
+    try {
+      ok = eval(row[1]).toString().indexOf(row[2]) !== -1;
+    } catch (err) {
+      ok = false;
+    }
+    parts.push('  ' + (ok ? '✅' : '❌ ยังเป็นฉบับเก่า') + ' ' + row[0]);
   });
 
   return ContentService.createTextOutput(parts.join('\n'))
