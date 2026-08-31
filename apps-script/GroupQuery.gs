@@ -27,15 +27,44 @@ const GROUP_QUERY_PENDING = /^(เคสค้าง|งานค้าง|ค�
 const GROUP_QUERY_MENU = /^(เมนู|menu|คำสั่ง)\s*$/i;
 
 /**
- * ปุ่มที่ติดไปกับทุกคำตอบ และเป็นปุ่มในการ์ดเมนู
- *
- * ⚠️ template แบบปุ่มรับได้มากสุด 4 ปุ่ม และป้ายยาวได้ 20 ตัวอักษร
+ * ปุ่มทั้งหมดที่มี — ⚠️ template แบบปุ่มรับได้มากสุด 4 ปุ่ม ป้ายยาวได้ 20 ตัวอักษร
  */
-const GROUP_QUERY_ACTIONS = [
+const GROUP_QUERY_APPOINTMENT_ACTIONS = [
   { label: 'นัดวันนี้', text: 'นัดวันนี้' },
   { label: 'นัดพรุ่งนี้', text: 'นัดพรุ่งนี้' },
+];
+const GROUP_QUERY_PENDING_ACTIONS = [
   { label: 'เคสค้าง', text: 'เคสค้าง' },
 ];
+
+/**
+ * ปุ่มที่กลุ่มนี้ควรเห็น
+ *
+ * ⚠️ ปุ่มต่างกันตามกลุ่ม แต่ "คำสั่ง" ไม่ต่าง
+ *
+ * ทุกคำสั่งยังพิมพ์ได้จากทุกกลุ่มเจ้าหน้าที่เหมือนเดิม สิ่งที่เลือกให้ตรงกลุ่ม
+ * คือปุ่มที่ยื่นให้เท่านั้น — resident ที่อยากรู้ตารางนัดยังพิมพ์ "นัดวันนี้" ได้
+ * เราแค่ไม่เอาปุ่มที่เขาไม่ได้ใช้ทุกวันมาวางเกะกะในการ์ดที่จะถูกปักหมุดไว้ถาวร
+ *
+ * ⚠️ แยกกลุ่มไม่ออกเมื่อไร ให้แสดงทุกปุ่ม
+ *
+ * เช่นกลุ่มแอดมินที่ดูภาพรวมทั้งสองด้าน หรือกรณีที่ LINE_TARGET_* ตั้งไม่ครบ
+ * แล้วค่าไหลไปใช้ตัวสำรอง — เดาผิดแล้วซ่อนปุ่มที่เขาต้องใช้ แย่กว่าโชว์ปุ่มเกิน
+ */
+function groupActionsFor_(sourceId) {
+  const props = PropertiesService.getScriptProperties();
+  const inTarget = function (key) {
+    return parseLineTargets_(props.getProperty(key)).indexOf(sourceId) !== -1;
+  };
+
+  const fellow = inTarget('LINE_TARGET_FELLOW');
+  const resident = inTarget('LINE_TARGET_RESIDENT');
+
+  if (fellow && !resident) return GROUP_QUERY_APPOINTMENT_ACTIONS;
+  if (resident && !fellow) return GROUP_QUERY_PENDING_ACTIONS;
+
+  return GROUP_QUERY_APPOINTMENT_ACTIONS.concat(GROUP_QUERY_PENDING_ACTIONS);
+}
 
 /** แสดง fellow มากสุดกี่คนในข้อความเดียว ก่อนยุบเป็น "และอีก N คน" */
 const GROUP_QUERY_MAX_FELLOWS = 6;
@@ -53,14 +82,16 @@ const GROUP_QUERY_MAX_FELLOWS = 6;
 function handleGroupQuery_(event, text, sourceId) {
   if (!isStaffGroup_(sourceId)) return false;
 
+  const actions = groupActionsFor_(sourceId);
+
   if (GROUP_QUERY_MENU.test(text)) {
-    replyLineMessage_(event.replyToken, buildMenuMessage_());
+    replyLineMessage_(event.replyToken, buildMenuMessage_(actions));
     return true;
   }
 
   if (GROUP_QUERY_PENDING.test(text)) {
     replyLineMessage_(event.replyToken, withQuickReply_(
-      toMessageObject_(buildPendingReply_()), GROUP_QUERY_ACTIONS));
+      toMessageObject_(buildPendingReply_()), actions));
     return true;
   }
 
@@ -83,7 +114,7 @@ function handleGroupQuery_(event, text, sourceId) {
   }
 
   replyLineMessage_(event.replyToken, withQuickReply_(
-    toMessageObject_(buildAppointmentReply_(target)), GROUP_QUERY_ACTIONS));
+    toMessageObject_(buildAppointmentReply_(target)), actions));
   return true;
 }
 
@@ -100,14 +131,14 @@ function handleGroupQuery_(event, text, sourceId) {
  *
  * rich menu ทำแบบนี้ไม่ได้เพราะมีเฉพาะแชทตัวต่อตัว การ์ดนี้จึงทำหน้าที่แทนในกลุ่ม
  */
-function buildMenuMessage_() {
+function buildMenuMessage_(actions) {
   return {
     type: 'template',
     altText: 'เมนูคำสั่งของบอท — ปักหมุดข้อความนี้ไว้ได้',
     template: {
       type: 'buttons',
       text: 'กดปุ่มด้านล่างได้เลย ไม่ต้องพิมพ์\n(ปักหมุดข้อความนี้ไว้ จะได้กดได้ตลอด)',
-      actions: GROUP_QUERY_ACTIONS.map(function (a) {
+      actions: actions.map(function (a) {
         return { type: 'message', label: a.label, text: a.text };
       }),
     },
