@@ -37,7 +37,7 @@ function checkCodeFiles() {
     'Util.gs': [
       'formatThaiDate_', 'businessHoursBetween_', 'isWorkingDay_', 'headerMap_',
       'readRows_', 'setCell_', 'ensureColumns_', 'getSheet_', 'toDate_', 'phoneKey_',
-      'readConfigValue_', 'parseEmailList_',
+      'readConfigValue_', 'parseEmailList_', 'urgentPhoneLine_',
     ],
     'Setup.gs': [
       'setupSheets', 'setupTriggers', 'runSelfTest', 'checkCodeFiles',

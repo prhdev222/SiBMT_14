@@ -148,7 +148,7 @@ function canStillChange_(clinicDate, payload) {
 function tooLateMessage_(clinicDate) {
   return 'เลยกำหนดแก้ไขแล้ว — ยกเลิกหรือเลื่อนนัดได้ถึงวันก่อนวันนัด (' +
     formatThaiDate_(clinicDate, true) + ') เท่านั้น\n' +
-    'กรุณาโทรแจ้ง ' + CONTACT_PHONE + ' ในเวลาราชการ';
+    'กรุณาแจ้งทาง LINE ' + LINE_OA_ID + ' (กดปุ่ม "ติดต่อเจ้าหน้าที่")';
 }
 
 /* ------------------------------------------------------------------ */

@@ -341,7 +341,7 @@ function handleLineEvent_(event) {
     replyLineMessage_(
       event.replyToken,
       'ค้นสถานะบ่อยเกินไป กรุณารออีกสักครู่แล้วลองใหม่\n\n' +
-      'ถ้าเร่งด่วน โทร ' + CONTACT_PHONE + ' (จันทร์-ศุกร์ 08:30-16:30 น.)',
+      urgentPhoneLine_('ถ้าเร่งด่วน'),
     );
     return;
   }
@@ -394,7 +394,7 @@ function buildStatusReply_(referralId, found) {
       'ไม่พบเคสรหัส ' + referralId + '\n\n' +
       'กรุณาตรวจว่าพิมพ์ครบถ้วนตามที่ได้รับทางอีเมล\n' +
       'รูปแบบคือ HEM-ปีเดือนวัน-เลขลำดับ เช่น HEM-20260822-0001\n\n' +
-      'ถ้ายังไม่พบ โทร ' + CONTACT_PHONE + ' (จันทร์-ศุกร์ 08:30-16:30 น.)'
+      urgentPhoneLine_('ถ้ายังไม่พบ')
     );
   }
 
@@ -426,8 +426,8 @@ function buildStatusReply_(referralId, found) {
       'และตอบกลับภายใน 3 วันทำการ\n\n';
   }
 
-  message += 'สอบถามเพิ่มเติม โทร ' + CONTACT_PHONE +
-    ' (จันทร์-ศุกร์ 08:30-16:30 น.)';
+  // คำถามทั่วไปไปที่แอดมินทาง LINE — ผู้อ่านอยู่ในแชทกับบอทอยู่แล้ว กดได้เลย
+  message += 'สอบถามเพิ่มเติม กดปุ่ม "ติดต่อเจ้าหน้าที่" ได้เลย';
 
   return message;
 }
@@ -439,7 +439,7 @@ function buildBadFormatReply_() {
     'รูปแบบคือ HEM-ปีเดือนวัน-เลขลำดับ 4 หลัก\n' +
     'เช่น HEM-20260822-0001\n\n' +
     'กรุณาคัดลอกมาจากอีเมลที่ระบบส่งให้ทั้งบรรทัดได้เลย\n\n' +
-    'ถ้ายังไม่ได้ โทร ' + CONTACT_PHONE + ' (จันทร์-ศุกร์ 08:30-16:30 น.)'
+    urgentPhoneLine_('ถ้ายังไม่ได้')
   );
 }
 
@@ -584,7 +584,7 @@ function handleMyCasesPhone_(event, text, userId) {
     clearContactFlow_(userId);
     replyLineMessage_(event.replyToken,
       'ค้นบ่อยเกินไป กรุณารออีกสักครู่\n\n' +
-      'ถ้าเร่งด่วน โทร ' + CONTACT_PHONE + ' (จันทร์-ศุกร์ 08:30-16:30 น.)');
+      urgentPhoneLine_('ถ้าเร่งด่วน'));
     return;
   }
 
@@ -690,7 +690,7 @@ function handleMyCasesResend_(event, flow, text, userId) {
       ? 'ส่งสำเนาคำตอบของ ' + referralId + ' ไปที่อีเมลที่ลงทะเบียนไว้แล้ว ✓\n\n' +
         'กรุณาตรวจกล่องจดหมาย รวมถึงโฟลเดอร์จดหมายขยะ'
       : 'ส่งไม่สำเร็จ เคสนี้อาจยังไม่มีคำตอบหรือไม่มีอีเมลที่ลงทะเบียนไว้\n\n' +
-        'โทร ' + CONTACT_PHONE + ' (จันทร์-ศุกร์ 08:30-16:30 น.)');
+        urgentPhoneLine_('ถ้าเร่งด่วน'));
 }
 
 /** จำกัดการค้นด้วยเบอร์โทร — ต่ำกว่าการค้นด้วยรหัสเพราะเบอร์เดาง่ายกว่า */
@@ -863,7 +863,7 @@ function sendContactToAdmin_(event, flow, userId) {
   if (!lineContactAllowed_(userId)) {
     replyLineMessage_(event.replyToken,
       'ส่งเรื่องถี่เกินไป กรุณารอสักครู่\n\n' +
-      'ถ้าเร่งด่วน โทร ' + CONTACT_PHONE + ' (จันทร์-ศุกร์ 08:30-16:30 น.)');
+      urgentPhoneLine_('ถ้าเร่งด่วน'));
     return;
   }
 
@@ -1024,7 +1024,7 @@ function relayToAdmin_(event, text, userId) {
   if (!lineContactAllowed_(userId)) {
     replyLineMessage_(event.replyToken,
       'ส่งข้อความถี่เกินไป กรุณารอสักครู่\n\n' +
-      'ถ้าเร่งด่วน โทร ' + CONTACT_PHONE + ' (จันทร์-ศุกร์ 08:30-16:30 น.)');
+      urgentPhoneLine_('ถ้าเร่งด่วน'));
     return;
   }
 
