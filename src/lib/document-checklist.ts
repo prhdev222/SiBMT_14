@@ -89,7 +89,7 @@ const TRANSPLANT_CHECKLIST: ChecklistSection = {
 };
 
 const CONSULT_FIELDS: ChecklistItem[] = [
-  { label: "ชื่อ-สกุล, อายุ, เพศ ของผู้ป่วย" },
+  { label: "อายุ, เพศ ของผู้ป่วย (ไม่ต้องใช้ชื่อและ HN — ระบบไม่เก็บ)" },
   { label: "Diagnosis และ stage" },
   { label: "Treatment ที่ได้รับมาแล้ว" },
   { label: "สิ่งที่ต้องการปรึกษา (ระบุคำถามให้ชัดเจน)" },
@@ -115,7 +115,7 @@ export const CHECKLIST_BY_TYPE: Record<ReferralType, ChecklistSection> = {
 
   CHEMO_ADMISSION: {
     forReferrer: [
-      { label: "ชื่อ-สกุล, อายุ, เพศ ของผู้ป่วย" },
+      { label: "อายุ, เพศ ของผู้ป่วย (ไม่ต้องใช้ชื่อและ HN — ระบบไม่เก็บ)" },
       { label: "Underlying disease" },
       { label: "Diagnosis และ stage" },
       { label: "Treatment ที่ได้รับมาแล้ว" },
