@@ -17,7 +17,7 @@ export const CONTACT = {
    * BUSINESS ใน apps-script/Config.gs อย่าแก้สองตัวนี้ให้เท่ากันโดยพลการ
    */
   phone: "024197642",
-  phoneDisplay: "02-419-7642 หรือ 02-419-7644 ต่อ 101–102",
+  phoneDisplay: "02-419-7642 ถึง 44 ต่อ 104-105",
   hoursTh: "ในเวลาราชการ จันทร์–ศุกร์ 08:30–16:30 น.",
 } as const;
 

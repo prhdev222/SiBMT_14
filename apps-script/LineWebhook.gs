@@ -831,7 +831,7 @@ function advanceContactFlow_(event, flow, text, userId) {
       replyLineMessage_(event.replyToken, [withQuickReply_(
         { type: 'text', text:
           'เบอร์โทรไม่ครบ กรุณาพิมพ์ใหม่\n' +
-          'เช่น 081-234-5678 หรือ 02-419-7642 ต่อ 101' },
+          'เช่น 081-234-5678 หรือ 02-419-7642 ต่อ 104' },
         cancelQuickReply_())]);
       return;
     }
