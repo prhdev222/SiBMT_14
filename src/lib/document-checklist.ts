@@ -130,7 +130,7 @@ export const CHECKLIST_BY_TYPE: Record<ReferralType, ChecklistSection> = {
     ],
     forPatient: [
       {
-        label: "เอกสารสิทธิการรักษา และผลตรวจทางห้องปฏิบัติการล่าสุด",
+        label: "เอกสารสิทธิการรักษา และรายละเอียดการรักษาและผลการตรวจที่สำคัญทั้งหมด",
         detail: "นำมาในวันที่มาประเมินความพร้อมที่ OPD 700",
       },
     ],
