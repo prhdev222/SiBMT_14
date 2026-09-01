@@ -116,9 +116,10 @@ function isBookingOwner_(row, payload) {
     return true;
   }
 
-  // เทียบเบอร์แบบเอาเฉพาะตัวเลข — คนกรอก 081-234-5678 บ้าง 0812345678 บ้าง
-  const storedPhone = normalizePhone_(row['referrer_phone']);
-  const givenPhone = normalizePhone_(payload.phone);
+  // เทียบด้วย phoneKey_ ไม่ใช่ตัวเลขดิบ — ชีตตัด 0 นำหน้าของเบอร์ที่จอง
+  // ผ่านเว็บทิ้ง เทียบดิบจะไม่ตรงตลอดกาล (ดูคำอธิบายที่ phoneKey_ ใน Util.gs)
+  const storedPhone = phoneKey_(row['referrer_phone']);
+  const givenPhone = phoneKey_(payload.phone);
   if (storedPhone && givenPhone && timingSafeEquals_(storedPhone, givenPhone)) {
     return true;
   }

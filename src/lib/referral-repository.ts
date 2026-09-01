@@ -342,7 +342,7 @@ function toReferral(row: Record<string, string>): Referral | null {
     submittedAt: formatSubmittedAt(row["submitted_at"] || row["Timestamp"]),
     referrerOrg: text(row["referrer_org"]) || "—",
     referrerName: text(row["referrer_name"]),
-    referrerPhone: text(row["referrer_phone"]) || "—",
+    referrerPhone: displayPhone(text(row["referrer_phone"])) || "—",
     insuranceScheme: text(row["insurance_scheme"]),
     appointmentNote: text(row["appointment_note"]),
     adviceRegimens: text(row["advice_regimens"]),
@@ -369,6 +369,18 @@ function toReferral(row: Record<string, string>): Referral | null {
 }
 
 /** รับได้ทั้งค่าที่ Google ส่งมาเป็น 8/5/2026 และที่พิมพ์เป็น 2026-08-05 */
+/**
+ * เติมเลข 0 นำหน้ากลับให้เบอร์ที่ชีตตัดทิ้ง
+ *
+ * เคสกลุ่มที่ 1 ที่จองก่อน 1 ก.ย. 2569 ถูกชีตเก็บเบอร์เป็นตัวเลข เลข 0 นำหน้า
+ * จึงหายถาวร ("0812345678" → "812345678") — เบอร์ไทย 8–9 หลักที่ไม่ขึ้นต้น
+ * ด้วย 0 ไม่มีอยู่จริง เติมกลับให้ตอนแสดงผลจึงปลอดภัย ส่วนแถวใหม่ถูกเขียน
+ * เป็นข้อความตั้งแต่ตอนจองแล้วจะไม่เข้าเงื่อนไขนี้เลย
+ */
+function displayPhone(value: string): string {
+  return /^[1-9]\d{7,8}$/.test(value) ? `0${value}` : value;
+}
+
 function toIsoDate(value: string | undefined): string | null {
   const raw = text(value);
   if (!raw) return null;

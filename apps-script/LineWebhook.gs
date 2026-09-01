@@ -589,7 +589,7 @@ function handleMyCasesPhone_(event, text, userId) {
   }
 
   const rows = readRows_(getSheet_(SHEETS.referrals)).filter(function (r) {
-    return r['referral_id'] && digitsOnly_(r['referrer_phone']) === digits;
+    return r['referral_id'] && phoneKey_(r['referrer_phone']) === phoneKey_(digits);
   });
 
   if (rows.length === 0) {
@@ -1340,7 +1340,7 @@ function findLineUserByPhone_(phone) {
   try {
     const rows = readRows_(getSheet_(SHEETS.lineLinks));
     for (let i = 0; i < rows.length; i++) {
-      if (digitsOnly_(rows[i]['referrer_phone']) !== digits) continue;
+      if (phoneKey_(rows[i]['referrer_phone']) !== phoneKey_(digits)) continue;
       const active = String(rows[i]['active'] || '').toLowerCase();
       if (active === 'no' || active === 'false') continue;
       return String(rows[i]['line_user_id'] || '').trim();
@@ -1393,7 +1393,7 @@ function removeLineLink_(userId) {
 /** อีเมลที่ลงทะเบียนไว้กับเบอร์นี้ — เอาจากเคสล่าสุดที่มีอีเมล */
 function findEmailByPhone_(digits) {
   const rows = readRows_(getSheet_(SHEETS.referrals)).filter(function (r) {
-    return digitsOnly_(r['referrer_phone']) === digits &&
+    return phoneKey_(r['referrer_phone']) === phoneKey_(digits) &&
       String(r['referrer_email'] || '').trim();
   });
   if (rows.length === 0) return '';

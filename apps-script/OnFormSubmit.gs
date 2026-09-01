@@ -229,7 +229,7 @@ function findPossibleDuplicate_(sheet, currentRow, currentId, submittedAt) {
   const cutoff = new Date(submittedAt.getTime() - DUPLICATE_WINDOW_DAYS * 86400000);
   const age = String(current['patient_age'] || '').trim();
   const sex = String(current['patient_sex'] || '').trim();
-  const phone = normalizePhone_(current['referrer_phone']);
+  const phone = phoneKey_(current['referrer_phone']);
   const org = String(current['referrer_org'] || '').trim();
   const group = String(current['disease_group'] || '').trim();
 
@@ -247,7 +247,7 @@ function findPossibleDuplicate_(sheet, currentRow, currentId, submittedAt) {
     const sameSex = String(other['patient_sex'] || '').trim() === sex;
     if (!sameAge || !sameSex) continue;
 
-    const samePhone = phone && normalizePhone_(other['referrer_phone']) === phone;
+    const samePhone = phone && phoneKey_(other['referrer_phone']) === phone;
     const sameOrgGroup =
       org &&
       String(other['referrer_org'] || '').trim() === org &&

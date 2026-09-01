@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-08-31 plainText';
+const API_VERSION = '2026-09-01 phoneKey';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -279,7 +279,9 @@ function bookTransplantSlot_(payload) {
       fellow_assigned: fellowName,
       referrer_org: String(payload.referrerOrg || '').trim(),
       referrer_name: String(payload.referrerName || '').trim(),
-      referrer_phone: String(payload.referrerPhone || '').trim(),
+      // ⚠️ นำหน้าด้วย ' เมื่อเป็นตัวเลขล้วน — ไม่งั้นชีตตีความเป็นตัวเลข
+      // แล้วตัดเลข 0 นำหน้าทิ้ง (' จะไม่แสดงและไม่ติดไปตอนอ่านค่า)
+      referrer_phone: asSheetText_(String(payload.referrerPhone || '').trim()),
       referrer_email: String(payload.referrerEmail || '').trim(),
       disease_group: String(payload.diseaseGroup || '').trim(),
       diagnosis: String(payload.diagnosis || '').trim(),
@@ -1134,4 +1136,15 @@ function logDashboardLogin_(userId, displayName, groupId) {
     // บันทึก log ไม่สำเร็จไม่ควรทำให้คนที่มีสิทธิ์เข้าระบบไม่ได้
     console.warn('บันทึก dashboard login ไม่สำเร็จ: ' + err);
   }
+}
+
+/**
+ * กันชีตตีความข้อความตัวเลขเป็นตัวเลข
+ *
+ * "0812345678" ที่เขียนด้วย setValues จะถูกชีตแปลงเป็นตัวเลข 812345678
+ * เลข 0 นำหน้าหายถาวร — เครื่องหมาย ' นำหน้าบอกชีตว่านี่คือข้อความ
+ * และจะไม่ติดออกมาตอนอ่านค่า (ทั้ง getValues และ Sheets API)
+ */
+function asSheetText_(value) {
+  return /^\d+$/.test(value) ? "'" + value : value;
 }
