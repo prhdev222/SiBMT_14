@@ -295,7 +295,7 @@ function seedIndications_(ss) {
     ['AUTO_PCNSL', 'AUTOLOGOUS', 'PCNSL (chemosensitive)',
      'ประเมินโรคมีการตอบสนองตั้งแต่ PR ขึ้นไป (after interim)', 'ต่ำกว่า 65 ปี', 'yes'],
     ['AUTO_PTCL', 'AUTOLOGOUS', 'PTCL (chemosensitive)',
-     'ประเมินโรคมีการตอบสนองตั้งแต่ PR ขึ้นไป (after interim)', '', 'yes'],
+     'ประเมินโรคมีการตอบสนองตั้งแต่ PR ขึ้นไป (after interim)', 'ต่ำกว่า 65 ปี', 'yes'],
 
     ['ALLO_AML', 'ALLOGENEIC', 'AML (intermediate and adverse risk)', 'CR', 'ต่ำกว่า 65 ปี', 'yes'],
     ['ALLO_ALL_PH_NEG', 'ALLOGENEIC', 'ALL Ph negative (high risk)', 'CR', 'ต่ำกว่า 65 ปี', 'yes'],

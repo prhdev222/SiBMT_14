@@ -67,7 +67,7 @@ export const TRANSPLANT_INDICATIONS: TransplantIndication[] = [
     type: "AUTOLOGOUS",
     diseaseTh: "PTCL (chemosensitive)",
     statusTh: "ประเมินโรคมีการตอบสนองตั้งแต่ PR ขึ้นไป (after interim)",
-    ageTh: "",
+    ageTh: "ต่ำกว่า 65 ปี",
   },
 
   {
