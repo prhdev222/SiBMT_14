@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BackButton } from "@/components/BackButton";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
@@ -88,12 +89,7 @@ export default async function ReferTypePage({
     <div className="flex flex-col flex-1 bg-zinc-50">
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-3xl mx-auto px-4 py-5">
-          <Link
-            href="/"
-            className="text-sm text-blue-600 hover:underline"
-          >
-            ← กลับหน้าแรก
-          </Link>
+          <BackButton fallback="/" label="ย้อนกลับ" />
           <div className="flex items-start gap-3 mt-3">
             <span className="text-3xl leading-none shrink-0">{meta.emoji}</span>
             <div>

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { BackButton } from "@/components/BackButton";
 import type { Metadata } from "next";
 import { CONTACT } from "@/lib/config";
 import { PrintButton } from "@/components/PrintButton";
@@ -13,9 +13,7 @@ export default function ConsentPage() {
       {/* แถบเครื่องมือ — ไม่แสดงตอนพิมพ์ */}
       <div className="bg-white border-b border-zinc-200 print:hidden">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
-          <Link href="/" className="text-sm text-blue-600 hover:underline">
-            ← กลับหน้าแรก
-          </Link>
+          <BackButton fallback="/" label="ย้อนกลับ" />
           <PrintButton />
         </div>
       </div>

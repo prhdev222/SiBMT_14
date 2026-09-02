@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BackButton } from "@/components/BackButton";
 import type { Metadata } from "next";
 import { isBookingConfigured } from "@/lib/apps-script-api";
 import { REFERRAL_TYPE_META } from "@/lib/referral-types";
@@ -29,9 +30,7 @@ export default function ContactPage() {
     <div className="flex flex-col flex-1 bg-zinc-50">
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-2xl mx-auto px-4 py-5">
-          <Link href="/" className="text-sm text-blue-600 hover:underline">
-            ← กลับหน้าแรก
-          </Link>
+          <BackButton fallback="/" label="ย้อนกลับ" />
           <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 mt-3">
             ติดต่อแพทย์แอดมินกลาง
           </h1>

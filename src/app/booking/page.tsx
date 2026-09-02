@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { BackButton } from "@/components/BackButton";
 import type { Metadata } from "next";
 import { loadFellowSchedule, loadReferrals } from "@/lib/referral-repository";
 import { buildSchedule } from "@/lib/fellow-schedule";
@@ -53,9 +53,7 @@ export default async function ManageBookingPage({
     <div className="flex flex-col flex-1 bg-zinc-50">
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-2xl mx-auto px-4 py-5">
-          <Link href="/refer/transplant" className="text-sm text-blue-600 hover:underline">
-            ← กลับหน้ารายละเอียดกลุ่มที่ 1
-          </Link>
+          <BackButton fallback="/refer/transplant" label="ย้อนกลับ" />
           <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 mt-3">
             จัดการนัดของท่าน
           </h1>
