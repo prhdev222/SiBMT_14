@@ -1068,10 +1068,21 @@ const REVIEW_VISIBLE_COLUMNS = {
   'incomplete_reason': 'เหตุผลที่ข้อมูลไม่ครบ (ถ้ามี)',
 };
 
+/**
+ * ⚠️ รายการนี้ต้องมี "ทุกสถานะที่โค้ดเขียนลงชีต" ไม่ใช่แค่ที่คนเลือกเอง
+ *
+ * dropdown นี้ตั้งแบบห้ามค่านอกรายการ (setAllowInvalid(false)) — สถานะที่
+ * ตกหล่นจะทำให้ "โค้ด" เขียนไม่ได้ด้วย ไม่ใช่แค่คน แล้วฟีเจอร์นั้นพังทั้งเส้น
+ * โดย error ที่โผล่คือ help text ของ dropdown ซึ่งไม่มีใครเดาได้ว่ามาจากไหน
+ * (เกิดจริง 1 ก.ย. 2569: ลืม 'Cancelled by Referrer' แล้วปุ่มยกเลิกนัดพังทั้งปุ่ม)
+ *
+ * ต้องตรงกับ STATUS_LABEL_TH ใน src/lib/referral-types.ts
+ */
 const ALL_STATUSES = [
   'Submitted', 'Pending Review', 'Incomplete', 'Slot Reserved',
   'Awaiting Attending', 'Advice Sent', 'Readiness Visit Scheduled',
-  'Appointment Confirmed', 'Auto Replied', 'Rejected / Redirected', 'Closed',
+  'Appointment Confirmed', 'Cancelled by Referrer', 'Auto Replied',
+  'Rejected / Redirected', 'Closed',
 ];
 
 /**
