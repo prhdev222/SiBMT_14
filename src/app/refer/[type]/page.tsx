@@ -301,12 +301,14 @@ export default async function ReferTypePage({
             </p>
             <p className="mt-3 text-zinc-600">
               ส่วนการ<strong className="text-zinc-800">เลื่อนหรือยกเลิกนัด</strong>{" "}
-              ทำเองได้ที่{" "}
-              <Link href="/booking" className="text-blue-600 hover:underline">
-                หน้าจัดการนัด
-              </Link>{" "}
-              ไม่ต้องโทรแจ้ง — คิวที่ยกเลิกจะว่างกลับเข้าปฏิทินทันที
+              ทำเองได้ ไม่ต้องโทรแจ้ง — คิวที่ยกเลิกจะว่างกลับเข้าปฏิทินทันที
             </p>
+            <Link
+              href="/booking"
+              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-5 py-3 font-medium text-blue-800 hover:bg-blue-100 transition-colors"
+            >
+              📅 เปิดหน้าจัดการนัด
+            </Link>
           </section>
         )}
       </main>
