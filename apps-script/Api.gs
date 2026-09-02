@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-09-01 escapeHatch';
+const API_VERSION = '2026-09-01 lineNotify';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -579,12 +579,14 @@ function saveAdvice_(payload) {
     }
 
     // เด้งเข้า LINE ให้คนที่ผูกบัญชีไว้ — ไม่ผูกก็ยังได้อีเมลตามปกติ
-    notifyReferrerOnLine_(match, answerToken);
+    // คืนผลกลับไปให้หน้าตอบรู้ว่าถึง LINE หรือไม่ จะได้ไม่ต้องเดา
+    const lineNotified = notifyReferrerOnLine_(match, answerToken);
 
     return {
       referralId: referralId,
       status: status,
       emailed: emailed,
+      lineNotified: lineNotified,
       fileUrl: attachment ? attachment.url : '',
     };
   } finally {

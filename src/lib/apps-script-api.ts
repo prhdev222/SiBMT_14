@@ -126,6 +126,8 @@ export interface AdviceResult {
   status: string;
   /** false = เคสไม่มีอีเมลผู้ส่ง หรือส่งไม่สำเร็จ ต้องแจ้งกลับเอง */
   emailed: boolean;
+  /** true = เด้งลิงก์คำตอบเข้า LINE ของแพทย์ต้นทางแล้ว (เคยผูกบัญชีไว้) */
+  lineNotified: boolean;
   /** ลิงก์ Drive ของไฟล์ที่แนบไป — ว่างเมื่อไม่ได้แนบ */
   fileUrl: string;
 }

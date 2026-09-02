@@ -188,12 +188,14 @@ export async function saveAdviceAction(
     // บอกให้ชัดว่าไฟล์ไปด้วยหรือไม่ — ถ้าเงียบไว้ resident จะไม่รู้ว่าลืมแนบ
     // จนกว่าแพทย์ต้นทางจะโทรมาถาม ซึ่งสายเกินแก้แล้วเพราะแก้คำตอบเดิมไม่ได้
     const withFile = result.fileUrl ? " (แนบไฟล์ไปด้วยแล้ว)" : "";
+    // บอก resident ว่าคำตอบถึงแพทย์ต้นทางทางไหนบ้าง จะได้ไม่ต้องเดาว่า LINE ไปไหม
+    const viaLine = result.lineNotified ? " และเด้งเข้า LINE แล้ว" : "";
 
     return {
       ok: true,
       referralId: result.referralId,
       message: result.emailed
-        ? `บันทึกคำตอบและส่งอีเมลกลับแพทย์ต้นทางแล้ว${withFile}`
+        ? `บันทึกคำตอบและส่งอีเมลกลับแพทย์ต้นทางแล้ว${viaLine}${withFile}`
         : `บันทึกคำตอบแล้ว${withFile} — แต่เคสนี้ไม่มีอีเมลผู้ส่ง กรุณาโทรแจ้งกลับเอง`,
     };
   } catch (error) {

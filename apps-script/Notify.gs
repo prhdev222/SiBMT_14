@@ -684,14 +684,15 @@ function sendLinkCodeEmail_(email, code) {
 function notifyReferrerOnLine_(row, answerToken) {
   try {
     const userId = findLineUserByPhone_(row['referrer_phone']);
-    if (!userId) return;
+    // ไม่ได้ผูกบัญชี — ไม่ใช่ความผิดพลาด แค่ยังไม่มีปลายทาง LINE
+    if (!userId) return false;
 
     const token = PropertiesService.getScriptProperties()
       .getProperty('LINE_CHANNEL_ACCESS_TOKEN');
-    if (!token) return;
+    if (!token) return false;
 
     const referralId = String(row['referral_id'] || '').trim();
-    sendOneLineMessage_(token, userId, [
+    return sendOneLineMessage_(token, userId, [
       linkButtonMessage_(
         'ทีมโลหิตวิทยาตอบคำปรึกษา ' + referralId + ' แล้ว',
         'เปิดคำตอบ',
@@ -700,6 +701,7 @@ function notifyReferrerOnLine_(row, answerToken) {
     ]);
   } catch (err) {
     console.error('เด้งลิงก์คำตอบเข้า LINE ไม่สำเร็จ: ' + err);
+    return false;
   }
 }
 
@@ -716,9 +718,12 @@ function sendOneLineMessage_(token, to, messages) {
     if (response.getResponseCode() !== 200) {
       console.error('ส่ง LINE ไม่สำเร็จ (' + response.getResponseCode() + '): ' +
         response.getContentText());
+      return false;
     }
+    return true;
   } catch (err) {
     console.error('ส่ง LINE ไม่สำเร็จ ปลายทาง ' + to + ': ' + err);
+    return false;
   }
 }
 
