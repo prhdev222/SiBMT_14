@@ -274,18 +274,22 @@ function phoneKey_(value) {
 /**
  * บรรทัด "ทางหนี" เมื่อช่องทาง LINE ช่วยไม่ได้ (ติด rate limit, ค้นไม่พบ ฯลฯ)
  *
- * มติ 1 ก.ย. 2569: ตามตัวคนให้ชี้ไป "วอร์ดเคมีบำบัด" ซึ่งพยาบาลรับสายแล้ว
- * ตามแพทย์ให้ได้เสมอ — ไม่ใช่เบอร์ธุรการ OPD 700 ซึ่งไม่รู้จักระบบนี้
- * ส่วนแอดมินติดต่อทาง LINE เท่านั้น (central_admin_contact = LINE)
+ * มติ 1 ก.ย. 2569 (ฉบับแยกตามกลุ่ม):
+ *   เรื่องของกลุ่ม 2/3 (คำปรึกษา/คำตอบ = งาน resident) → วอร์ดเคมีบำบัด
+ *   เรื่องของกลุ่ม 1/4 และเรื่องที่ยังไม่รู้กลุ่ม        → ธุรการ OPD 700
+ *   แอดมินไม่มีเบอร์ ติดต่อทาง LINE เท่านั้น
  *
- * เบอร์วอร์ดอ่านจากชีต config (chemo_ward_phone) จะได้เปลี่ยนได้โดยไม่ต้อง
- * deploy — ⚠️ ถ้ายังไม่ได้กรอก จะถอยไปใช้เบอร์ธุรการ OPD 700 แทน
- * เพราะข้อความที่บอกให้โทรแต่ไม่มีเบอร์ คือทางตันที่แย่กว่าเบอร์ที่ผิดนโยบาย
+ * เบอร์วอร์ดอ่านจากชีต config (chemo_ward_phone) เปลี่ยนได้โดยไม่ต้อง deploy
+ * ⚠️ ถ้ายังไม่ได้กรอก จะถอยไปใช้เบอร์ OPD 700 — ข้อความที่บอกให้โทร
+ * แต่ไม่มีเบอร์ คือทางตันที่แย่กว่าเบอร์ที่ไม่ตรงกลุ่ม
  */
-function urgentPhoneLine_(prefix) {
-  const ward = String(readConfigValue_('chemo_ward_phone') || '').trim();
-  if (ward) {
-    return prefix + ' โทรวอร์ดเคมีบำบัด ' + ward;
+function urgentPhoneLine_(prefix, useWardPhone) {
+  if (useWardPhone) {
+    const ward = String(readConfigValue_('chemo_ward_phone') || '').trim();
+    if (ward) {
+      return prefix + ' โทรวอร์ดเคมีบำบัด ' + ward;
+    }
   }
-  return prefix + ' โทร ' + CONTACT_PHONE + ' (จันทร์-ศุกร์ 08:30-16:30 น.)';
+  return prefix + ' โทร OPD 700 ที่ ' + CONTACT_PHONE +
+    ' (จันทร์-ศุกร์ 08:30-16:30 น.)';
 }

@@ -148,7 +148,7 @@ function canStillChange_(clinicDate, payload) {
 function tooLateMessage_(clinicDate) {
   return 'เลยกำหนดแก้ไขแล้ว — ยกเลิกหรือเลื่อนนัดได้ถึงวันก่อนวันนัด (' +
     formatThaiDate_(clinicDate, true) + ') เท่านั้น\n' +
-    'กรุณาแจ้งทาง LINE ' + LINE_OA_ID + ' (กดปุ่ม "ติดต่อเจ้าหน้าที่")';
+    'กรุณาโทรแจ้งธุรการ OPD 700 ที่ ' + CONTACT_PHONE + ' ในเวลาราชการ';
 }
 
 /* ------------------------------------------------------------------ */
