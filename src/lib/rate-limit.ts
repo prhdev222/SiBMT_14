@@ -51,6 +51,16 @@ export async function allowAdminContact(): Promise<boolean> {
   return allowAttempt("MANAGE_RATE_LIMIT", "contact");
 }
 
+/** เช็กสถานะ/รายการเคสจากแชทเว็บ — เพดานเดียวกับหน้าจัดการนัด */
+export async function allowBotLookup(): Promise<boolean> {
+  return allowAttempt("MANAGE_RATE_LIMIT", "bot");
+}
+
+/** ขอรหัสอีเมล — แยกถังเพราะยิงอีเมลออกจริง สแปมได้ */
+export async function allowBotCode(): Promise<boolean> {
+  return allowAttempt("MANAGE_RATE_LIMIT", "botcode");
+}
+
 async function allowAttempt(binding: string, prefix: string): Promise<boolean> {
   const limiter = await getLimiter(binding);
   if (!limiter) return true;

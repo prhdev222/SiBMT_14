@@ -306,3 +306,20 @@ export async function contactAdmin(
 ): Promise<{ delivered: boolean }> {
   return callAppsScript("contactAdmin", payload);
 }
+
+/* ------------------------------------------------------------------ */
+/* Hemato Bot — แชทตอบสถานะและยืนยันตัวตนด้วยรหัสทางอีเมล                    */
+/* ------------------------------------------------------------------ */
+
+export async function sendBotCodeEmail(payload: {
+  email: string;
+  code: string;
+}): Promise<{ ok: boolean }> {
+  return callAppsScript("sendBotCode", payload);
+}
+
+export async function resendAdviceEmail(payload: {
+  referralId: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  return callAppsScript("resendAdvice", payload);
+}
