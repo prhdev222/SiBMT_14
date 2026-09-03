@@ -9,10 +9,15 @@
  */
 
 import { LINE_OA } from "@/lib/config";
+import {
+  INDICATIONS_BY_TYPE,
+  TRANSPLANT_TYPE_LABEL_TH,
+  findIndication,
+  type TransplantType,
+} from "@/lib/transplant-indications";
 
-/** ทุก step ที่ widget รู้จัก — answers.entry/phone/code/list มี logic จริงแล้ว
- * (Task 9) ส่วน regimens.result, indications.disease ยังไม่มี (ของ Task 10)
- * แต่ประกาศ union ไว้ครบตาม spec เพื่อไม่ต้องแก้ type ซ้ำทีหลัง
+/** ทุก step ที่ widget รู้จัก — answers.entry/phone/code/list (Task 9) และ
+ * regimens.ask/result, indications.type/disease (Task 10) มี logic จริงแล้ว
  */
 export type BotStep =
   | "menu"
@@ -35,13 +40,24 @@ export type BotStep =
 
 export interface BotChip {
   label: string;
-  /** ปุ่มเปลี่ยน step ปกติ — ไม่ตั้งคู่กับ resendReferralId */
+  /** ปุ่มเปลี่ยน step ปกติ — ไม่ตั้งคู่กับ resendReferralId/query/transplantType/indicationId */
   go?: BotStep;
   /**
    * ถ้ามีค่า แปลว่า chip นี้ไม่เปลี่ยน step แต่เรียก resendAnswerAction(referralId)
    * แทน — ใช้เฉพาะปุ่ม "ส่งสำเนาเข้าอีเมลเดิม" ใน answers.list (ต่อ 1 เคส)
    */
   resendReferralId?: string;
+  /**
+   * chip กลุ่มโรคเด่นใน regimens.ask — กดแล้วค้นด้วยคำนี้ทันที (เรียก
+   * searchRegimensAction(query) แล้วไป regimens.result เอง) ไม่ใช่แค่เปลี่ยน step เฉย ๆ
+   */
+  query?: string;
+  /** chip เลือกประเภทปลูกถ่ายใน indications.type — พาไป indications.disease
+   * พร้อม chips เฉพาะโรคของประเภทนั้น */
+  transplantType?: TransplantType;
+  /** chip เลือกโรคใน indications.disease — โชว์ bubble เกณฑ์ของโรคนั้นทันที
+   * (id อ้างอิง TransplantIndication.id ใน src/lib/transplant-indications.ts) */
+  indicationId?: string;
 }
 
 export interface BotLink {
@@ -61,6 +77,13 @@ export interface BotLink {
   hardNavigation?: boolean;
 }
 
+/** แถวย่อยในบับเบิลเดียว — primary ตัวหนา + secondary ตัวรอง (ใช้กับรายการสูตรยา
+ * ใน regimens.result: abbr เป็น primary, components เป็น secondary) */
+export interface BotMessageItem {
+  primary: string;
+  secondary?: string;
+}
+
 export interface BotMessage {
   from: "bot" | "user";
   text: string;
@@ -72,6 +95,11 @@ export interface BotMessage {
    * แต่ละเคสมีลิงก์/ปุ่มของตัวเอง จึงต้องคงไว้ทุกอันพร้อมกันไม่ใช่แค่อันสุดท้าย
    */
   sticky?: boolean;
+  /** รายการย่อยแสดงต่อจาก text ในบับเบิลเดียวกัน — ดู BotMessageItem */
+  items?: BotMessageItem[];
+  /** ข้อความปิดท้ายบับเบิลเดียวกัน ต่อจาก items — ใช้กับ regimens.result เพื่อชวน
+   * ส่งเคสกลุ่ม 2 ต่อจากรายการสูตรยา ไม่ต้องแยกบับเบิลใหม่ (ลิงก์อยู่ใน links ตามปกติ) */
+  footer?: string;
 }
 
 /** ตัวอย่างรูปแบบเลขที่อ้างอิง — ใช้ทั้งตอนถามและตอนบอกว่าไม่พบ ให้ตรงกันเสมอ */
@@ -110,24 +138,19 @@ export function menuMessage(): BotMessage {
   return { from: "bot", text: "เมนูหลักครับ เลือกได้เลย", chips: MAIN_MENU_CHIPS };
 }
 
-const PLACEHOLDER_TEXT = "เมนูนี้กำลังเปิดใช้งานเร็ว ๆ นี้ 🙏 ระหว่างนี้ลองเมนูอื่นได้ครับ";
-
 /**
  * ข้อความคงที่ของ step ที่ "ตอบจบในตัวเอง" — ไม่ต้องเรียก server action
  * และไม่มีลูกเข้า input ต่อ (ลิงก์ตรง/placeholder เฉย ๆ)
  *
  * status.ask, status.result, cases.ask, cases.result, answers.entry,
- * answers.phone, answers.code, answers.list มี logic เรียก action จริงจึงประกอบ
- * ข้อความใน HematoBotWidget.tsx แทน (ผ่านฟังก์ชันของ flows.ts เอง) ไม่ได้อยู่ใน
- * ตารางนี้
+ * answers.phone, answers.code, answers.list, regimens.ask, regimens.result,
+ * indications.disease มี logic เรียก action จริงหรือต้องพก state (กลุ่มโรคเด่น/
+ * ประเภทปลูกถ่ายที่เลือก) จึงประกอบข้อความใน HematoBotWidget.tsx แทน (ผ่าน
+ * ฟังก์ชันของ flows.ts เอง) ไม่ได้อยู่ในตารางนี้ — indications.type ไม่มี state
+ * ให้พกจึงยังอยู่ในตารางนี้ได้ตามปกติ
  */
 export const STATIC_STEP_MESSAGES: Partial<Record<BotStep, () => BotMessage[]>> = {
-  "regimens.ask": () => [
-    { from: "bot", text: PLACEHOLDER_TEXT, chips: [MENU_CHIP] },
-  ],
-  "indications.type": () => [
-    { from: "bot", text: PLACEHOLDER_TEXT, chips: [MENU_CHIP] },
-  ],
+  "indications.type": () => [indicationsTypeMessage()],
   booking: () => [
     {
       from: "bot",
@@ -144,11 +167,18 @@ export const STATIC_STEP_MESSAGES: Partial<Record<BotStep, () => BotMessage[]>> 
       chips: [MENU_CHIP],
     },
   ],
+  // เนื้อหาอ้างอิงจาก HospitalAppointmentCard ใน src/app/refer/[type]/page.tsx
+  // (ส่วนกลุ่มที่ 4) — คัดมาเฉพาะข้อเท็จจริงหลัก ไม่ใช้ฟอร์ม ไม่ใช่คำอธิบายทั่วไป
+  // เหมือนของเดิม เพราะกลุ่มนี้ไม่มีแบบฟอร์มให้กรอกเลย (มติอาจารย์ 2 ส.ค. 2569)
   group4: () => [
     {
       from: "bot",
-      text: "ส่งต่อผู้ป่วยนอกด้วยเหตุผลอื่น (กลุ่มที่ 4) กดลิงก์ด้านล่างเพื่อกรอกแบบฟอร์มได้เลยครับ",
-      links: [{ label: "🌐 Refer กลุ่มที่ 4", href: "/refer/general" }],
+      text:
+        'ส่งต่อผู้ป่วยนอกด้วยเหตุผลอื่น (กลุ่มที่ 4) ไม่ต้องกรอกแบบฟอร์มครับ ให้ผู้ป่วยเพิ่มเพื่อน LINE "Siriraj นัดหมาย" ' +
+        'แล้วทำนัดเอง ดูนัดหมาย/ชำระเงินครั้งถัดไปได้ที่เมนู "Siriraj Connect" ในแอปเดียวกัน ' +
+        "หากทำบัตรโรงพยาบาลออนไลน์ไม่ผ่าน ติดต่อหน่วยเวชระเบียน 02-419-7323, 02-419-9990 " +
+        "กดลิงก์ด้านล่างดูขั้นตอนแบบเต็มพร้อม QR code ได้เลยครับ",
+      links: [{ label: "🌐 ขั้นตอน Refer กลุ่มที่ 4", href: "/refer/general" }],
       chips: [ADMIN_CONTACT_CHIP, MENU_CHIP],
     },
   ],
@@ -343,6 +373,168 @@ export function answerCaseMessage(c: AnswerCaseFields): BotMessage {
     chips: c.answerUrl
       ? [{ label: RESEND_ANSWER_LABEL, resendReferralId: c.referralId }]
       : undefined,
+    sticky: true,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* ค้นสูตรยาเคมีบำบัด — Task 10                                            */
+/* ------------------------------------------------------------------ */
+
+/** ฟิลด์ร่วมของผลลัพธ์ searchRegimensAction (src/app/hemato-bot/actions.ts) —
+ * พิมพ์ซ้ำแบบ structural แทนการ import type ข้ามมา เพื่อให้ flows.ts เป็นไฟล์
+ * copy ล้วน ๆ ไม่ผูกกับ shape ของ server action โดยตรง (แพตเทิร์นเดียวกับ StatusFields)
+ */
+interface RegimenListItem {
+  diseaseGroup: string;
+  abbr: string;
+  components: string;
+}
+
+/** placeholder ช่องค้นสูตรยา */
+export const REGIMEN_QUERY_PLACEHOLDER = "เช่น CHOP";
+
+/** แสดงผลลัพธ์สูตรยาสูงสุดกี่รายการต่อการค้น 1 ครั้ง — ตาม spec */
+export const MAX_REGIMEN_RESULTS = 15;
+
+/** chip "ค้นคำใหม่" ท้าย regimens.result — กลับไป regimens.ask (แสดง chips
+ * กลุ่มโรคเด่นที่แคชไว้แล้ว ไม่ต้องเรียก searchRegimensAction("") ซ้ำ — ดู
+ * enterRegimensAsk ใน HematoBotWidget.tsx)
+ */
+export const RETRY_REGIMENS_CHIP: BotChip = { label: "ค้นคำใหม่", go: "regimens.ask" };
+
+/**
+ * ตัดกลุ่มโรคซ้ำออก เก็บลำดับที่ปรากฏก่อน — ใช้สร้าง chips "กลุ่มโรคเด่น" จาก
+ * ผลค้นครั้งแรก (query ว่าง) ของ searchRegimensAction ตอนเข้า regimens.ask ครั้งแรก
+ *
+ * เป็น pure formatter (ไม่พก state/side effect) จึงมีเทสต์แยกที่
+ * src/components/hemato-bot/__tests__/flows.test.ts
+ */
+export function uniqueDiseaseGroups(regimens: RegimenListItem[]): string[] {
+  const seen = new Set<string>();
+  const groups: string[] = [];
+  for (const r of regimens) {
+    if (!seen.has(r.diseaseGroup)) {
+      seen.add(r.diseaseGroup);
+      groups.push(r.diseaseGroup);
+    }
+  }
+  return groups;
+}
+
+/** ข้อความถามคำค้น + chips กลุ่มโรคเด่น — diseaseGroups ว่างได้ (เช่นตอน demo ที่
+ * ไม่มีชีตให้อ่าน) ก็ยังพิมพ์ค้นเองในช่องกรอกด้านล่างแผงแชทได้ตามปกติ
+ */
+export function regimensAskMessage(diseaseGroups: string[]): BotMessage {
+  return {
+    from: "bot",
+    text: "พิมพ์ชื่อสูตรยา หรือกลุ่มโรคที่ต้องการค้นได้เลยครับ",
+    chips: [
+      ...diseaseGroups.map((g): BotChip => ({ label: g, query: g })),
+      MENU_CHIP,
+    ],
+  };
+}
+
+/** บับเบิลผลค้นสูตรยา — ไม่พบ: ข้อความสุภาพ + ชวนลองใหม่ / พบ: abbr ตัวหนา +
+ * components ตัวรอง สูงสุด MAX_REGIMEN_RESULTS รายการ + บรรทัดท้ายชวนส่งเคส
+ * กลุ่ม 2 พร้อมลิงก์ — ทั้งหมดอยู่ในบับเบิลเดียว (sticky เพราะลิงก์/chip ต้องกด
+ * ได้ต่อแม้ผู้ใช้ค้นคำใหม่ต่อจนบับเบิลนี้ไม่ใช่ข้อความล่าสุดแล้ว)
+ */
+export function regimenResultMessage(
+  query: string,
+  results: RegimenListItem[],
+): BotMessage {
+  if (results.length === 0) {
+    return {
+      from: "bot",
+      text: `ไม่พบสูตรยาที่ตรงกับ "${query}" ครับ ลองคำค้นอื่น หรือเลือกกลุ่มโรคด้านล่างอีกครั้ง`,
+      chips: [RETRY_REGIMENS_CHIP, MENU_CHIP],
+    };
+  }
+
+  const shown = results.slice(0, MAX_REGIMEN_RESULTS);
+  const items = shown.map((r): BotMessageItem => ({ primary: r.abbr, secondary: r.components }));
+  const text =
+    results.length > MAX_REGIMEN_RESULTS
+      ? `พบ ${results.length} สูตร แสดง ${MAX_REGIMEN_RESULTS} รายการแรกที่ตรงกับ "${query}"`
+      : `พบ ${results.length} สูตรที่ตรงกับ "${query}"`;
+
+  return {
+    from: "bot",
+    text,
+    items,
+    footer: "ต้องการความเห็นสูตรยา ส่งเคสกลุ่ม 2 ได้เลยครับ",
+    links: [{ label: "💊 ส่งเคสกลุ่ม 2 — ขอความเห็นสูตรยา", href: "/refer/regimen-consult" }],
+    chips: [RETRY_REGIMENS_CHIP, MENU_CHIP],
+    sticky: true,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Transplant indication — เกณฑ์การส่งต่อเข้าเตรียมปลูกถ่าย (Task 10)        */
+/* ------------------------------------------------------------------ */
+
+/** ข้อความถามประเภทปลูกถ่าย — label ใช้ TRANSPLANT_TYPE_LABEL_TH ตรง ๆ ตาม spec */
+export function indicationsTypeMessage(): BotMessage {
+  return {
+    from: "bot",
+    text: "เลือกประเภทการปลูกถ่ายที่ต้องการดูเกณฑ์ครับ",
+    chips: [
+      { label: TRANSPLANT_TYPE_LABEL_TH.AUTOLOGOUS, transplantType: "AUTOLOGOUS" },
+      { label: TRANSPLANT_TYPE_LABEL_TH.ALLOGENEIC, transplantType: "ALLOGENEIC" },
+      MENU_CHIP,
+    ],
+  };
+}
+
+/** ข้อความถามโรค — chips ต่อโรคของประเภทที่เลือก (INDICATIONS_BY_TYPE คำนวณจาก
+ * TRANSPLANT_INDICATIONS ไว้แล้วใน transplant-indications.ts) รายชื่อโรคอาจยาว
+ * แต่ container ของ chips เป็น flex-wrap อยู่แล้ว (ดู HematoBotWidget.tsx) จึง
+ * ตัดบรรทัดเองในพื้นที่แผงแชทโดยไม่ต้องเพิ่ม CSS พิเศษ
+ */
+export function indicationsDiseaseMessage(type: TransplantType, typeLabel: string): BotMessage {
+  const diseases = INDICATIONS_BY_TYPE[type];
+  return {
+    from: "bot",
+    text: `เลือกโรคของ ${typeLabel} ที่ต้องการดูเกณฑ์ครับ`,
+    chips: [
+      ...diseases.map((d): BotChip => ({ label: d.diseaseTh, indicationId: d.id })),
+      MENU_CHIP,
+    ],
+  };
+}
+
+/** ข้อความกำกับมาตรฐาน — ต้องคงคำนี้เป๊ะตามมติอาจารย์ 2 ส.ค. 2569 (ดูหัวไฟล์
+ * transplant-indications.ts): เกณฑ์เป็นข้อมูลประกอบ ไม่ใช่ด่านกั้นการส่งเคส
+ */
+export const TRANSPLANT_INDICATION_DISCLAIMER =
+  "ข้อมูลประกอบการตัดสินใจ ไม่ใช่ด่านกั้น — ส่งเคสได้แม้เกณฑ์ยังไม่ครบ";
+
+const INDICATION_NOT_FOUND_TEXT = "ไม่พบข้อมูลเกณฑ์ของรายการนี้ครับ";
+
+/** บับเบิลเกณฑ์ของโรคที่เลือก — statusTh/ageTh อาจว่าง (บางแถวไม่ระบุ) จึงมี
+ * fallback "ไม่ระบุ" กันบรรทัดว่างเปล่าดูเหมือนข้อมูลหาย
+ */
+export function indicationResultMessage(id: string): BotMessage {
+  const indication = findIndication(id);
+  if (!indication) {
+    return { from: "bot", text: INDICATION_NOT_FOUND_TEXT, chips: [MENU_CHIP] };
+  }
+
+  const text = [
+    indication.diseaseTh,
+    `เกณฑ์ตอบสนอง: ${indication.statusTh || "ไม่ระบุ"}`,
+    `เกณฑ์อายุ: ${indication.ageTh || "ไม่ระบุ"}`,
+    "",
+    TRANSPLANT_INDICATION_DISCLAIMER,
+  ].join("\n");
+
+  return {
+    from: "bot",
+    text,
+    links: [{ label: "📅 จองนัดกลุ่ม 1", href: "/book/transplant" }],
+    chips: [MENU_CHIP],
     sticky: true,
   };
 }

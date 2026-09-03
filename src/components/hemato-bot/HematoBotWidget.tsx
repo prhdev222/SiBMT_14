@@ -20,6 +20,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import type { TransplantType } from "@/lib/transplant-indications";
 import {
   lookupStatusAction,
   listCasesAction,
@@ -27,6 +28,7 @@ import {
   verifyCodeAction,
   verifiedCasesAction,
   resendAnswerAction,
+  searchRegimensAction,
 } from "@/app/hemato-bot/actions";
 import {
   ADMIN_CONTACT_CHIP,
@@ -41,6 +43,7 @@ import {
   MAIN_MENU_CHIPS,
   MENU_CHIP,
   REFERRAL_ID_EXAMPLE,
+  REGIMEN_QUERY_PLACEHOLDER,
   REQUEST_CODE_FALLBACK_ERROR,
   REQUEST_NEW_CODE_CHIP,
   RESEND_FALLBACK_ERROR,
@@ -60,10 +63,15 @@ import {
   formatCaseLine,
   formatStatusResult,
   greetingMessage,
+  indicationResultMessage,
+  indicationsDiseaseMessage,
   lineUnlinkedMessage,
   lineVerifiedMessage,
   menuMessage,
+  regimenResultMessage,
+  regimensAskMessage,
   statusAskMessage,
+  uniqueDiseaseGroups,
   type BotChip,
   type BotMessage,
   type BotStep,
@@ -103,7 +111,13 @@ function buildStepMessages(step: BotStep): BotMessage[] {
 }
 
 /** step ที่มีช่องกรอกข้อความด้านล่างแผงแชท */
-const INPUT_STEPS: BotStep[] = ["status.ask", "cases.ask", "answers.phone", "answers.code"];
+const INPUT_STEPS: BotStep[] = [
+  "status.ask",
+  "cases.ask",
+  "answers.phone",
+  "answers.code",
+  "regimens.ask",
+];
 
 /** step ที่คีย์บอร์ดมือถือควรขึ้นแป้นตัวเลข (เบอร์โทร/รหัส 6 หลัก) */
 const NUMERIC_INPUT_STEPS: BotStep[] = ["cases.ask", "answers.phone", "answers.code"];
@@ -115,6 +129,10 @@ export function HematoBotWidget() {
   const [messages, setMessages] = useState<BotMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [pending, setPending] = useState(false);
+  // แคชกลุ่มโรคเด่นจาก searchRegimensAction("") ครั้งแรก — null = ยังไม่เคยโหลด,
+  // [] = โหลดแล้วแต่ไม่มีข้อมูล (เช่น demo ที่ไม่มีชีตให้อ่าน) ทั้งสองกรณีต่างจากกัน
+  // เพื่อไม่ให้ enterRegimensAsk() ยิง action ซ้ำทุกครั้งที่กลับมาที่เมนูนี้
+  const [regimenDiseaseGroups, setRegimenDiseaseGroups] = useState<string[] | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // เปิดอัตโนมัติพร้อมข้อความที่เหมาะสมเมื่อกลับมาจากหน้าผูกบัญชี LINE (Task 7)
@@ -190,7 +208,65 @@ export function HematoBotWidget() {
       void refreshAnswers();
       return;
     }
+    // regimens.ask ต้องพก chips กลุ่มโรคเด่นที่มาจาก searchRegimensAction("") —
+    // โหลดครั้งแรกแล้วแคชไว้ใน state (regimenDiseaseGroups) เหตุผลเดียวกับ
+    // answers.entry ด้านบนที่แยกออกจาก buildStepMessages แบบซิงโครนัส
+    if (next === "regimens.ask") {
+      void enterRegimensAsk();
+      return;
+    }
     setMessages((prev) => [...prev, ...buildStepMessages(next)]);
+  }
+
+  /** โหลด chips กลุ่มโรคเด่นครั้งแรก (แคชไว้ไม่ยิง action ซ้ำ) แล้วต่อท้ายด้วย
+   * regimensAskMessage — ดู state regimenDiseaseGroups ด้านบน
+   */
+  async function enterRegimensAsk() {
+    if (regimenDiseaseGroups !== null) {
+      setMessages((prev) => [...prev, regimensAskMessage(regimenDiseaseGroups)]);
+      return;
+    }
+    setPending(true);
+    const results = await searchRegimensAction("");
+    setPending(false);
+    const groups = uniqueDiseaseGroups(results);
+    setRegimenDiseaseGroups(groups);
+    setMessages((prev) => [...prev, regimensAskMessage(groups)]);
+  }
+
+  async function submitRegimenSearch(rawQuery: string) {
+    const value = rawQuery.trim();
+    if (!value) return;
+    setMessages((prev) => [...prev, { from: "user", text: value }]);
+    setInputValue("");
+    setPending(true);
+    const results = await searchRegimensAction(value);
+    setPending(false);
+    setMessages((prev) => [...prev, regimenResultMessage(value, results)]);
+    setStep("regimens.result");
+  }
+
+  /** เลือกประเภทปลูกถ่าย (Auto/Allo) ใน indications.type — โชว์ chips รายโรค
+   * ของประเภทนั้นต่อทันที ไม่ต้องเรียก action เพราะเป็น static data ล้วน ๆ
+   */
+  function selectTransplantType(type: TransplantType, label: string) {
+    setMessages((prev) => [
+      ...prev,
+      { from: "user", text: label },
+      indicationsDiseaseMessage(type, label),
+    ]);
+    setStep("indications.disease");
+  }
+
+  /** เลือกโรคใน indications.disease — โชว์บับเบิลเกณฑ์ของโรคนั้นทันที ไม่เปลี่ยน
+   * step (ยังเป็น indications.disease อยู่ ไม่มี step แยกสำหรับผลลัพธ์)
+   */
+  function selectIndication(id: string, label: string) {
+    setMessages((prev) => [
+      ...prev,
+      { from: "user", text: label },
+      indicationResultMessage(id),
+    ]);
   }
 
   async function submitStatus(raw: string) {
@@ -376,6 +452,18 @@ export function HematoBotWidget() {
       void submitResend(chip.resendReferralId, chip.label);
       return;
     }
+    if (chip.query !== undefined) {
+      void submitRegimenSearch(chip.query);
+      return;
+    }
+    if (chip.transplantType) {
+      selectTransplantType(chip.transplantType, chip.label);
+      return;
+    }
+    if (chip.indicationId) {
+      selectIndication(chip.indicationId, chip.label);
+      return;
+    }
     if (chip.go) goTo(chip.go, chip.label);
   }
 
@@ -386,6 +474,7 @@ export function HematoBotWidget() {
     else if (step === "cases.ask") void submitCases(inputValue);
     else if (step === "answers.phone") void submitAnswersPhone(inputValue);
     else if (step === "answers.code") void submitAnswersCode(inputValue);
+    else if (step === "regimens.ask") void submitRegimenSearch(inputValue);
   }
 
   const showInput = INPUT_STEPS.includes(step);
@@ -439,15 +528,28 @@ export function HematoBotWidget() {
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.from === "user" ? "justify-end" : "justify-start"}`}>
                 <div className="max-w-[85%] space-y-2">
-                  <p
+                  <div
                     className={`whitespace-pre-line rounded-2xl px-3 py-2 text-sm ${
                       m.from === "user"
                         ? "rounded-br-sm bg-blue-600 text-white"
                         : "rounded-bl-sm bg-zinc-100 text-zinc-900"
                     }`}
                   >
-                    {m.text}
-                  </p>
+                    <p>{m.text}</p>
+                    {m.items?.length ? (
+                      <div className="mt-1.5 space-y-1">
+                        {m.items.map((item, itemIndex) => (
+                          <p key={itemIndex}>
+                            <span className="font-semibold">{item.primary}</span>
+                            {item.secondary ? (
+                              <span className="text-zinc-500"> — {item.secondary}</span>
+                            ) : null}
+                          </p>
+                        ))}
+                      </div>
+                    ) : null}
+                    {m.footer ? <p className="mt-1.5">{m.footer}</p> : null}
+                  </div>
                   {(i === lastIndex || m.sticky) && !pending && (m.chips?.length || m.links?.length) ? (
                     <div className="flex flex-wrap gap-1.5">
                       {m.links?.map((link) => {
@@ -517,7 +619,9 @@ export function HematoBotWidget() {
                     ? REFERRAL_ID_EXAMPLE
                     : step === "answers.code"
                       ? CODE_EXAMPLE_PLACEHOLDER
-                      : "081-234-5678"
+                      : step === "regimens.ask"
+                        ? REGIMEN_QUERY_PLACEHOLDER
+                        : "081-234-5678"
                 }
                 maxLength={step === "answers.code" ? 6 : undefined}
                 disabled={pending}
