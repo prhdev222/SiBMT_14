@@ -45,6 +45,7 @@ const CONFIG_SHEET = "config";
 const INDICATIONS_SHEET = "transplant_indications";
 const REGIMENS_SHEET = "chemo_regimens";
 const ATTENDINGS_SHEET = "attendings";
+const LINE_LINKS_SHEET = "line_links";
 
 export interface ReferralSource {
   referrals: Referral[];
@@ -247,6 +248,74 @@ export async function loadReferralByAnswerToken(
     const rows = await readSheetRows(REFERRALS_SHEET);
     const row = rows.find((r) => text(r["answer_token"]) === token);
     return row ? toReferral(row) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * แถวดิบสำหรับ Hemato Bot — ใช้ฝั่ง server เท่านั้น อย่าส่งทั้งแถวให้ client
+ *
+ * โหมดสาธิต (dev:demo) ไม่มี credential ให้อ่านชีตจริง จึงแปลง MOCK_REFERRALS
+ * เป็นรูปแถวดิบแทน เพื่อให้ทดสอบแชทได้ครบทุกเส้นทางแม้ไม่ได้ต่อ Google Sheet
+ */
+export async function loadRawReferralRows(): Promise<Record<string, string>[]> {
+  if (!readCredentials()) return MOCK_REFERRALS.map(toDemoRawRow);
+
+  try {
+    return await readSheetRows(REFERRALS_SHEET);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * แปลง Referral ตัวอย่างเป็นแถวดิบของโหมดสาธิต
+ *
+ * MOCK_REFERRALS ไม่มีคอลัมน์อีเมล/answer_token จริง (ไม่ใช่ field ของ Referral)
+ * จึงเติม token ปลอมให้เฉพาะเคสที่มี adviceRecord แล้ว (มีคำตอบให้เปิดดูได้)
+ * ส่วนอีเมลปล่อยว่างเพราะข้อมูลตัวอย่างไม่มีให้อ้างอิง
+ */
+function toDemoRawRow(referral: Referral): Record<string, string> {
+  return {
+    referral_id: referral.referralId,
+    referral_type: referral.referralType,
+    status: referral.status,
+    submitted_at: referral.submittedAt,
+    referrer_phone: referral.referrerPhone,
+    referrer_email: "",
+    advice_record: referral.adviceRecord,
+    answer_token: referral.adviceRecord
+      ? demoAnswerToken(referral.referralId)
+      : "",
+  };
+}
+
+/** token ปลอมสำหรับโหมดสาธิตเท่านั้น ยาวพอผ่านเกณฑ์ตรวจความยาวเหมือน token จริง */
+function demoAnswerToken(referralId: string): string {
+  return `demo-${referralId}`.padEnd(32, "0");
+}
+
+/**
+ * ผูก LINE userId กับเบอร์โทรที่ยืนยันตัวตนแล้ว จากชีต `line_links`
+ *
+ * ชีตเดียวกับที่ findLineLink_ ใน apps-script/LineWebhook.gs อ่าน — แต่ที่นี่
+ * เทียบ active === "yes" ตรง ๆ (ไม่ถือว่าเว้นว่าง = ใช้งานอยู่เหมือนฝั่ง .gs)
+ * เพราะแถวที่ยกเลิกผูกแล้ว (เช่น เปลี่ยนเบอร์) ต้องไม่ให้ bot คืนเบอร์เก่า
+ */
+export async function loadLineLink(
+  userId: string,
+): Promise<{ phone: string } | null> {
+  if (!readCredentials() || !userId) return null;
+
+  try {
+    const rows = await readSheetRows(LINE_LINKS_SHEET);
+    const hit = rows.find(
+      (r) =>
+        text(r["line_user_id"]) === userId &&
+        text(r["active"]).toLowerCase() === "yes",
+    );
+    return hit ? { phone: text(hit["referrer_phone"]) } : null;
   } catch {
     return null;
   }
