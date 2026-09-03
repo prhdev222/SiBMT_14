@@ -22,6 +22,8 @@ export const MOCK_REFERRALS: Referral[] = [
     questionType: "",
     answeredBy: "",
     adviceAttending: "",
+    // ข้อมูลตัวอย่างส่วนใหญ่ไม่มีปัญหาเรื่องอีเมล — ดูข้อยกเว้นที่ HEM-20260730-0016
+    emailUnverified: false,
     urgency: "Urgent",
     status: "Incomplete",
     assignedTo: "พญ. สุดา (Fellow transplant)",
@@ -53,6 +55,8 @@ export const MOCK_REFERRALS: Referral[] = [
     questionType: "",
     answeredBy: "",
     adviceAttending: "",
+    // ข้อมูลตัวอย่างส่วนใหญ่ไม่มีปัญหาเรื่องอีเมล — ดูข้อยกเว้นที่ HEM-20260730-0016
+    emailUnverified: false,
     urgency: "Routine",
     status: "Slot Reserved",
     assignedTo: "พญ. สุดา (Fellow transplant)",
@@ -84,6 +88,8 @@ export const MOCK_REFERRALS: Referral[] = [
     questionType: "",
     answeredBy: "",
     adviceAttending: "",
+    // ข้อมูลตัวอย่างส่วนใหญ่ไม่มีปัญหาเรื่องอีเมล — ดูข้อยกเว้นที่ HEM-20260730-0016
+    emailUnverified: false,
     urgency: "Urgent",
     status: "Pending Review",
     assignedTo: null,
@@ -115,6 +121,8 @@ export const MOCK_REFERRALS: Referral[] = [
     questionType: "",
     answeredBy: "",
     adviceAttending: "",
+    // ข้อมูลตัวอย่างส่วนใหญ่ไม่มีปัญหาเรื่องอีเมล — ดูข้อยกเว้นที่ HEM-20260730-0016
+    emailUnverified: false,
     urgency: "Urgent",
     status: "Appointment Confirmed",
     assignedTo: "พญ. สุดา (Fellow transplant)",
@@ -146,6 +154,8 @@ export const MOCK_REFERRALS: Referral[] = [
     questionType: "",
     answeredBy: "",
     adviceAttending: "",
+    // ข้อมูลตัวอย่างส่วนใหญ่ไม่มีปัญหาเรื่องอีเมล — ดูข้อยกเว้นที่ HEM-20260730-0016
+    emailUnverified: false,
     urgency: "Urgent",
     status: "Pending Review",
     assignedTo: null,
@@ -179,6 +189,8 @@ export const MOCK_REFERRALS: Referral[] = [
     questionType: "",
     answeredBy: "",
     adviceAttending: "",
+    // ข้อมูลตัวอย่างส่วนใหญ่ไม่มีปัญหาเรื่องอีเมล — ดูข้อยกเว้นที่ HEM-20260730-0016
+    emailUnverified: false,
     urgency: "Routine",
     status: "Awaiting Attending",
     assignedTo: "นพ. ปกรณ์ (R3 วอร์ดเคโม)",
@@ -212,6 +224,8 @@ export const MOCK_REFERRALS: Referral[] = [
     questionType: "REGIMEN_CHOICE",
     answeredBy: "",
     adviceAttending: "",
+    // ข้อมูลตัวอย่างส่วนใหญ่ไม่มีปัญหาเรื่องอีเมล — ดูข้อยกเว้นที่ HEM-20260730-0016
+    emailUnverified: false,
     urgency: "Urgent",
     status: "Advice Sent",
     assignedTo: "พญ. ชนิกา (R2 วอร์ดเคโม)",
@@ -245,6 +259,8 @@ export const MOCK_REFERRALS: Referral[] = [
     questionType: "",
     answeredBy: "",
     adviceAttending: "",
+    // ข้อมูลตัวอย่างส่วนใหญ่ไม่มีปัญหาเรื่องอีเมล — ดูข้อยกเว้นที่ HEM-20260730-0016
+    emailUnverified: false,
     urgency: "Routine",
     status: "Pending Review",
     assignedTo: null,
@@ -278,6 +294,9 @@ export const MOCK_REFERRALS: Referral[] = [
     questionType: "",
     answeredBy: "",
     adviceAttending: "",
+    // ตัวอย่างเคสกลุ่ม 2 ที่ยังไม่ตอบและอีเมลไม่ผ่านการยืนยัน (สองอีเมลที่กรอกไม่ตรงกัน)
+    // ใช้ทดสอบธง "⚠️ อีเมลยังไม่ยืนยัน" บน dashboard
+    emailUnverified: true,
     urgency: "Routine",
     status: "Awaiting Attending",
     assignedTo: "พญ. ชนิกา (R2 วอร์ดเคโม)",
@@ -313,6 +332,8 @@ export const MOCK_REFERRALS: Referral[] = [
     questionType: "",
     answeredBy: "",
     adviceAttending: "",
+    // ข้อมูลตัวอย่างส่วนใหญ่ไม่มีปัญหาเรื่องอีเมล — ดูข้อยกเว้นที่ HEM-20260730-0016
+    emailUnverified: false,
     urgency: "Urgent",
     status: "Awaiting Attending",
     assignedTo: "นพ. ปกรณ์ (R3 วอร์ดเคโม)",
@@ -346,6 +367,8 @@ export const MOCK_REFERRALS: Referral[] = [
     questionType: "",
     answeredBy: "",
     adviceAttending: "",
+    // ข้อมูลตัวอย่างส่วนใหญ่ไม่มีปัญหาเรื่องอีเมล — ดูข้อยกเว้นที่ HEM-20260730-0016
+    emailUnverified: false,
     urgency: "Urgent",
     status: "Readiness Visit Scheduled",
     assignedTo: "พญ. ชนิกา (R2 วอร์ดเคโม)",
@@ -377,6 +400,8 @@ export const MOCK_REFERRALS: Referral[] = [
     questionType: "",
     answeredBy: "",
     adviceAttending: "",
+    // ข้อมูลตัวอย่างส่วนใหญ่ไม่มีปัญหาเรื่องอีเมล — ดูข้อยกเว้นที่ HEM-20260730-0016
+    emailUnverified: false,
     urgency: "Routine",
     status: "Submitted",
     assignedTo: null,
@@ -410,6 +435,8 @@ export const MOCK_REFERRALS: Referral[] = [
     questionType: "ADMISSION",
     answeredBy: "",
     adviceAttending: "",
+    // ข้อมูลตัวอย่างส่วนใหญ่ไม่มีปัญหาเรื่องอีเมล — ดูข้อยกเว้นที่ HEM-20260730-0016
+    emailUnverified: false,
     urgency: "Routine",
     status: "Advice Sent",
     assignedTo: "นพ. ปกรณ์ (R3 วอร์ดเคโม)",
@@ -444,6 +471,8 @@ export const MOCK_REFERRALS: Referral[] = [
     questionType: "",
     answeredBy: "",
     adviceAttending: "",
+    // ข้อมูลตัวอย่างส่วนใหญ่ไม่มีปัญหาเรื่องอีเมล — ดูข้อยกเว้นที่ HEM-20260730-0016
+    emailUnverified: false,
     urgency: "Routine",
     status: "Auto Replied",
     assignedTo: null,
@@ -475,6 +504,8 @@ export const MOCK_REFERRALS: Referral[] = [
     questionType: "",
     answeredBy: "",
     adviceAttending: "",
+    // ข้อมูลตัวอย่างส่วนใหญ่ไม่มีปัญหาเรื่องอีเมล — ดูข้อยกเว้นที่ HEM-20260730-0016
+    emailUnverified: false,
     urgency: "Routine",
     status: "Auto Replied",
     assignedTo: null,
@@ -506,6 +537,8 @@ export const MOCK_REFERRALS: Referral[] = [
     questionType: "",
     answeredBy: "",
     adviceAttending: "",
+    // ข้อมูลตัวอย่างส่วนใหญ่ไม่มีปัญหาเรื่องอีเมล — ดูข้อยกเว้นที่ HEM-20260730-0016
+    emailUnverified: false,
     urgency: "Routine",
     status: "Closed",
     assignedTo: null,

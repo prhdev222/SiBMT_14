@@ -28,6 +28,20 @@ function alertOf(r: Referral): AlertLevel {
 }
 
 /**
+ * เคสกลุ่ม 2/3 ที่ยังไม่ตอบและอีเมลผู้ส่งมีปัญหา — ควรโทรยืนยันเบอร์แทนก่อนส่งคำแนะนำกลับ
+ *
+ * "ยังไม่ตอบ" ใช้ adviceRecord ว่างเป็นตัวชี้วัด (ตรงกับที่ referral-repository.ts
+ * ใช้แยกเคสที่ "มีคำตอบให้เปิดดูได้") ไม่ใช้ status เพราะบางสถานะปิดเคสได้โดยไม่ต้องมี
+ * คำตอบบันทึกไว้เลย เช่น "Rejected / Redirected" — เคสแบบนั้นไม่ต้องเตือนเรื่องอีเมลอีกแล้ว
+ */
+function needsEmailFlag(r: Referral): boolean {
+  const isGroup2or3 =
+    r.referralType === "REGIMEN_CONSULT" || r.referralType === "CHEMO_ADMISSION";
+  const notAnsweredYet = !r.adviceRecord;
+  return r.emailUnverified && isGroup2or3 && notAnsweredYet;
+}
+
+/**
  * ส่งออกเคสที่กรองอยู่เป็น CSV
  *
  * ใช้ตัวช่วยกลางใน lib/csv.ts — เดิมมีสำเนาของตัวเองที่ไม่ได้ใส่ BOM
@@ -325,10 +339,18 @@ export function DashboardClient({ referrals }: { referrals: Referral[] }) {
                   </td>
                   <td className="px-4 py-3 text-zinc-600">{r.referrerOrg}</td>
                   <td className="px-4 py-3">
-                    <Badge
-                      label={STATUS_LABEL_TH[r.status]}
-                      colorClass={STATUS_COLOR[r.status]}
-                    />
+                    <div className="flex flex-col items-start gap-1">
+                      <Badge
+                        label={STATUS_LABEL_TH[r.status]}
+                        colorClass={STATUS_COLOR[r.status]}
+                      />
+                      {needsEmailFlag(r) && (
+                        <Badge
+                          label="⚠️ อีเมลยังไม่ยืนยัน"
+                          colorClass="bg-yellow-100 text-yellow-800"
+                        />
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-zinc-600 whitespace-nowrap">
                     {r.assignedTo ?? "—"}

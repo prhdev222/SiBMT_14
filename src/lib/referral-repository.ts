@@ -434,6 +434,12 @@ function toReferral(row: Record<string, string>): Referral | null {
     clinicalQuestion: text(row["clinical_question"]),
     adviceRecord: text(row["advice_record"]),
     transplantIndication: text(row["transplant_indication"]),
+    // อีเมลสองช่องในฟอร์มไม่ตรงกัน หรือยังไม่มีใครกดยืนยันลิงก์เกิน 1 วันทำการ (8 ชม.)
+    // — เกินกว่านั้นแปลว่าไม่ใช่แค่ยังไม่ว่างเปิดอ่าน แต่อีเมลอาจใช้ไม่ได้จริง
+    emailUnverified:
+      text(row["email_mismatch"]).toLowerCase() === "yes" ||
+      (!text(row["email_verified_at"]) &&
+        number(row["elapsed_business_hours"]) >= 8),
   };
 }
 
