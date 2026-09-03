@@ -23,12 +23,20 @@ import Link from "next/link";
 import { lookupStatusAction, listCasesAction } from "@/app/hemato-bot/actions";
 import {
   BOT_PARAM_MESSAGES,
+  CASES_NOT_FOUND_TEXT,
   MAIN_MENU_CHIPS,
   MENU_CHIP,
   REFERRAL_ID_EXAMPLE,
+  RETRY_CASES_CHIP,
+  RETRY_STATUS_CHIP,
+  SEARCH_ANOTHER_ID_CHIP,
+  SEARCH_ANOTHER_PHONE_CHIP,
   STATIC_STEP_MESSAGES,
   STATUS_NOT_FOUND_TEXT,
   casesAskMessage,
+  casesFoundSummary,
+  formatCaseLine,
+  formatStatusResult,
   greetingMessage,
   menuMessage,
   statusAskMessage,
@@ -116,7 +124,7 @@ export function HematoBotWidget() {
     if (!result.ok) {
       setMessages((prev) => [
         ...prev,
-        { from: "bot", text: result.error, chips: [{ label: "ลองอีกครั้ง", go: "status.ask" }, MENU_CHIP] },
+        { from: "bot", text: result.error, chips: [RETRY_STATUS_CHIP, MENU_CHIP] },
       ]);
       setStep("status.result");
       return;
@@ -127,23 +135,17 @@ export function HematoBotWidget() {
         {
           from: "bot",
           text: STATUS_NOT_FOUND_TEXT,
-          chips: [{ label: "ค้นเลขอื่น", go: "status.ask" }, MENU_CHIP],
+          chips: [SEARCH_ANOTHER_ID_CHIP, MENU_CHIP],
         },
       ]);
       setStep("status.result");
       return;
     }
 
-    const s = result.found;
-    const text = [
-      `เลขที่อ้างอิง: ${s.referralId}`,
-      `กลุ่ม: ${s.groupNumber ? `กลุ่มที่ ${s.groupNumber}` : "ไม่ระบุ"}`,
-      `สถานะ: ${s.statusLabelTh}`,
-      `ส่งเมื่อ: ${s.submittedTh || "-"}`,
-    ].join("\n");
+    const text = formatStatusResult(result.found);
     setMessages((prev) => [
       ...prev,
-      { from: "bot", text, chips: [{ label: "ค้นเลขอื่น", go: "status.ask" }, MENU_CHIP] },
+      { from: "bot", text, chips: [SEARCH_ANOTHER_ID_CHIP, MENU_CHIP] },
     ]);
     setStep("status.result");
   }
@@ -160,7 +162,7 @@ export function HematoBotWidget() {
     if (!result.ok) {
       setMessages((prev) => [
         ...prev,
-        { from: "bot", text: result.error, chips: [{ label: "ลองอีกครั้ง", go: "cases.ask" }, MENU_CHIP] },
+        { from: "bot", text: result.error, chips: [RETRY_CASES_CHIP, MENU_CHIP] },
       ]);
       setStep("cases.result");
       return;
@@ -170,23 +172,19 @@ export function HematoBotWidget() {
         ...prev,
         {
           from: "bot",
-          text: "ไม่พบเคสที่ผูกกับเบอร์นี้ครับ ลองตรวจเบอร์อีกครั้ง",
-          chips: [{ label: "ค้นเบอร์อื่น", go: "cases.ask" }, MENU_CHIP],
+          text: CASES_NOT_FOUND_TEXT,
+          chips: [SEARCH_ANOTHER_PHONE_CHIP, MENU_CHIP],
         },
       ]);
       setStep("cases.result");
       return;
     }
 
-    const lines = result.cases.map((c) => {
-      const group = c.groupNumber ? `กลุ่มที่ ${c.groupNumber}` : "ไม่ระบุกลุ่ม";
-      const answer = c.hasAnswer ? "✅ มีคำตอบแล้ว" : "⏳ ยังไม่มีคำตอบ";
-      return `${c.referralId} · ${group}\n${c.statusLabelTh} · ส่งเมื่อ ${c.submittedTh || "-"}\n${answer}`;
-    });
+    const lines = result.cases.map(formatCaseLine);
     setMessages((prev) => [
       ...prev,
-      { from: "bot", text: `พบ ${result.cases.length} เคสครับ` },
-      { from: "bot", text: lines.join("\n\n"), chips: [{ label: "ค้นเบอร์อื่น", go: "cases.ask" }, MENU_CHIP] },
+      { from: "bot", text: casesFoundSummary(result.cases.length) },
+      { from: "bot", text: lines.join("\n\n"), chips: [SEARCH_ANOTHER_PHONE_CHIP, MENU_CHIP] },
     ]);
     setStep("cases.result");
   }

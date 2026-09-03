@@ -150,6 +150,55 @@ export const STATUS_NOT_FOUND_TEXT =
   `ไม่พบเลขที่อ้างอิงนี้ ตรวจรูปแบบ เช่น ${REFERRAL_ID_EXAMPLE}`;
 
 /**
+ * chip "ลองอีกครั้ง"/"ค้นเลขอื่น/เบอร์อื่น" ของ 2 flow ที่เรียก action จริง
+ * (status/cases) — เก็บที่นี่เหมือน MENU_CHIP เพื่อให้ HematoBotWidget.tsx
+ * ไม่ต้องมี label ภาษาไทยฝังอยู่ในนั้นเลย
+ */
+export const RETRY_STATUS_CHIP: BotChip = { label: "ลองอีกครั้ง", go: "status.ask" };
+export const RETRY_CASES_CHIP: BotChip = { label: "ลองอีกครั้ง", go: "cases.ask" };
+export const SEARCH_ANOTHER_ID_CHIP: BotChip = { label: "ค้นเลขอื่น", go: "status.ask" };
+export const SEARCH_ANOTHER_PHONE_CHIP: BotChip = { label: "ค้นเบอร์อื่น", go: "cases.ask" };
+
+export const CASES_NOT_FOUND_TEXT = "ไม่พบเคสที่ผูกกับเบอร์นี้ครับ ลองตรวจเบอร์อีกครั้ง";
+
+/** ฟิลด์ร่วมของ BotCaseStatus (src/lib/bot-lookup.ts) — พิมพ์ซ้ำแบบ structural
+ * แทนการ import type ข้ามมาที่นี่ เพื่อให้ flows.ts เป็นไฟล์ copy ล้วน ๆ
+ * ไม่ผูกกับ shape ของ server action โดยตรง
+ */
+interface StatusFields {
+  referralId: string;
+  groupNumber: 1 | 2 | 3 | 4 | null;
+  statusLabelTh: string;
+  submittedTh: string;
+}
+
+/** บรรทัดผลลัพธ์ของ flow เช็กสถานะ (เจอเคส) */
+export function formatStatusResult(s: StatusFields): string {
+  return [
+    `เลขที่อ้างอิง: ${s.referralId}`,
+    `กลุ่ม: ${s.groupNumber ? `กลุ่มที่ ${s.groupNumber}` : "ไม่ระบุ"}`,
+    `สถานะ: ${s.statusLabelTh}`,
+    `ส่งเมื่อ: ${s.submittedTh || "-"}`,
+  ].join("\n");
+}
+
+interface CaseFields extends StatusFields {
+  hasAnswer: boolean;
+}
+
+/** บรรทัดผลลัพธ์ต่อ 1 เคสของ flow เคสของฉัน */
+export function formatCaseLine(c: CaseFields): string {
+  const group = c.groupNumber ? `กลุ่มที่ ${c.groupNumber}` : "ไม่ระบุกลุ่ม";
+  const answer = c.hasAnswer ? "✅ มีคำตอบแล้ว" : "⏳ ยังไม่มีคำตอบ";
+  return `${c.referralId} · ${group}\n${c.statusLabelTh} · ส่งเมื่อ ${c.submittedTh || "-"}\n${answer}`;
+}
+
+/** หัวข้อสรุปจำนวนเคสที่พบ */
+export function casesFoundSummary(count: number): string {
+  return `พบ ${count} เคสครับ`;
+}
+
+/**
  * ข้อความต้อนรับกลับตอนเปิดวิดเจ็ตอัตโนมัติจาก `?bot=` (มาจาก redirect ของ
  * src/app/hemato-bot/line/route.ts และ line/callback/route.ts — Task 7)
  *
