@@ -20,24 +20,48 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { lookupStatusAction, listCasesAction } from "@/app/hemato-bot/actions";
 import {
+  lookupStatusAction,
+  listCasesAction,
+  requestCodeAction,
+  verifyCodeAction,
+  verifiedCasesAction,
+  resendAnswerAction,
+} from "@/app/hemato-bot/actions";
+import {
+  ADMIN_CONTACT_CHIP,
+  ANSWERS_EMPTY_TEXT,
+  AUTH_NOT_READY_MARKER,
   BOT_PARAM_MESSAGES,
   CASES_NOT_FOUND_TEXT,
+  CODE_EXAMPLE_PLACEHOLDER,
+  CODE_SENT_TEXT,
+  CODE_VERIFIED_TEXT,
+  EXPIRED_CODE_MARKER,
   MAIN_MENU_CHIPS,
   MENU_CHIP,
   REFERRAL_ID_EXAMPLE,
+  REQUEST_CODE_FALLBACK_ERROR,
+  REQUEST_NEW_CODE_CHIP,
+  RESEND_FALLBACK_ERROR,
+  RESEND_OK_TEXT,
   RETRY_CASES_CHIP,
   RETRY_STATUS_CHIP,
   SEARCH_ANOTHER_ID_CHIP,
   SEARCH_ANOTHER_PHONE_CHIP,
   STATIC_STEP_MESSAGES,
   STATUS_NOT_FOUND_TEXT,
+  VERIFY_CODE_FALLBACK_ERROR,
+  answerCaseMessage,
+  answersEntryMessage,
+  answersPhoneAskMessage,
   casesAskMessage,
   casesFoundSummary,
   formatCaseLine,
   formatStatusResult,
   greetingMessage,
+  lineUnlinkedMessage,
+  lineVerifiedMessage,
   menuMessage,
   statusAskMessage,
   type BotChip,
@@ -45,15 +69,44 @@ import {
   type BotStep,
 } from "./flows";
 
+/** เลือก chips ท้าย error bubble — AUTH_NOT_READY (ยังไม่ตั้ง AUTH_SECRET) ให้
+ * ปุ่มติดต่อแอดมินแทนการชวนลองใหม่ เพราะลองใหม่กี่ครั้งก็พังเหมือนเดิม
+ */
+function authAwareChips(error: string): BotChip[] {
+  return error.includes(AUTH_NOT_READY_MARKER) ? [ADMIN_CONTACT_CHIP, MENU_CHIP] : [MENU_CHIP];
+}
+
+/** เหมือน authAwareChips แต่เพิ่มกรณีรหัสหมดอายุ — ต้องขอรหัสใหม่ ไม่ใช่พิมพ์ซ้ำ */
+function codeErrorChips(error: string): BotChip[] {
+  if (error.includes(AUTH_NOT_READY_MARKER)) return [ADMIN_CONTACT_CHIP, MENU_CHIP];
+  if (error.includes(EXPIRED_CODE_MARKER)) return [REQUEST_NEW_CODE_CHIP, MENU_CHIP];
+  return [MENU_CHIP];
+}
+
 /** หน้าที่ไม่ควรมีวิดเจ็ตลอย — เป็นหน้าทำงานของบุคลากร/หน้าเปิดจากลิงก์เฉพาะ */
 const HIDDEN_PATH_PREFIXES = ["/dashboard", "/login", "/answer"];
+
+/** คลาสร่วมของปุ่มลิงก์/ปุ่ม chip ท้ายข้อความ — แยกเป็นค่าคงที่เพราะลิงก์ตอนนี้
+ * แตกเป็น 3 แบบ (next/link ปกติ, <a> แท็บเดิม, <a> แท็บใหม่) แต่หน้าตาต้องเหมือนกัน
+ */
+const LINK_CLASS =
+  "inline-flex items-center rounded-full border border-blue-300 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100";
+const CHIP_CLASS =
+  "inline-flex items-center rounded-full border border-zinc-300 bg-white px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100";
 
 function buildStepMessages(step: BotStep): BotMessage[] {
   if (step === "menu") return [menuMessage()];
   if (step === "status.ask") return [statusAskMessage()];
   if (step === "cases.ask") return [casesAskMessage()];
+  if (step === "answers.phone") return [answersPhoneAskMessage()];
   return STATIC_STEP_MESSAGES[step]?.() ?? [];
 }
+
+/** step ที่มีช่องกรอกข้อความด้านล่างแผงแชท */
+const INPUT_STEPS: BotStep[] = ["status.ask", "cases.ask", "answers.phone", "answers.code"];
+
+/** step ที่คีย์บอร์ดมือถือควรขึ้นแป้นตัวเลข (เบอร์โทร/รหัส 6 หลัก) */
+const NUMERIC_INPUT_STEPS: BotStep[] = ["cases.ask", "answers.phone", "answers.code"];
 
 export function HematoBotWidget() {
   const pathname = usePathname();
@@ -66,20 +119,36 @@ export function HematoBotWidget() {
 
   // เปิดอัตโนมัติพร้อมข้อความที่เหมาะสมเมื่อกลับมาจากหน้าผูกบัญชี LINE (Task 7)
   // ดู src/app/hemato-bot/line/{route,callback}/route.ts สำหรับค่าที่เป็นไปได้
+  //
+  // verified → ผูกบัญชีสำเร็จแล้ว ข้ามไปโหลด+โชว์รายการเคสให้ทันที (Task 9)
+  // ไม่ต้องให้กดเมนู "อ่านคำตอบ" ซ้ำเอง เพราะเพิ่งยืนยันตัวตนเสร็จหมาด ๆ
+  // unlinked → ยังไม่เคยผูกเบอร์ไว้ ชวนแอด LINE OA แล้วพิมพ์ "ผูกบัญชี" แทน
+  // unavailable/error → ข้อความทั่วไปเหมือนเดิม กลับไปเมนูหลัก
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const bot = params.get("bot");
     if (!bot) return;
-    const text = BOT_PARAM_MESSAGES[bot];
-    if (!text) return;
 
     // sync จาก URL query (external system) ตอน mount ครั้งเดียว — แพตเทิร์นเดียว
     // กับ FontSizeControl.tsx ที่ sync จาก localStorage ตอน mount
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMessages([{ from: "bot", text, chips: MAIN_MENU_CHIPS }]);
-    setStep("menu");
-    setOpen(true);
+    if (bot === "verified") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMessages([lineVerifiedMessage()]);
+      setStep("answers.list");
+      setOpen(true);
+      void refreshAnswers();
+    } else if (bot === "unlinked") {
+      setMessages([lineUnlinkedMessage()]);
+      setStep("menu");
+      setOpen(true);
+    } else {
+      const text = BOT_PARAM_MESSAGES[bot];
+      if (!text) return;
+      setMessages([{ from: "bot", text, chips: MAIN_MENU_CHIPS }]);
+      setStep("menu");
+      setOpen(true);
+    }
 
     // ล้าง ?bot= ออกจาก URL กันข้อความเด้งซ้ำตอนรีเฟรช/กด back
     params.delete("bot");
@@ -89,6 +158,10 @@ export function HematoBotWidget() {
       "",
       window.location.pathname + (search ? `?${search}` : "") + window.location.hash,
     );
+    // ตั้งใจไม่ใส่ refreshAnswers ใน deps — ฟังก์ชันประกาศในคอมโพเนนต์ แต่ effect นี้
+    // ต้องรันครั้งเดียวตอน mount เท่านั้น (อ่าน query string ครั้งเดียว) เหมือนกันกับ
+    // เหตุผลของ eslint-disable react-hooks/set-state-in-effect ด้านบน
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -105,11 +178,19 @@ export function HematoBotWidget() {
   }
 
   function goTo(next: BotStep, userLabel?: string) {
-    setMessages((prev) => [
-      ...(userLabel ? [...prev, { from: "user", text: userLabel } as BotMessage] : prev),
-      ...buildStepMessages(next),
-    ]);
+    setMessages((prev) =>
+      userLabel ? [...prev, { from: "user", text: userLabel } as BotMessage] : prev,
+    );
     setStep(next);
+
+    // answers.entry ต้องเช็ก verifiedCasesAction() ก่อนตัดสินใจว่าจะโชว์อะไร
+    // (ข้ามไปรายการเคสเลยถ้ายืนยันตัวตนอยู่แล้ว) จึงแยกออกจาก buildStepMessages
+    // แบบซิงโครนัสของ step อื่น ๆ — ดู refreshAnswers ด้านล่าง
+    if (next === "answers.entry") {
+      void refreshAnswers();
+      return;
+    }
+    setMessages((prev) => [...prev, ...buildStepMessages(next)]);
   }
 
   async function submitStatus(raw: string) {
@@ -189,8 +270,113 @@ export function HematoBotWidget() {
     setStep("cases.result");
   }
 
+  /**
+   * แกนกลางของ flow อ่านคำตอบ — เรียก verifiedCasesAction() แล้วแตกเป็น 3 ทาง:
+   * error (รวม AUTH_NOT_READY) / ยืนยันตัวตนอยู่แล้ว (โชว์รายการเคสทันที) /
+   * ยังไม่ยืนยัน (โชว์ 2 ปุ่มให้เลือกวิธี) — ใช้ทั้งตอนกด "อ่านคำตอบ" จากเมนู,
+   * ตอนกลับมาจาก LINE ด้วย ?bot=verified และตอน verifyCodeAction สำเร็จ
+   */
+  async function refreshAnswers() {
+    setPending(true);
+    const result = await verifiedCasesAction();
+    setPending(false);
+
+    if (!result.ok) {
+      setMessages((prev) => [
+        ...prev,
+        { from: "bot", text: result.error, chips: authAwareChips(result.error) },
+      ]);
+      return;
+    }
+    if (result.verified) {
+      appendCaseList(result.cases);
+      setStep("answers.list");
+      return;
+    }
+    setMessages((prev) => [...prev, answersEntryMessage()]);
+    setStep("answers.entry");
+  }
+
+  /** ต่อข้อความรายการเคส 1 ข้อความต่อ 1 เคส (sticky ทุกอัน) + MENU_CHIP ท้ายเคส
+   * สุดท้าย — กรณีไม่มีเคสเลยก็ยังต้องตอบอะไรสักอย่าง กันจอว่างเปล่า
+   */
+  function appendCaseList(cases: Parameters<typeof answerCaseMessage>[0][]) {
+    if (cases.length === 0) {
+      setMessages((prev) => [
+        ...prev,
+        { from: "bot", text: ANSWERS_EMPTY_TEXT, chips: [MENU_CHIP] },
+      ]);
+      return;
+    }
+
+    const caseMessages = cases.map(answerCaseMessage);
+    const lastCaseMessage = caseMessages[caseMessages.length - 1];
+    lastCaseMessage.chips = [...(lastCaseMessage.chips ?? []), MENU_CHIP];
+
+    setMessages((prev) => [
+      ...prev,
+      { from: "bot", text: casesFoundSummary(cases.length) },
+      ...caseMessages,
+    ]);
+  }
+
+  async function submitAnswersPhone(raw: string) {
+    const value = raw.trim();
+    if (!value) return;
+    setMessages((prev) => [...prev, { from: "user", text: value }]);
+    setInputValue("");
+    setPending(true);
+    const result = await requestCodeAction(value);
+    setPending(false);
+
+    if (!result.ok) {
+      const error = result.error ?? REQUEST_CODE_FALLBACK_ERROR;
+      setMessages((prev) => [...prev, { from: "bot", text: error, chips: authAwareChips(error) }]);
+      // step ยังเป็น answers.phone อยู่ ช่องกรอกไม่หาย ลองพิมพ์เบอร์ใหม่ได้ทันที
+      return;
+    }
+
+    // ข้อความเดียวกันเป๊ะไม่ว่าเบอร์จะมีเคสจริงหรือไม่ — ดูเหตุผลที่ CODE_SENT_TEXT
+    setMessages((prev) => [...prev, { from: "bot", text: CODE_SENT_TEXT, chips: [MENU_CHIP] }]);
+    setStep("answers.code");
+  }
+
+  async function submitAnswersCode(raw: string) {
+    const value = raw.trim();
+    if (!value) return;
+    setMessages((prev) => [...prev, { from: "user", text: value }]);
+    setInputValue("");
+    setPending(true);
+    const result = await verifyCodeAction(value);
+    setPending(false);
+
+    if (!result.ok) {
+      const error = result.error ?? VERIFY_CODE_FALLBACK_ERROR;
+      setMessages((prev) => [...prev, { from: "bot", text: error, chips: codeErrorChips(error) }]);
+      // step ยังเป็น answers.code อยู่ ช่องกรอกไม่หาย พิมพ์รหัสใหม่ได้ทันที
+      return;
+    }
+
+    setMessages((prev) => [...prev, { from: "bot", text: CODE_VERIFIED_TEXT }]);
+    await refreshAnswers();
+  }
+
+  async function submitResend(referralId: string, label: string) {
+    setMessages((prev) => [...prev, { from: "user", text: label }]);
+    setPending(true);
+    const result = await resendAnswerAction(referralId);
+    setPending(false);
+
+    const text = result.ok ? RESEND_OK_TEXT : result.error ?? RESEND_FALLBACK_ERROR;
+    setMessages((prev) => [...prev, { from: "bot", text, chips: [MENU_CHIP] }]);
+  }
+
   function handleChip(chip: BotChip) {
-    goTo(chip.go, chip.label);
+    if (chip.resendReferralId) {
+      void submitResend(chip.resendReferralId, chip.label);
+      return;
+    }
+    if (chip.go) goTo(chip.go, chip.label);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -198,9 +384,11 @@ export function HematoBotWidget() {
     if (pending) return;
     if (step === "status.ask") void submitStatus(inputValue);
     else if (step === "cases.ask") void submitCases(inputValue);
+    else if (step === "answers.phone") void submitAnswersPhone(inputValue);
+    else if (step === "answers.code") void submitAnswersCode(inputValue);
   }
 
-  const showInput = step === "status.ask" || step === "cases.ask";
+  const showInput = INPUT_STEPS.includes(step);
   const lastIndex = messages.length - 1;
 
   return (
@@ -260,23 +448,45 @@ export function HematoBotWidget() {
                   >
                     {m.text}
                   </p>
-                  {i === lastIndex && !pending && (m.chips?.length || m.links?.length) ? (
+                  {(i === lastIndex || m.sticky) && !pending && (m.chips?.length || m.links?.length) ? (
                     <div className="flex flex-wrap gap-1.5">
-                      {m.links?.map((link) => (
-                        <Link
-                          key={link.href}
-                          href={link.href}
-                          className="inline-flex items-center rounded-full border border-blue-300 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
-                        >
-                          {link.label}
-                        </Link>
-                      ))}
+                      {m.links?.map((link) => {
+                        if (link.external) {
+                          // ปลายทางข้ามโดเมนจริง (เช่น LINE OA) — เปิดแท็บใหม่
+                          return (
+                            <a
+                              key={link.href}
+                              href={link.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={LINK_CLASS}
+                            >
+                              {link.label}
+                            </a>
+                          );
+                        }
+                        if (link.hardNavigation) {
+                          // route handler ที่ redirect ต่อเอง (เช่น /hemato-bot/line
+                          // ไป LINE OAuth) — next/link จะ fetch แบบ RSC ก่อนคลิกแล้วพัง
+                          // เมื่อปลายทาง redirect ข้ามโดเมน จึงต้องเป็น <a> แท็บเดิม
+                          return (
+                            <a key={link.href} href={link.href} className={LINK_CLASS}>
+                              {link.label}
+                            </a>
+                          );
+                        }
+                        return (
+                          <Link key={link.href} href={link.href} className={LINK_CLASS}>
+                            {link.label}
+                          </Link>
+                        );
+                      })}
                       {m.chips?.map((chip) => (
                         <button
                           key={chip.label}
                           type="button"
                           onClick={() => handleChip(chip)}
-                          className="inline-flex items-center rounded-full border border-zinc-300 bg-white px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100"
+                          className={CHIP_CLASS}
                         >
                           {chip.label}
                         </button>
@@ -299,10 +509,17 @@ export function HematoBotWidget() {
             <form onSubmit={handleSubmit} className="flex gap-2 border-t border-zinc-200 p-3">
               <input
                 type="text"
-                inputMode={step === "cases.ask" ? "numeric" : "text"}
+                inputMode={NUMERIC_INPUT_STEPS.includes(step) ? "numeric" : "text"}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder={step === "status.ask" ? REFERRAL_ID_EXAMPLE : "081-234-5678"}
+                placeholder={
+                  step === "status.ask"
+                    ? REFERRAL_ID_EXAMPLE
+                    : step === "answers.code"
+                      ? CODE_EXAMPLE_PLACEHOLDER
+                      : "081-234-5678"
+                }
+                maxLength={step === "answers.code" ? 6 : undefined}
                 disabled={pending}
                 className="w-full min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 disabled:bg-zinc-100"
               />

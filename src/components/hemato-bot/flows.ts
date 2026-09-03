@@ -8,8 +8,10 @@
  * ความถี่การใช้งานจริงที่พบใน LINE OA
  */
 
-/** ทุก step ที่ widget รู้จัก — บาง step (answers.phone/code/list, regimens.result,
- * indications.disease) ยังไม่มี logic จริงใน Task 8 เพราะเป็นของ Task 9-10
+import { LINE_OA } from "@/lib/config";
+
+/** ทุก step ที่ widget รู้จัก — answers.entry/phone/code/list มี logic จริงแล้ว
+ * (Task 9) ส่วน regimens.result, indications.disease ยังไม่มี (ของ Task 10)
  * แต่ประกาศ union ไว้ครบตาม spec เพื่อไม่ต้องแก้ type ซ้ำทีหลัง
  */
 export type BotStep =
@@ -33,12 +35,30 @@ export type BotStep =
 
 export interface BotChip {
   label: string;
-  go: BotStep;
+  /** ปุ่มเปลี่ยน step ปกติ — ไม่ตั้งคู่กับ resendReferralId */
+  go?: BotStep;
+  /**
+   * ถ้ามีค่า แปลว่า chip นี้ไม่เปลี่ยน step แต่เรียก resendAnswerAction(referralId)
+   * แทน — ใช้เฉพาะปุ่ม "ส่งสำเนาเข้าอีเมลเดิม" ใน answers.list (ต่อ 1 เคส)
+   */
+  resendReferralId?: string;
 }
 
 export interface BotLink {
   label: string;
   href: string;
+  /**
+   * true = ปลายทางข้ามโดเมนจริง (เช่น LINE OA) — เปิดแท็บใหม่ด้วย
+   * <a target="_blank" rel="noopener noreferrer"> แทน next/link
+   */
+  external?: boolean;
+  /**
+   * true = ใช้ <a> ธรรมดา (แท็บเดิม) แทน next/link — สำหรับลิงก์ไป route handler
+   * ที่ redirect ต่อเอง เช่น /hemato-bot/line ที่เด้งไป LINE OAuth แล้ววกกลับมาเอง
+   * next/link จะ fetch แบบ RSC ก่อนคลิก ซึ่งพังเมื่อปลายทาง redirect ข้ามโดเมน —
+   * ดูตัวอย่างเดียวกันที่ src/app/login/page.tsx (ปุ่ม "เข้าสู่ระบบด้วย LINE")
+   */
+  hardNavigation?: boolean;
 }
 
 export interface BotMessage {
@@ -46,6 +66,12 @@ export interface BotMessage {
   text: string;
   chips?: BotChip[];
   links?: BotLink[];
+  /**
+   * true = แสดง chips/links ได้แม้ไม่ใช่ข้อความล่าสุด — ปกติ widget โชว์ chips
+   * เฉพาะข้อความสุดท้ายเพื่อกันปุ่มค้าง แต่ answers.list ต้องมีหลายเคสพร้อมกัน
+   * แต่ละเคสมีลิงก์/ปุ่มของตัวเอง จึงต้องคงไว้ทุกอันพร้อมกันไม่ใช่แค่อันสุดท้าย
+   */
+  sticky?: boolean;
 }
 
 /** ตัวอย่างรูปแบบเลขที่อ้างอิง — ใช้ทั้งตอนถามและตอนบอกว่าไม่พบ ให้ตรงกันเสมอ */
@@ -55,6 +81,13 @@ export const GREETING_TEXT = "สวัสดีครับ ผม Hemato Bot �
 
 /** chip "⌂ เมนูหลัก" — ใส่ในทุก step ตาม spec */
 export const MENU_CHIP: BotChip = { label: "⌂ เมนูหลัก", go: "menu" };
+
+/**
+ * chip "📞 ติดต่อแอดมิน" — ใช้ทั้งใน group4 (เดิม) และแนบท้ายทุก error bubble
+ * ที่ error message มาจาก AUTH_NOT_READY (ระบบยืนยันตัวตนยังไม่พร้อมใช้งาน)
+ * เพราะกรณีนั้นให้ผู้ใช้ลองใหม่เองไม่มีประโยชน์ ต้องรอแอดมินแก้ค่า AUTH_SECRET
+ */
+export const ADMIN_CONTACT_CHIP: BotChip = { label: "📞 ติดต่อแอดมิน", go: "contact" };
 
 export const MAIN_MENU_CHIPS: BotChip[] = [
   { label: "🔍 เช็กสถานะ", go: "status.ask" },
@@ -83,13 +116,12 @@ const PLACEHOLDER_TEXT = "เมนูนี้กำลังเปิดใช
  * ข้อความคงที่ของ step ที่ "ตอบจบในตัวเอง" — ไม่ต้องเรียก server action
  * และไม่มีลูกเข้า input ต่อ (ลิงก์ตรง/placeholder เฉย ๆ)
  *
- * status.ask, status.result, cases.ask, cases.result มี logic เรียก action
- * จริงจึงประกอบข้อความใน HematoBotWidget.tsx แทน ไม่ได้อยู่ในตารางนี้
+ * status.ask, status.result, cases.ask, cases.result, answers.entry,
+ * answers.phone, answers.code, answers.list มี logic เรียก action จริงจึงประกอบ
+ * ข้อความใน HematoBotWidget.tsx แทน (ผ่านฟังก์ชันของ flows.ts เอง) ไม่ได้อยู่ใน
+ * ตารางนี้
  */
 export const STATIC_STEP_MESSAGES: Partial<Record<BotStep, () => BotMessage[]>> = {
-  "answers.entry": () => [
-    { from: "bot", text: PLACEHOLDER_TEXT, chips: [MENU_CHIP] },
-  ],
   "regimens.ask": () => [
     { from: "bot", text: PLACEHOLDER_TEXT, chips: [MENU_CHIP] },
   ],
@@ -117,7 +149,7 @@ export const STATIC_STEP_MESSAGES: Partial<Record<BotStep, () => BotMessage[]>> 
       from: "bot",
       text: "ส่งต่อผู้ป่วยนอกด้วยเหตุผลอื่น (กลุ่มที่ 4) กดลิงก์ด้านล่างเพื่อกรอกแบบฟอร์มได้เลยครับ",
       links: [{ label: "🌐 Refer กลุ่มที่ 4", href: "/refer/general" }],
-      chips: [{ label: "📞 ติดต่อแอดมิน", go: "contact" }, MENU_CHIP],
+      chips: [ADMIN_CONTACT_CHIP, MENU_CHIP],
     },
   ],
   contact: () => [
@@ -198,18 +230,157 @@ export function casesFoundSummary(count: number): string {
   return `พบ ${count} เคสครับ`;
 }
 
+/* ------------------------------------------------------------------ */
+/* อ่านคำตอบ — ยืนยันตัวตนด้วย LINE หรือรหัสทางอีเมล (Task 9)              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * ข้อความส่วนที่ปรากฏในหลาย error message ของ src/app/hemato-bot/actions.ts
+ * เมื่อยังไม่ได้ตั้ง AUTH_SECRET — ใช้ `.includes()` ตรวจใน HematoBotWidget.tsx
+ * แทนการเทียบทั้งประโยค เผื่อข้อความเปลี่ยนคำต่อท้ายภายหลัง
+ */
+export const AUTH_NOT_READY_MARKER = "ระบบยืนยันตัวตนยังไม่พร้อม";
+
+/** ส่วนที่ปรากฏใน error ของ verifyCodeAction เมื่อคุกกี้รหัสหมดอายุ/ไม่มีแล้ว
+ * ต่างจากรหัสผิด (ต้องขอรหัสใหม่ ไม่ใช่พิมพ์รหัสเดิมซ้ำ)
+ */
+export const EXPIRED_CODE_MARKER = "รหัสหมดอายุ";
+
+/** chip "ขอรหัสใหม่" — ใช้ตอน verifyCodeAction บอกว่ารหัสหมดอายุ พาไปหน้ากรอกเบอร์ใหม่ */
+export const REQUEST_NEW_CODE_CHIP: BotChip = { label: "ขอรหัสใหม่", go: "answers.phone" };
+
+/** ข้อความชวนเลือกวิธียืนยันตัวตน — โชว์เมื่อยังไม่เคยยืนยันตัวตนในเซสชันนี้ */
+const ANSWERS_ENTRY_TEXT = "ยืนยันตัวตนก่อนอ่านคำตอบครับ เลือกวิธีที่สะดวก";
+
+/** ข้อความชวนเลือกวิธียืนยันตัวตน — ทั้ง 2 ปุ่ม (ลิงก์ LINE + chip ขอรหัสอีเมล) */
+export function answersEntryMessage(): BotMessage {
+  return {
+    from: "bot",
+    text: ANSWERS_ENTRY_TEXT,
+    links: [
+      { label: "เข้าด้วย LINE", href: "/hemato-bot/line", hardNavigation: true },
+    ],
+    chips: [{ label: "รับรหัสทางอีเมล", go: "answers.phone" }],
+  };
+}
+
+/** ข้อความถามเบอร์โทรตอนเลือก "รับรหัสทางอีเมล" */
+export function answersPhoneAskMessage(): BotMessage {
+  return {
+    from: "bot",
+    text: "พิมพ์เบอร์โทรที่ใช้ตอนส่งเรื่อง เพื่อรับรหัสยืนยันทางอีเมล เช่น 081-234-5678",
+    chips: [MENU_CHIP],
+  };
+}
+
+/** bubble หลัง requestCodeAction สำเร็จ — ข้อความเดียวกันเป๊ะ ๆ ไม่ว่าเบอร์จะมีเคสจริง
+ * หรือไม่ (ดู requestCodeAction ใน actions.ts) ห้ามแก้ให้ต่างกันตามผลลัพธ์จริง
+ * เพราะจะกลายเป็นช่องทางเดาว่าเบอร์ไหน "มี" เคสอยู่
+ */
+export const CODE_SENT_TEXT =
+  "ส่งรหัส 6 หลักไปที่อีเมลที่ลงทะเบียนไว้แล้ว (ใช้ได้ 10 นาที) ตรวจโฟลเดอร์จดหมายขยะด้วย";
+
+/** ตัวอย่างรูปแบบรหัส — ใช้เป็น placeholder ช่องกรอกรหัส */
+export const CODE_EXAMPLE_PLACEHOLDER = "123456";
+
+/** bubble หลัง verifyCodeAction สำเร็จ ก่อนแสดงรายการเคส */
+export const CODE_VERIFIED_TEXT = "ยืนยันตัวตนสำเร็จ ✅";
+
+/** ข้อความ fallback เผื่อ requestCodeAction/verifyCodeAction/resendAnswerAction
+ * คืน ok:false โดยไม่มี error — ชนิดคืนค่าของ 3 action นี้ไม่ใช่ discriminated
+ * union (error เป็น optional เสมอไม่ว่า ok จะเป็นอะไร) จึงต้องมี fallback ให้
+ * TypeScript แคบชนิดได้ และกันข้อความว่างจริง ๆ หลุดไปแสดงบนหน้าจอ
+ */
+export const REQUEST_CODE_FALLBACK_ERROR = "ขอรหัสไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
+export const VERIFY_CODE_FALLBACK_ERROR = "ยืนยันรหัสไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
+export const RESEND_FALLBACK_ERROR = "ส่งสำเนาไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
+
+/** ปุ่มลิงก์ "เปิดอ่านคำตอบ" — ต่อ 1 เคสที่มี answerUrl แล้วเท่านั้น */
+export const OPEN_ANSWER_LABEL = "เปิดอ่านคำตอบ";
+
+/** chip "ส่งสำเนาเข้าอีเมลเดิม" — ต่อ 1 เคสที่มี answerUrl แล้วเท่านั้น */
+export const RESEND_ANSWER_LABEL = "ส่งสำเนาเข้าอีเมลเดิม";
+
+/** bubble หลัง resendAnswerAction สำเร็จ — คงที่เสมอ ไม่เอ่ยถึงอีเมลปลายทาง
+ * (เหตุผลเดียวกับ resendAnswerAction ใน actions.ts — ห้ามเผยอีเมลที่ผูกไว้)
+ */
+export const RESEND_OK_TEXT = "ส่งสำเนาไปที่อีเมลที่ลงทะเบียนไว้แล้ว ✓";
+
+/** ข้อความต่อท้ายบรรทัดเคสที่ยังไม่มีคำตอบ */
+export const NO_ANSWER_YET_TEXT = "ยังไม่มีคำตอบ";
+
+/** ข้อความตอนยืนยันตัวตนแล้วแต่ไม่มีเคสผูกกับเบอร์นี้เลย (กันไม่ให้ขึ้นจอว่าง) */
+export const ANSWERS_EMPTY_TEXT = "ยังไม่พบเคสที่ผูกกับบัญชีนี้ครับ";
+
+interface AnswerCaseFields extends StatusFields {
+  answerUrl: string | null;
+}
+
+/** บรรทัดผลลัพธ์ต่อ 1 เคสของ flow อ่านคำตอบ (ไม่รวมท้าย "ยังไม่มีคำตอบ" —
+ * ใส่แยกใน answerCaseMessage เพื่อให้ formatAnswerCaseLine ใช้ซ้ำได้เฉย ๆ)
+ */
+export function formatAnswerCaseLine(c: AnswerCaseFields): string {
+  const group = c.groupNumber ? `กลุ่มที่ ${c.groupNumber}` : "ไม่ระบุกลุ่ม";
+  return `${c.referralId} · ${group}\n${c.statusLabelTh} · ส่งเมื่อ ${c.submittedTh || "-"}`;
+}
+
+/**
+ * ข้อความต่อ 1 เคสของ answers.list — sticky เสมอเพราะแต่ละเคสมีลิงก์/ปุ่มของ
+ * ตัวเอง ต้องกดได้พร้อมกันทุกเคสไม่ใช่แค่เคสสุดท้าย (ดู BotMessage.sticky)
+ *
+ * ไม่แนบ MENU_CHIP ในนี้ — HematoBotWidget.tsx เป็นคนแนบต่อท้ายข้อความเคส
+ * สุดท้ายเองหลัง map ครบ ให้ตรงแพตเทิร์นเดียวกับ formatCaseLine/cases.result
+ * ที่ chip ของ "ชุดผลลัพธ์" ประกอบใน widget ไม่ใช่ในฟังก์ชัน format ต่อรายการ
+ */
+export function answerCaseMessage(c: AnswerCaseFields): BotMessage {
+  const text = c.answerUrl
+    ? formatAnswerCaseLine(c)
+    : `${formatAnswerCaseLine(c)}\n${NO_ANSWER_YET_TEXT}`;
+  return {
+    from: "bot",
+    text,
+    links: c.answerUrl ? [{ label: OPEN_ANSWER_LABEL, href: c.answerUrl }] : undefined,
+    chips: c.answerUrl
+      ? [{ label: RESEND_ANSWER_LABEL, resendReferralId: c.referralId }]
+      : undefined,
+    sticky: true,
+  };
+}
+
+/** ข้อความต้อนรับกลับตอนเปิดวิดเจ็ตอัตโนมัติจาก `?bot=verified` — ตามด้วยรายการ
+ * เคสที่ HematoBotWidget.tsx โหลดต่อทันที (ไม่ต้องกดเมนูซ้ำ)
+ */
+export function lineVerifiedMessage(): BotMessage {
+  return { from: "bot", text: "ผูกบัญชี LINE กับเบอร์นี้เรียบร้อยแล้วครับ ✅" };
+}
+
+/** ข้อความตอนกลับมาจาก LINE แล้วยังไม่เคยผูกเบอร์ไว้ — ชวนแอด LINE OA แล้วพิมพ์
+ * "ผูกบัญชี" ในแชท (ฝั่ง LINE OA มี webhook รับคำสั่งนี้แยกต่างหาก ไม่ใช่ของหน้านี้)
+ */
+export function lineUnlinkedMessage(): BotMessage {
+  return {
+    from: "bot",
+    text:
+      `ยังไม่พบบัญชี LINE ที่ผูกกับเบอร์นี้ครับ เพิ่มเพื่อน ${LINE_OA.displayName} ` +
+      'ด้านล่าง แล้วพิมพ์คำว่า "ผูกบัญชี" ในแชทเพื่อผูกบัญชีได้เลยครับ',
+    links: [
+      { label: `เพิ่มเพื่อน ${LINE_OA.displayName}`, href: LINE_OA.addFriendUrl, external: true },
+    ],
+    chips: [MENU_CHIP],
+  };
+}
+
 /**
  * ข้อความต้อนรับกลับตอนเปิดวิดเจ็ตอัตโนมัติจาก `?bot=` (มาจาก redirect ของ
  * src/app/hemato-bot/line/route.ts และ line/callback/route.ts — Task 7)
  *
  * เก็บ key ตรงกับค่าที่ route เหล่านั้น redirect มา ห้ามเปลี่ยนโดยไม่แก้ทั้งคู่
- * Task 9 จะต่อยอดจากตรงนี้ (เช่น ดึงเคสที่ผูกไว้มาแสดงทันทีตอน verified)
+ *
+ * เหลือแค่ unavailable/error สองค่า — verified/unlinked มีข้อความ+ลิงก์เฉพาะทาง
+ * มากกว่า plain text ธรรมดา จึงย้ายไปเป็น lineVerifiedMessage()/lineUnlinkedMessage()
+ * ข้างบนแทน (Task 9)
  */
 export const BOT_PARAM_MESSAGES: Record<string, string> = {
-  verified:
-    "ผูกบัญชี LINE กับเบอร์นี้เรียบร้อยแล้วครับ ✅ กดเมนู “เคสของฉัน” หรือ “อ่านคำตอบ” เพื่อดูรายละเอียดได้เลย",
-  unlinked:
-    "ยังไม่พบบัญชี LINE ที่ผูกกับเบอร์นี้ครับ ลองผูกบัญชีใหม่อีกครั้ง หรือเลือกเมนูอื่นได้เลย",
   unavailable:
     "ตอนนี้ระบบผูกบัญชียังไม่พร้อมใช้งานครับ กรุณาลองใหม่ภายหลัง หรือติดต่อแอดมิน",
   error: "เกิดข้อผิดพลาดระหว่างผูกบัญชี กรุณาลองใหม่อีกครั้งครับ",
