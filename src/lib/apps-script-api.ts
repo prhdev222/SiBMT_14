@@ -323,3 +323,21 @@ export async function resendAdviceEmail(payload: {
 }): Promise<{ ok: boolean; error?: string }> {
   return callAppsScript("resendAdvice", payload);
 }
+
+/* ------------------------------------------------------------------ */
+/* ยืนยันอีเมลแพทย์ต้นทาง — ลิงก์จาก OnFormSubmit                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * ยืนยันว่าอีเมลที่กรอกไว้เป็นของจริง โดยแพทย์ต้นทางกดลิงก์ในอีเมลที่ได้รับ
+ *
+ * ⚠️ Apps Script ตอบด้วยข้อความเดียวกันไม่ว่าจะเป็นเคสไหน (ไม่มี id/token,
+ * id ไม่มีในระบบ, หรือ token ผิด) — ป้องกันการไล่เดา referralId
+ * หน้านี้จึงต้องไม่พยายามแยกแยะสาเหตุความล้มเหลว แสดงข้อความเดียวพอ
+ */
+export async function confirmEmail(payload: {
+  referralId: string;
+  token: string;
+}): Promise<{ ok: boolean }> {
+  return callAppsScript("confirmEmail", payload);
+}
