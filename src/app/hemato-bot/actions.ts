@@ -37,6 +37,17 @@ import { phoneKey } from "@/lib/phone-key";
 /** อ่านตอนถูกเรียก ไม่ใช่ตอนโหลดโมดูล — เหตุผลเดียวกับ apps-script-api.ts */
 const secret = () => process.env.AUTH_SECRET ?? "";
 
+/**
+ * ข้อความตอบเมื่อยังไม่ได้ตั้ง AUTH_SECRET
+ *
+ * ⚠️ ห้ามปล่อยให้ signBotPayload/readBotPayload ถูกเรียกด้วย secret ว่างเปล่า —
+ * crypto.subtle.importKey ปฏิเสธคีย์ยาวศูนย์ไบต์ทันที (throw ตรง ๆ ไม่ใช่ reject
+ * แบบจับได้ง่าย) ทำให้ action ล่มดิบไปหา client แทนที่จะได้ discriminated union
+ * ตามสัญญา — ต้องเช็กก่อนเรียกฟังก์ชันเข้ารหัสทุกครั้ง ไม่ใช่ไปแก้ที่ bot-session.ts
+ * เพราะไฟล์นั้นตั้งใจให้ pure และไม่รู้จัก environment
+ */
+const AUTH_NOT_READY = "ระบบยืนยันตัวตนยังไม่พร้อมใช้งาน กรุณาติดต่อแอดมิน";
+
 /* ------------------------------------------------------------------ */
 /* ค้นสถานะแบบไม่ยืนยันตัวตน — เห็นได้แค่เพดานใน BotCaseStatus                */
 /* ------------------------------------------------------------------ */
@@ -96,6 +107,7 @@ export async function requestCodeAction(
   if (!(await allowBotCode())) {
     return { ok: false, error: "ขอรหัสบ่อยเกินไป กรุณารออีกสักครู่" };
   }
+  if (!secret()) return { ok: false, error: AUTH_NOT_READY };
 
   const key = phoneKey(phone);
   if (!key) {
@@ -109,13 +121,11 @@ export async function requestCodeAction(
   const code = String(Math.floor(100000 + Math.random() * 900000));
 
   // เบอร์ไม่พบ/ไม่มีอีเมล: ไม่ส่งจริงแต่ตอบเหมือนส่งแล้ว — ไม่เผยว่าเบอร์ไหนมีเคส
-  // ส่งไม่สำเร็จ (Apps Script ล่ม ฯลฯ) ก็ต้องตอบเหมือนกัน ไม่งั้นความต่างของ
-  // ok:true/false จะกลายเป็นช่องทางเดาว่าเบอร์นี้มีอีเมลผูกไว้หรือไม่
-  try {
-    if (email) await sendBotCodeEmail({ email, code });
-  } catch (error) {
-    console.error("[hemato-bot] ส่งรหัสอีเมลไม่สำเร็จ: " + String(error));
-  }
+  // ⚠️ ต้องไม่ await การส่งอีเมล — ถ้ารอเฉพาะตอนมีอีเมล เวลาตอบสนอง (1-10 วิ)
+  // จะต่างจากตอนไม่มีอีเมล (ตอบทันที) จนกลายเป็น timing oracle เดาได้ว่า
+  // เบอร์ไหนมีเคสผูกอยู่จากความช้าเร็วของคำตอบ จึงต้อง "ยิงทิ้ง" ผ่าน
+  // waitUntil ของ Cloudflare ให้ทั้งสองเส้นทางตอบเร็วเท่ากัน
+  if (email) scheduleBotCodeEmail(email, code);
 
   const codeHash = await hashCode(code);
   const token = await signBotPayload(
@@ -132,12 +142,46 @@ export async function requestCodeAction(
   return { ok: true };
 }
 
+/**
+ * ส่งอีเมลรหัสแบบ "ยิงทิ้ง" ไม่รอผล — กัน timing oracle ใน requestCodeAction
+ *
+ * แพตเทิร์น dynamic import เดียวกับ getLimiter ใน rate-limit.ts เพราะโมดูล
+ * @opennextjs/cloudflare มีเฉพาะตอนรันบน Cloudflare — บน `next dev` (dev:demo)
+ * import จะ throw แล้วตกไป fallback เป็น await ตรง ๆ แทน ซึ่งจะทำให้เวลาตอบสนอง
+ * ต่างกันอีกครั้งเฉพาะตอนพัฒนาบนเครื่องตัวเอง (ไม่มี waitUntil ให้ใช้จริง ๆ)
+ * — ยอมรับได้เพราะ production (Cloudflare Workers) มี context นี้เสมอ
+ */
+function scheduleBotCodeEmail(email: string, code: string): void {
+  void (async () => {
+    try {
+      const { getCloudflareContext } = await import("@opennextjs/cloudflare");
+      getCloudflareContext().ctx.waitUntil(
+        sendBotCodeEmail({ email, code }).catch((error: unknown) => {
+          console.error(
+            "[hemato-bot] ส่งรหัสอีเมลไม่สำเร็จ: " + String(error),
+          );
+        }),
+      );
+    } catch {
+      // dev:demo ไม่มี Cloudflare context ให้ waitUntil ใช้ — await ตรง ๆ แทน
+      try {
+        await sendBotCodeEmail({ email, code });
+      } catch (error) {
+        console.error(
+          "[hemato-bot] ส่งรหัสอีเมลไม่สำเร็จ: " + String(error),
+        );
+      }
+    }
+  })();
+}
+
 export async function verifyCodeAction(
   code: string,
 ): Promise<{ ok: boolean; error?: string }> {
   if (!(await allowBotLookup())) {
     return { ok: false, error: "ยืนยันรหัสบ่อยเกินไป กรุณารออีกสักครู่" };
   }
+  if (!secret()) return { ok: false, error: AUTH_NOT_READY };
 
   const jar = await cookies();
   const payload = await readBotPayload<{
@@ -185,6 +229,7 @@ export async function verifiedCasesAction(): Promise<
   if (!(await allowBotLookup())) {
     return { ok: false, error: "ค้นบ่อยเกินไป กรุณารออีกสักครู่" };
   }
+  if (!secret()) return { ok: false, error: AUTH_NOT_READY };
 
   const payload = await readBotPayload<{ phone: string; exp: number }>(
     (await cookies()).get(BOT_VERIFIED_COOKIE)?.value,
@@ -219,22 +264,22 @@ export async function resendAnswerAction(
   const id = referralId.trim();
   if (!id) return { ok: false, error: "กรุณากรอกเลขที่อ้างอิง" };
 
+  // ส่งไปอีเมลที่ผูกไว้กับเคสอยู่แล้วเท่านั้น — ข้อความตอบจึงไม่ต้อง (และไม่ควร)
+  // เอ่ยถึงอีเมลปลายทาง ⚠️ ต้องไม่ส่งข้อความจาก Apps Script ต่อให้ client ตรง ๆ
+  // ด้วย เพราะนั่นคือฝากความรับผิดชอบ "ห้ามเผยอีเมล" ไว้กับโค้ดฝั่ง Apps Script
+  // ที่ไม่ได้ทวนตรงนี้ — คืนข้อความคงที่เสมอ ส่วนรายละเอียดจริงบันทึกไว้ที่ log
+  // ฝั่งเซิร์ฟเวอร์เท่านั้น
+  const GENERIC_ERROR = "ส่งคำตอบซ้ำไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
   try {
-    // ส่งไปอีเมลที่ผูกไว้กับเคสอยู่แล้วเท่านั้น — ข้อความตอบจึงไม่ต้อง
-    // (และไม่ควร) เอ่ยถึงอีเมลปลายทาง
     const result = await resendAdviceEmail({ referralId: id });
     if (!result.ok) {
-      return {
-        ok: false,
-        error: result.error || "ส่งคำตอบซ้ำไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
-      };
+      console.error("[hemato-bot] resendAdvice ไม่สำเร็จ: " + (result.error ?? ""));
+      return { ok: false, error: GENERIC_ERROR };
     }
     return { ok: true };
   } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
+    console.error("[hemato-bot] resendAdvice เรียกไม่สำเร็จ: " + String(error));
+    return { ok: false, error: GENERIC_ERROR };
   }
 }
 
