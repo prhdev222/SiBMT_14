@@ -939,20 +939,29 @@ function sendBotCode_(payload) {
  */
 function resendAdvice_(payload) {
   const referralId = String(payload.referralId || '').trim();
-  if (!referralId) throw new Error('ไม่ได้ระบุเลขที่อ้างอิงของเคส');
+  // ⚠️ ข้อความเดียวกันทั้งสามทาง (ไม่ได้ระบุ / หาไม่พบ / ส่งไม่สำเร็จ) โดยตั้งใจ
+  //
+  // referral_id เดารูปแบบได้ (HEM-วันที่-เลขไล่จาก 0001 — ดู generateReferralId_)
+  // ถ้าแยกข้อความ "ไม่พบเคสนี้ในระบบ" ออกจาก "ส่งคำตอบซ้ำไม่สำเร็จ" คนที่ไล่เดา
+  // referralId จะใช้ความต่างของข้อความ error นี้เป็น oracle เช็คว่ารหัสไหนมีเคส
+  // อยู่จริงในระบบได้ ทั้งที่ยังไม่รู้อะไรเกี่ยวกับอีเมลปลายทางเลยสักนิด
+  // แนวทางเดียวกับ lookupBooking_ ใน ManageBooking.gs ที่รวมกรณี "ไม่พบเคส"
+  // กับ "พิสูจน์สิทธิ์ไม่ผ่าน" เป็นข้อความเดียวด้วยเหตุผลเดียวกัน
+  const GENERIC = 'ส่งคำตอบซ้ำไม่สำเร็จ กรุณาลองใหม่อีกครั้ง';
+  if (!referralId) throw new Error(GENERIC);
 
   const rows = readRows_(getSheet_(SHEETS.referrals));
   const match = rows.filter(function (r) {
     return String(r['referral_id'] || '').trim() === referralId;
   })[0];
 
-  if (!match) throw new Error('ไม่พบเคสนี้ในระบบ');
+  if (!match) throw new Error(GENERIC);
 
   // sendAdviceCopyEmail_ เอง log แค่ referralId ไม่มีอีเมล (ดูใน Api.gs ด้านบน)
-  // และคืน false เมื่อยังไม่มีคำตอบหรือไม่มีอีเมลผู้ส่ง — ข้อความด้านล่างเป็น
-  // ข้อความทั่วไปเสมอ ไม่บอกว่าล้มเพราะเหตุใดในสองกรณีนี้ ตามข้อกำหนดห้ามเผยอีเมล
+  // และคืน false เมื่อยังไม่มีคำตอบหรือไม่มีอีเมลผู้ส่ง — ใช้ข้อความทั่วไปเดียวกัน
+  // กับด้านบนอยู่แล้ว ไม่บอกว่าล้มเพราะเหตุใดในสามกรณีนี้ ตามข้อกำหนดห้ามเผยอีเมล
   const sent = sendAdviceCopyEmail_(match);
-  if (!sent) throw new Error('ส่งคำตอบซ้ำไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+  if (!sent) throw new Error(GENERIC);
 
   return { ok: true };
 }
@@ -971,7 +980,17 @@ function resendAdvice_(payload) {
 function confirmEmail_(payload) {
   const referralId = String(payload.referralId || '').trim();
   const token = String(payload.token || '').trim();
-  if (!referralId || !token) throw new Error('ลิงก์ยืนยันไม่ถูกต้อง');
+  // ⚠️ ข้อความเดียวกันทุกทางที่ล้มเหลว (ไม่ครบข้อมูล / หาเคสไม่พบ / token ไม่ตรง)
+  // โดยตั้งใจ
+  //
+  // referral_id เดารูปแบบได้ (HEM-วันที่-เลขไล่จาก 0001 — ดู generateReferralId_)
+  // ถ้าแยกข้อความ "ไม่พบเคสนี้ในระบบ" ออกจาก "token ไม่ตรง" คนที่ไล่เดา
+  // referralId จะใช้ความต่างของข้อความ error เป็น oracle เช็คว่ารหัสไหนมีเคส
+  // อยู่จริงในระบบได้ ก่อนจะไปเดา token 32 ตัวอักษรต่อด้วยซ้ำ — แนวทางเดียวกับ
+  // lookupBooking_ ใน ManageBooking.gs ที่รวมกรณี "ไม่พบเคส" กับ "พิสูจน์สิทธิ์
+  // ไม่ผ่าน" เป็นข้อความเดียวด้วยเหตุผลเดียวกันเป๊ะ
+  const GENERIC = 'ลิงก์ยืนยันไม่ถูกต้องหรือหมดอายุ';
+  if (!referralId || !token) throw new Error(GENERIC);
 
   const sheet = getSheet_(SHEETS.referrals);
   // ป้องกันชีตเก่าที่ยังไม่เคยผ่าน onFormSubmit ฉบับนี้เลยไม่มีคอลัมน์พวกนี้
@@ -982,11 +1001,11 @@ function confirmEmail_(payload) {
     return String(r['referral_id'] || '').trim() === referralId;
   })[0];
 
-  if (!match) throw new Error('ไม่พบเคสนี้ในระบบ');
+  if (!match) throw new Error(GENERIC);
 
   const expected = String(match['email_verify_token'] || '').trim();
   if (!expected || !timingSafeEquals_(expected, token)) {
-    throw new Error('ลิงก์ยืนยันไม่ถูกต้องหรือหมดอายุ');
+    throw new Error(GENERIC);
   }
 
   setCell_(sheet, map, match._row, 'email_verified_at', new Date());
