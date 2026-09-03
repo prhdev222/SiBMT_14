@@ -14,9 +14,9 @@ export function SessionBar({ username }: { username: string }) {
         <div className="max-w-6xl mx-auto px-4 py-2">
           <span className="font-semibold">⚠️ ยังไม่ได้ตั้งรหัสผ่าน</span> —
           ใครก็ตามที่รู้ลิงก์นี้เข้าดูข้อมูลได้ ห้ามเปิดใช้จริงจนกว่าจะตั้งค่า
-          <code className="mx-1 rounded bg-red-700 px-1">DASHBOARD_USERS</code>
+          <code className="mx-1 rounded bg-red-700 px-1 break-all">DASHBOARD_USERS</code>
           และ
-          <code className="mx-1 rounded bg-red-700 px-1">AUTH_SECRET</code>
+          <code className="mx-1 rounded bg-red-700 px-1 break-all">AUTH_SECRET</code>
         </div>
       </div>
     );
