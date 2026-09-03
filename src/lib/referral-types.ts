@@ -456,6 +456,21 @@ export interface Referral {
 }
 
 /**
+ * เคสกลุ่ม 2/3 ที่ยังไม่จบและอีเมลผู้ส่งมีปัญหา — ควรโทรยืนยันเบอร์แทนก่อนส่งคำแนะนำกลับ
+ *
+ * ใช้ isTerminal(status) ตัดสิน "ยังไม่จบ" เหมือนกับที่ alertLevelFor() ใช้หยุดแจ้งเตือน
+ * — แสดงเฉพาะเคสที่ยังไม่จบ พ้นสถานะ terminal แล้วไม่มีอะไรจะส่งอีเมลอีก
+ * (เดิมเคยใช้ adviceRecord ว่างเป็นตัวชี้วัด แต่เคสกลุ่ม 3 ที่จบด้วย
+ * "Readiness Visit Scheduled" ไม่มี adviceRecord เหมือนกัน ทำให้เคสที่นัดตรวจแล้ว
+ * ยังโดนขึ้นธงเตือนอยู่ทั้งที่ไม่ต้องเตือนแล้ว)
+ */
+export function needsEmailFlag(r: Referral): boolean {
+  const isGroup2or3 =
+    r.referralType === "REGIMEN_CONSULT" || r.referralType === "CHEMO_ADMISSION";
+  return r.emailUnverified && isGroup2or3 && !isTerminal(r.status);
+}
+
+/**
  * ไม่มีรายชื่อผู้รับผิดชอบตายตัวในไฟล์นี้โดยเจตนา
  *
  * resident และ fellow หมุนเวียนทุกปีการศึกษา รายชื่อที่ฝังในโค้ดจะล้าสมัย

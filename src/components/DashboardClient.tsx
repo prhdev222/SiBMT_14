@@ -15,6 +15,7 @@ import {
   STATUS_LABEL_TH,
   alertLevelFor,
   businessDaysText,
+  needsEmailFlag,
   type AlertLevel,
   type DiseaseGroup,
   type Referral,
@@ -25,20 +26,6 @@ import {
 /** ระดับแจ้งเตือนคำนวณจากเวลาที่ค้าง ไม่ได้เก็บไว้ในข้อมูล */
 function alertOf(r: Referral): AlertLevel {
   return alertLevelFor(r.elapsedBusinessHours, r.status);
-}
-
-/**
- * เคสกลุ่ม 2/3 ที่ยังไม่ตอบและอีเมลผู้ส่งมีปัญหา — ควรโทรยืนยันเบอร์แทนก่อนส่งคำแนะนำกลับ
- *
- * "ยังไม่ตอบ" ใช้ adviceRecord ว่างเป็นตัวชี้วัด (ตรงกับที่ referral-repository.ts
- * ใช้แยกเคสที่ "มีคำตอบให้เปิดดูได้") ไม่ใช้ status เพราะบางสถานะปิดเคสได้โดยไม่ต้องมี
- * คำตอบบันทึกไว้เลย เช่น "Rejected / Redirected" — เคสแบบนั้นไม่ต้องเตือนเรื่องอีเมลอีกแล้ว
- */
-function needsEmailFlag(r: Referral): boolean {
-  const isGroup2or3 =
-    r.referralType === "REGIMEN_CONSULT" || r.referralType === "CHEMO_ADMISSION";
-  const notAnsweredYet = !r.adviceRecord;
-  return r.emailUnverified && isGroup2or3 && notAnsweredYet;
 }
 
 /**
