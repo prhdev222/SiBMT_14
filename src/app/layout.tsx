@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SiteFooter } from "@/components/SiteFooter";
 import { FontSizeControl, FONT_SCALE_INIT } from "@/components/FontSizeControl";
+import { HematoBotWidget } from "@/components/hemato-bot/HematoBotWidget";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,6 +37,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         {children}
+        <HematoBotWidget />
         <SiteFooter />
         <FontSizeControl />
       </body>
