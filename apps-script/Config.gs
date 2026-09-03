@@ -242,6 +242,22 @@ const ADVICE_LIBRARY_COLUMNS = [
 ];
 
 /**
+ * คอลัมน์ยืนยันอีเมลตอนส่งฟอร์ม (Task 5 — Hemato Bot)
+ *
+ * onFormSubmit สร้าง token สุ่มลง email_verify_token แล้วแปะลิงก์ไปกับอีเมล
+ * รหัสอ้างอิง พอแพทย์ต้นทางกดลิงก์ confirmEmail ใน Api.gs จะเทียบ token แล้ว
+ * เขียนเวลาไว้ที่ email_verified_at — ส่วน email_mismatch บอกว่าค่าที่กรอกใน
+ * ช่อง "อีเมล" กับ "ยืนยันอีเมล" (ถ้าฟอร์มมีคำถามนี้) ไม่ตรงกันตั้งแต่ตอนส่ง
+ *
+ * เก็บเป็นคอลัมน์แยกจาก incomplete_reason เพื่อกรอง/นับด้วยสูตรได้ตรง ๆ
+ * โดยไม่ต้องแกะข้อความอิสระ
+ *
+ * ใช้ทั้งใน SYSTEM_COLUMNS (OnFormSubmit.gs) และ ensureColumns_ ใน confirmEmail_
+ * (Api.gs) เพื่อให้มีที่มาที่เดียว แก้ชื่อคอลัมน์ได้จากจุดนี้จุดเดียว
+ */
+const EMAIL_VERIFY_COLUMNS = ['email_verify_token', 'email_verified_at', 'email_mismatch'];
+
+/**
  * คอลัมน์ที่มาจากฟอร์ม — ต้องเปลี่ยนหัวตารางในชีตให้ตรงกับชื่อเหล่านี้ด้วยมือ
  *
  * Google Form เขียนหัวคอลัมน์เป็น "ข้อความคำถาม" ภาษาไทย ไม่ใช่ชื่อ field
@@ -283,6 +299,10 @@ const FORM_COLUMNS_OPTIONAL = [
   'diagnosis_g3', 'disease_group_g3', 'stage_g3', 'comorbidity_g3',
   'treatment_summary_g3', 'performance_status', 'admission_reason',
   'clinical_question_g3',
+  // ช่อง "ยืนยันอีเมล (พิมพ์ซ้ำ)" — คำถามเสริมกันแพทย์ต้นทางพิมพ์อีเมลผิด (Task 5)
+  // ไม่บังคับเพราะฟอร์มเก่าที่ยังไม่ได้เพิ่มคำถามนี้ต้องใช้งานต่อได้ตามปกติ
+  // ไม่มีคอลัมน์นี้ = ฟอร์มยังไม่มีคำถามนี้ onFormSubmit จะข้ามการตรวจให้เอง
+  'referrer_email_confirm',
 ];
 
 /**

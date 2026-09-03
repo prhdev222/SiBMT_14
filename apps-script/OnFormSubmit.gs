@@ -35,6 +35,9 @@ const SYSTEM_COLUMNS = [
   'appointment_note',
   'fellow_assigned',
   'closed_at',
+  // token ยืนยันอีเมล + เวลาที่ยืนยันแล้ว + ธงว่าอีเมลสองช่องไม่ตรงกัน (Task 5)
+  // ดูคำอธิบายเต็มที่ EMAIL_VERIFY_COLUMNS ใน Config.gs
+  ...EMAIL_VERIFY_COLUMNS,
 ];
 
 function onFormSubmit(e) {
@@ -103,15 +106,36 @@ function onFormSubmit(e) {
       setCell_(sheet, map, row, 'possible_duplicate_of', duplicateOf);
     }
 
-    // 6. ส่ง Referral ID กลับให้แพทย์ผู้ส่ง
+    const email = String(readCell_(sheet, map, row, 'referrer_email') || '').trim();
+
+    // 6. ตรวจว่าอีเมลกับ "ยืนยันอีเมล (พิมพ์ซ้ำ)" (ถ้าฟอร์มมีคำถามนี้) ตรงกันไหม (Task 5)
+    //
+    // ไม่มีคอลัมน์ referrer_email_confirm เลย = ฟอร์มรุ่นนั้นยังไม่มีคำถามนี้
+    // ให้ข้ามการตรวจไปเงียบ ๆ ไม่ใช่ถือว่าไม่ตรง — ไม่งั้นทุกเคสจากฟอร์มเก่าจะ
+    // ติดธง mismatch ทั้งที่ไม่เคยถูกถามคำถามนี้เลย
+    if ('referrer_email_confirm' in map) {
+      const confirm = String(readCell_(sheet, map, row, 'referrer_email_confirm') || '')
+        .trim().toLowerCase();
+      if (confirm && email && confirm !== email.toLowerCase()) {
+        setCell_(sheet, map, row, 'email_mismatch', 'yes');
+      }
+    }
+
+    // 7. token ยืนยันอีเมล — สุ่ม 32 ตัวอักษร ท่าเดียวกับ answer_token/manage_token
+    // (ดู generateManageToken_ ใน ManageBooking.gs) ผูกกับลิงก์ "ยืนยันอีเมลของ
+    // ท่าน" ในอีเมลรหัสอ้างอิงด้านล่าง เทียบกันตอนกดลิงก์ที่ confirmEmail
+    // action ใน Api.gs
+    const verifyToken = generateManageToken_();
+    setCell_(sheet, map, row, 'email_verify_token', verifyToken);
+
+    // 8. ส่ง Referral ID กลับให้แพทย์ผู้ส่ง พร้อมลิงก์ยืนยันอีเมล
     //
     // ช่องอีเมลถูกตั้งเป็นบังคับในฟอร์มแล้ว แต่ยังเช็คตรงนี้อยู่ เพราะเคสเก่า
     // ที่ส่งมาก่อนเปลี่ยนฟอร์ม และการแก้ฟอร์มผิดพลาด ทำให้ค่าว่างได้อยู่ดี
     // เขียน log ไว้แทนการเงียบ — เดิมเคสที่ไม่มีอีเมลจะไม่ได้รับรหัสอ้างอิงเลย
     // แล้วไม่มีใครรู้จนกว่าแพทย์จะโทรมาถาม
-    const email = String(readCell_(sheet, map, row, 'referrer_email') || '').trim();
     if (email) {
-      sendReferralIdEmail_(email, referralId, referralType);
+      sendReferralIdEmail_(email, referralId, referralType, verifyToken);
     } else {
       console.warn(
         'เคส ' + referralId + ' ไม่มีอีเมลผู้ส่ง — ไม่ได้ส่งรหัสอ้างอิงกลับ ' +
@@ -131,8 +155,12 @@ function onFormSubmit(e) {
  * แพทย์จึงต้องมีช่องทางรู้รหัสของตัวเอง สำหรับใช้อ้างอิงตอนส่งข้อมูลเพิ่ม
  *
  * อีเมลนี้ **ไม่มีข้อมูลผู้ป่วยใด ๆ** มีเพียงรหัสและกลุ่มงาน
+ *
+ * @param {string} verifyToken token ยืนยันอีเมล (ดู EMAIL_VERIFY_COLUMNS ใน
+ *   Config.gs) — ใส่ลิงก์ "ยืนยันอีเมลของท่าน" ก็ต่อเมื่อมีค่า เผื่อกรณีสร้าง
+ *   token ไม่สำเร็จ จะได้ไม่ส่งอีเมลที่มีลิงก์พังออกไป
  */
-function sendReferralIdEmail_(email, referralId, referralType) {
+function sendReferralIdEmail_(email, referralId, referralType, verifyToken) {
   const groupNo = GROUP_NUMBER[referralType] || '-';
 
   const body =
@@ -141,6 +169,7 @@ function sendReferralIdEmail_(email, referralId, referralType) {
     'กลุ่มที่: ' + groupNo + '\n\n' +
     'กรุณาเก็บรหัสนี้ไว้ หากต้องการส่งข้อมูลเพิ่มเติมหรือสอบถามความคืบหน้า\n' +
     'ให้แจ้งรหัสนี้กับเจ้าหน้าที่\n\n' +
+    buildVerifyEmailBlock_(referralId, verifyToken) +
     'ทีมงานจะรับเรื่องในรอบประจำวันเวลา 10:00 น. ของวันทำการ\n' +
     'และตอบกลับภายใน 3 วันทำการ\n\n' +
     buildLineLinkInvite_() +
@@ -159,6 +188,25 @@ function sendReferralIdEmail_(email, referralId, referralType) {
     // ส่งอีเมลไม่สำเร็จต้องไม่ทำให้การรับเคสล้มเหลว
     console.error('ส่งอีเมลรหัสอ้างอิงไม่สำเร็จ (' + referralId + '): ' + err);
   }
+}
+
+/**
+ * บล็อกลิงก์ "ยืนยันอีเมลของท่าน" แนบไปกับอีเมลรหัสอ้างอิง (Task 5)
+ *
+ * ไม่มี token ก็ไม่ขึ้นบล็อกนี้เลย — ดีกว่าส่งอีเมลที่มีลิงก์พัง กดแล้วขึ้น error
+ * โดยไม่มีใครรู้ว่าทำไม
+ */
+function buildVerifyEmailBlock_(referralId, token) {
+  if (!token) return '';
+  return '--- ยืนยันอีเมลของท่าน ---\n' +
+    buildVerifyEmailUrl_(referralId, token) + '\n' +
+    '(ยืนยันว่าอีเมลนี้เป็นของท่านจริง ใช้เวลาไม่ถึงนาที)\n\n';
+}
+
+/** ลิงก์ยืนยันอีเมล — ใช้ SITE_URL เดียวกับลิงก์อื่นทั้งหมดในระบบ (ดู Config.gs) */
+function buildVerifyEmailUrl_(referralId, token) {
+  return SITE_URL + '/verify-email?id=' + encodeURIComponent(referralId) +
+    '&t=' + encodeURIComponent(token);
 }
 
 function readCell_(sheet, map, row, columnName) {

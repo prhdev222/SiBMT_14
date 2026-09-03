@@ -160,6 +160,20 @@ function doPost(e) {
       return jsonResponse_({ ok: true, data: rescheduleBooking_(body.payload || {}) });
     }
 
+    // สามคำสั่งของ Hemato Bot (Task 5) — ยืนยันตัวตนด้วยรหัสทางอีเมล,
+    // ส่งคำตอบซ้ำ, ยืนยันอีเมลตอนส่งฟอร์ม ดูรายละเอียดที่ handler แต่ละตัวด้านล่าง
+    if (body.action === 'sendBotCode') {
+      return jsonResponse_({ ok: true, data: sendBotCode_(body.payload || {}) });
+    }
+
+    if (body.action === 'resendAdvice') {
+      return jsonResponse_({ ok: true, data: resendAdvice_(body.payload || {}) });
+    }
+
+    if (body.action === 'confirmEmail') {
+      return jsonResponse_({ ok: true, data: confirmEmail_(body.payload || {}) });
+    }
+
     // ติดเวอร์ชันไปกับข้อความ error ด้วย เพราะสาเหตุที่พบเกือบทุกครั้งของคำสั่ง
     // ที่ "หายไป" คือ deploy ค้างเวอร์ชันเก่า — บอกไปเลยว่าโค้ดตัวไหนเป็นคนตอบ
     return jsonResponse_({
@@ -857,6 +871,126 @@ function contactAdmin_(payload) {
   }
 
   return { delivered: true };
+}
+
+/* ------------------------------------------------------------------ */
+/* Hemato Bot — แชทตอบสถานะและยืนยันตัวตนด้วยรหัสทางอีเมล (Task 5)          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * ส่งรหัสยืนยันตัวตน 6 หลักของ Hemato Bot ทางอีเมล
+ *
+ * ฝั่งเว็บ (src/app/hemato-bot/actions.ts) เป็นคนสุ่มรหัสและเก็บ hash ไว้เอง
+ * ฟังก์ชันนี้แค่ "ส่งเมล" ไม่รู้จักเบอร์โทรหรือเคสใด ๆ เลย — เว็บเป็นฝ่ายเดียว
+ * ที่ถือความสัมพันธ์ระหว่างเบอร์กับรหัส
+ *
+ * ⚠️ ทบทวนความปลอดภัยจาก Task 4: ห้าม log หรือคืนอีเมลปลายทางกลับไปเด็ดขาด
+ * ไม่ว่าจะสำเร็จหรือล้มเหลว — ข้อความ error เป็นข้อความทั่วไปเสมอ
+ */
+function sendBotCode_(payload) {
+  const email = String(payload.email || '').trim();
+  const code = String(payload.code || '').trim();
+
+  if (!email || email.indexOf('@') === -1) {
+    throw new Error('อีเมลไม่ถูกต้อง');
+  }
+  if (!/^\d{6}$/.test(code)) {
+    throw new Error('รูปแบบรหัสไม่ถูกต้อง');
+  }
+
+  const body =
+    'รหัสยืนยันตัวตนของท่านคือ\n\n' +
+    '   ' + code + '\n\n' +
+    'รหัสนี้ใช้ได้ภายใน 10 นาที\n\n' +
+    'หากท่านไม่ได้เป็นผู้ขอรหัสนี้ กรุณาเพิกเฉยต่ออีเมลฉบับนี้ ไม่ต้องดำเนินการใด ๆ\n\n' +
+    '--\n' +
+    'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช\n' +
+    'อีเมลนี้ส่งจากระบบอัตโนมัติ กรุณาอย่าตอบกลับ';
+
+  try {
+    MailApp.sendEmail({
+      to: email,
+      subject: 'รหัสยืนยัน Hemato Bot',
+      body: body,
+    });
+  } catch (err) {
+    // ⚠️ ห้ามใส่ตัวแปร email ลงใน log บรรทัดนี้ — ดูคำเตือนด้านบนของฟังก์ชัน
+    // กรอง pattern คล้ายอีเมลออกจากข้อความ err ด้วย เผื่อ MailApp เอง
+    // แปะที่อยู่ปลายทางไว้ในข้อความ error (เช่นตอนอีเมลถูกปฏิเสธ)
+    const safeErr = String(err).replace(/[^\s]+@[^\s]+/g, '[ที่อยู่อีเมล]');
+    console.error('ส่งรหัสยืนยัน Hemato Bot ไม่สำเร็จ: ' + safeErr);
+    throw new Error('ส่งอีเมลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+  }
+
+  return { ok: true };
+}
+
+/**
+ * ส่งสำเนาคำตอบซ้ำให้แพทย์ต้นทางผ่าน Hemato Bot
+ *
+ * ใช้ sendAdviceCopyEmail_() ตัวเดียวกับที่ LineWebhook.gs เรียกตอนพิมพ์
+ * "ส่งซ้ำ" ในแชท LINE เพื่อไม่ให้มีตรรกะ "ประกอบอีเมลสำเนาคำตอบ" สองชุด
+ * ที่ต้องแก้คู่กันทุกครั้งที่เนื้อหาอีเมลเปลี่ยน
+ *
+ * ⚠️ payload ส่งมาแค่ referralId — ไม่มีช่องให้ระบุอีเมลปลายทางเอง
+ * sendAdviceCopyEmail_() ส่งไปที่ referrer_email ของแถวนั้นเท่านั้นเสมอ
+ * ต่อให้มีคนเดา referralId ถูก อย่างมากก็ได้อีเมลไปหาเจ้าของเคสตัวจริง
+ * ไม่ใช่คนที่สั่ง (เหตุผลเดียวกับที่ sendAdviceCopyEmail_ อธิบายไว้)
+ */
+function resendAdvice_(payload) {
+  const referralId = String(payload.referralId || '').trim();
+  if (!referralId) throw new Error('ไม่ได้ระบุเลขที่อ้างอิงของเคส');
+
+  const rows = readRows_(getSheet_(SHEETS.referrals));
+  const match = rows.filter(function (r) {
+    return String(r['referral_id'] || '').trim() === referralId;
+  })[0];
+
+  if (!match) throw new Error('ไม่พบเคสนี้ในระบบ');
+
+  // sendAdviceCopyEmail_ เอง log แค่ referralId ไม่มีอีเมล (ดูใน Api.gs ด้านบน)
+  // และคืน false เมื่อยังไม่มีคำตอบหรือไม่มีอีเมลผู้ส่ง — ข้อความด้านล่างเป็น
+  // ข้อความทั่วไปเสมอ ไม่บอกว่าล้มเพราะเหตุใดในสองกรณีนี้ ตามข้อกำหนดห้ามเผยอีเมล
+  const sent = sendAdviceCopyEmail_(match);
+  if (!sent) throw new Error('ส่งคำตอบซ้ำไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+
+  return { ok: true };
+}
+
+/**
+ * ยืนยันว่าอีเมลที่กรอกไว้ตอนส่งฟอร์มเป็นของแพทย์ต้นทางจริง (Task 5)
+ *
+ * เทียบ token กับคอลัมน์ email_verify_token ที่ onFormSubmit สร้างไว้
+ * (ดู OnFormSubmit.gs และ EMAIL_VERIFY_COLUMNS ใน Config.gs) ใช้
+ * timingSafeEquals_ ตัวเดียวกับที่ ManageBooking.gs ใช้เทียบ manage_token
+ * เพราะ token นี้เดินทางผ่านลิงก์อีเมลเหมือนกัน มีความเสี่ยงแบบเดียวกัน
+ *
+ * เขียน email_verified_at ทับด้วยเวลาปัจจุบันได้เสมอ ไม่เช็คว่ายืนยันไปแล้ว
+ * หรือยัง — กดลิงก์ซ้ำได้อย่างปลอดภัย ไม่มีผลข้างเคียงเพิ่มเติมนอกจากเวลาขยับ
+ */
+function confirmEmail_(payload) {
+  const referralId = String(payload.referralId || '').trim();
+  const token = String(payload.token || '').trim();
+  if (!referralId || !token) throw new Error('ลิงก์ยืนยันไม่ถูกต้อง');
+
+  const sheet = getSheet_(SHEETS.referrals);
+  // ป้องกันชีตเก่าที่ยังไม่เคยผ่าน onFormSubmit ฉบับนี้เลยไม่มีคอลัมน์พวกนี้
+  const map = ensureColumns_(sheet, EMAIL_VERIFY_COLUMNS);
+  const rows = readRows_(sheet);
+
+  const match = rows.filter(function (r) {
+    return String(r['referral_id'] || '').trim() === referralId;
+  })[0];
+
+  if (!match) throw new Error('ไม่พบเคสนี้ในระบบ');
+
+  const expected = String(match['email_verify_token'] || '').trim();
+  if (!expected || !timingSafeEquals_(expected, token)) {
+    throw new Error('ลิงก์ยืนยันไม่ถูกต้องหรือหมดอายุ');
+  }
+
+  setCell_(sheet, map, match._row, 'email_verified_at', new Date());
+  return { ok: true };
 }
 
 function jsonResponse_(obj) {
