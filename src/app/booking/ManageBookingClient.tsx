@@ -199,21 +199,33 @@ function BookingPanel({
           หากจำเป็น กรุณาโทร {CONTACT.phoneDisplay} ({CONTACT.hoursTh})
         </Alert>
       ) : mode === "view" ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => setMode("reschedule")}
-            className="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 transition-colors"
-          >
-            เลื่อนนัดไปวันอื่น
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("confirmCancel")}
-            className="rounded-lg border-2 border-red-300 px-5 py-3 font-semibold text-red-700 hover:bg-red-50 transition-colors"
-          >
-            ยกเลิกนัด
-          </button>
+        <div className="space-y-3">
+          {/* พิมพ์ใบนัดต้องใช้ manage token — เส้นทางค้นด้วยเบอร์ไม่มี token
+              จึงไม่แสดงปุ่ม (เปิดจากลิงก์ในอีเมลแทน) */}
+          {token && (
+            <a
+              href={`/booking/slip?id=${encodeURIComponent(booking.referralId)}&t=${encodeURIComponent(token)}`}
+              className="block rounded-lg border-2 border-zinc-800 px-5 py-3 text-center font-semibold text-zinc-900 hover:bg-zinc-50 transition-colors"
+            >
+              🖨️ พิมพ์ใบนัดให้ผู้ป่วย
+            </a>
+          )}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setMode("reschedule")}
+              className="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 transition-colors"
+            >
+              เลื่อนนัดไปวันอื่น
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("confirmCancel")}
+              className="rounded-lg border-2 border-red-300 px-5 py-3 font-semibold text-red-700 hover:bg-red-50 transition-colors"
+            >
+              ยกเลิกนัด
+            </button>
+          </div>
         </div>
       ) : mode === "confirmCancel" ? (
         <form action={cancelAction} className="rounded-xl bg-white border-2 border-red-300 p-5 space-y-3">

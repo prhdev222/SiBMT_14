@@ -439,16 +439,26 @@ function Confirmation({
           ทำเองได้ ไม่ต้องโทรแจ้ง — คิวที่ยกเลิกจะว่างกลับเข้าปฏิทินทันที
           ให้แพทย์ท่านอื่นจองต่อได้ ทำได้ถึงวันก่อนวันนัด
         </p>
-        <Link
-          href={
-            manageToken
-              ? `/booking?id=${encodeURIComponent(referralId)}&t=${encodeURIComponent(manageToken)}`
-              : "/booking"
-          }
-          className="mt-3 inline-flex rounded-lg border border-zinc-300 px-4 py-2 font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
-        >
-          เปิดหน้าจัดการนัด
-        </Link>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {manageToken && (
+            <Link
+              href={`/booking/slip?id=${encodeURIComponent(referralId)}&t=${encodeURIComponent(manageToken)}`}
+              className="inline-flex rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 transition-colors"
+            >
+              🖨️ พิมพ์ใบนัดให้ผู้ป่วย
+            </Link>
+          )}
+          <Link
+            href={
+              manageToken
+                ? `/booking?id=${encodeURIComponent(referralId)}&t=${encodeURIComponent(manageToken)}`
+                : "/booking"
+            }
+            className="inline-flex rounded-lg border border-zinc-300 px-4 py-2 font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
+          >
+            เปิดหน้าจัดการนัด
+          </Link>
+        </div>
         <p className="text-xs text-zinc-500 mt-2">
           ลิงก์เดียวกันนี้อยู่ในอีเมลยืนยันนัดด้วย
           หากเปิดหน้านี้ไม่ทันให้ดูในอีเมลได้

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { loadReferralByAnswerToken } from "@/lib/referral-repository";
 import { REFERRAL_TYPE_META, STATUS_LABEL_TH } from "@/lib/referral-types";
 import { LINE_OA } from "@/lib/config";
+import { PrintButton } from "@/components/PrintButton";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +65,11 @@ export default async function AnswerPage({
           <p className="font-mono text-sm text-zinc-500 mt-1">
             {referral.referralId}
           </p>
+          {referral.appointmentDate && (
+            <div className="print:hidden mt-3">
+              <PrintButton label="🖨️ พิมพ์ใบนัด/คำตอบให้ผู้ป่วย" />
+            </div>
+          )}
         </div>
       </header>
 
@@ -98,6 +104,12 @@ export default async function AnswerPage({
               กรุณาเขียนวันนัดนี้บนหัวกระดาษใบ refer —
               ธุรการ OPD 700 คัดกรองจากหัวกระดาษ ไม่ได้เปิดหน้านี้ดู
             </p>
+            {/* ถ้อยคำเกลาโดยผู้ใช้ 4 ก.ย. 2569 — ตรงกับใบนัดกลุ่ม 1 ห้ามแก้โดยไม่ถาม */}
+            <p className="text-xs text-green-900 mt-2 border-t border-green-200 pt-2">
+              <strong>หมายเหตุสำคัญ:</strong> หากวันนัดมีการสับเปลี่ยนแพทย์ผู้ออกตรวจ
+              (แพทย์แลกเวรกัน) ชื่อแพทย์ที่ออกตรวจจริงอาจไม่ตรงกับชื่อในใบนัดนี้ —
+              ผู้ป่วยเข้าตรวจกับแพทย์ที่ออกตรวจในวันนั้นได้
+            </p>
           </section>
         )}
 
@@ -106,7 +118,7 @@ export default async function AnswerPage({
           ผูกอยู่แล้ว แต่หน้านี้ไม่รู้ว่ามาจากทางไหน จึงแสดงให้ทุกคนเห็น
           และเขียนให้คนที่ผูกแล้วอ่านผ่านได้โดยไม่สับสน
         */}
-        <section className="rounded-xl bg-blue-50 border border-blue-200 p-5 text-sm">
+        <section className="print:hidden rounded-xl bg-blue-50 border border-blue-200 p-5 text-sm">
           <h2 className="font-semibold text-blue-900 mb-1">
             ครั้งหน้าไม่ต้องเปิดอีเมล
           </h2>
@@ -125,7 +137,7 @@ export default async function AnswerPage({
           </p>
         </section>
 
-        <p className="text-xs text-zinc-500 text-center pt-2">
+        <p className="print:hidden text-xs text-zinc-500 text-center pt-2">
           ลิงก์นี้เปิดได้เฉพาะผู้ที่มีลิงก์ ส่งต่อให้ทีมของท่านดูได้
           <br />
           กรุณาอย่าเผยแพร่ในที่สาธารณะ

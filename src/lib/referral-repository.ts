@@ -242,7 +242,17 @@ export async function loadTransplantIndications(): Promise<
 export async function loadReferralByAnswerToken(
   token: string,
 ): Promise<Referral | null> {
-  if (!readCredentials() || token.length < 16) return null;
+  if (token.length < 16) return null;
+
+  // โหมดสาธิต: จับคู่กับ token ปลอมของ mock — ให้ลิงก์อ่านคำตอบจากแชท
+  // เปิดได้จริงใน demo (เดิมเด้ง 404 ทุกครั้ง ทดสอบ flow ไม่จบ)
+  if (!readCredentials()) {
+    return (
+      MOCK_REFERRALS.find(
+        (r) => r.adviceRecord && demoAnswerToken(r.referralId) === token,
+      ) ?? null
+    );
+  }
 
   try {
     const rows = await readSheetRows(REFERRALS_SHEET);
