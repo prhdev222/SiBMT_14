@@ -70,9 +70,12 @@ function exportCsv(rows: Referral[]) {
 export function DashboardClient({
   referrals,
   residents,
+  fellows,
 }: {
   referrals: Referral[];
   residents: string[];
+  /** รายชื่อ fellow (จากตารางออกตรวจ) — ผู้รับผิดชอบของเคสกลุ่ม 1 */
+  fellows: string[];
 }) {
   const [search, setSearch] = useState("");
   const [referralType, setReferralType] = useState<ReferralType | "all">("all");
@@ -164,14 +167,23 @@ export function DashboardClient({
    * รายชื่อที่ล้าสมัยจะทำให้กรองไม่เจอคนที่มีเคสอยู่จริง
    */
   const assignees = useMemo(() => {
-    const names = new Set<string>(residents);
+    // ผู้รับผิดชอบต่างกันตามกลุ่ม: กลุ่ม 1 = fellow, กลุ่ม 2/3 = resident
+    // (มติผู้ใช้ 5 ก.ย. 2569 — เดิมโชว์ resident ปนแม้กรองกลุ่ม 1 อยู่)
+    const roster =
+      referralType === "TRANSPLANT_APPOINTMENT"
+        ? fellows
+        : referralType === "REGIMEN_CONSULT" || referralType === "CHEMO_ADMISSION"
+          ? residents
+          : [...residents, ...fellows];
+    const names = new Set<string>(roster);
     for (const r of referrals) {
+      if (referralType !== "all" && r.referralType !== referralType) continue;
       const holder = assignedOf(r);
       if (holder) names.add(holder);
     }
     return [...names].sort((a, b) => a.localeCompare(b, "th"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [referrals, residents, assignedOverrides]);
+  }, [referrals, residents, fellows, referralType, assignedOverrides]);
 
   /** จำนวนเคสที่ยังไม่จบ แยกตามกลุ่มงาน — ใช้ดูภาระงานแต่ละทีม */
   const openByType = useMemo(() => {
@@ -255,7 +267,9 @@ export function DashboardClient({
           className="w-full min-w-0 rounded-md border border-zinc-300 px-3 py-2 text-sm"
         >
           <option value="all">ทุกกลุ่มงาน</option>
-          {REFERRAL_TYPES_ORDERED.map((t) => (
+          {/* กลุ่ม 4 อัตโนมัติทั้งสาย ไม่มีเคสให้ใครจัดการ — ตัดออกจากตัวกรอง
+              (มติผู้ใช้ 5 ก.ย. 2569) เคสกลุ่ม 4 ยังเห็นได้ใน "ทุกกลุ่มงาน" */}
+          {REFERRAL_TYPES_ORDERED.filter((t) => t !== "GENERAL_OPD").map((t) => (
             <option key={t} value={t}>
               กลุ่ม {REFERRAL_TYPE_META[t].groupNumber} —{" "}
               {REFERRAL_TYPE_META[t].titleTh}
@@ -459,17 +473,28 @@ export function DashboardClient({
                 className="mt-0.5 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900 disabled:bg-zinc-100"
               >
                 <option value="">ยังไม่มอบหมาย</option>
-                {assignedOf(selected) &&
-                  !residents.includes(assignedOf(selected) as string) && (
-                    <option value={assignedOf(selected) as string}>
-                      {assignedOf(selected)} (นอกรายชื่อปัจจุบัน)
-                    </option>
-                  )}
-                {residents.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
+                {(() => {
+                  // เคสกลุ่ม 1 มอบให้ fellow / กลุ่มอื่นมอบให้ resident
+                  const roster =
+                    selected.referralType === "TRANSPLANT_APPOINTMENT"
+                      ? fellows
+                      : residents;
+                  const current = assignedOf(selected);
+                  return (
+                    <>
+                      {current && !roster.includes(current) && (
+                        <option value={current}>
+                          {current} (นอกรายชื่อปัจจุบัน)
+                        </option>
+                      )}
+                      {roster.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </>
+                  );
+                })()}
               </select>
               {assignError && (
                 <p className="mt-1 text-xs text-red-600">{assignError}</p>

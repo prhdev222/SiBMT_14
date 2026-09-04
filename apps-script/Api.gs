@@ -503,8 +503,25 @@ function updateAssignedTo_(payload) {
   const assignedTo = String(payload.assignedTo || '').trim();
 
   if (!referralId) throw new Error('ไม่ได้ระบุเลขที่อ้างอิงของเคส');
+  if (assignedTo.length > 100) throw new Error('ชื่อผู้รับผิดชอบยาวผิดปกติ');
 
-  if (assignedTo) {
+  const sheet = getSheet_(SHEETS.referrals);
+  const map = headerMap_(sheet);
+  const match = readRows_(sheet).filter(function (r) {
+    return String(r['referral_id'] || '').trim() === referralId;
+  })[0];
+
+  if (!match) throw new Error('ไม่พบเคส ' + referralId + ' — กรุณาโหลดหน้าใหม่');
+
+  // ผู้รับผิดชอบต่างบัญชีรายชื่อตามกลุ่ม (มติผู้ใช้ 5 ก.ย. 2569):
+  // กลุ่ม 1 = fellow ซึ่งรายชื่ออยู่ในไฟล์ตารางออกตรวจคนละไฟล์ที่สคริปต์นี้
+  // ไม่มีสิทธิ์อ่าน — จึงตรวจไม่ได้ ปล่อยผ่านโดยพึ่ง dropdown ฝั่งเว็บ
+  // (สร้างจาก loadFellows) เป็นตัวคุมตัวเลือกแทน
+  // กลุ่มอื่น = resident ตรวจกับชีต residents เหมือนเดิม กันชื่อสะกดผิด
+  const isTransplant =
+    String(match['referral_type'] || '').trim() === TYPES.transplant;
+
+  if (assignedTo && !isTransplant) {
     const known = readRows_(getSheet_(SHEETS.residents))
       .filter(function (r) {
         const active = String(r['active'] || '').trim().toLowerCase();
@@ -518,14 +535,6 @@ function updateAssignedTo_(payload) {
         ' — เพิ่มชื่อในชีตก่อนแล้วลองใหม่');
     }
   }
-
-  const sheet = getSheet_(SHEETS.referrals);
-  const map = headerMap_(sheet);
-  const match = readRows_(sheet).filter(function (r) {
-    return String(r['referral_id'] || '').trim() === referralId;
-  })[0];
-
-  if (!match) throw new Error('ไม่พบเคส ' + referralId + ' — กรุณาโหลดหน้าใหม่');
 
   setCell_(sheet, map, match._row, 'assigned_to', assignedTo);
   return { ok: true };
