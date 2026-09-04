@@ -16,6 +16,7 @@ Web portal + staff dashboard สำหรับ workflow การส่งต�
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | ขั้นตอน deploy ขึ้น Cloudflare Pages และการตั้งค่า access control |
 | [docs/DATA_HOSTING_OPTIONS.md](docs/DATA_HOSTING_OPTIONS.md) | เปรียบเทียบที่เก็บข้อมูล 3 ทาง และภาระความรับผิด |
 | [docs/PATIENT_DATA_CONSULTATION.md](docs/PATIENT_DATA_CONSULTATION.md) | บันทึกขอความเห็นเรื่อง PDPA และการไม่เก็บข้อมูลระบุตัวตน |
+| [docs/HEMATO_BOT.md](docs/HEMATO_BOT.md) | คู่มือ Hemato Bot — วิดเจ็ตแชทลอยบนหน้าเว็บ เมนูทั้งหมด โมเดลความปลอดภัย และเช็กลิสต์ก่อนเปิดใช้ |
 
 ## แนวคิดหลัก: 4-Group Triage
 
