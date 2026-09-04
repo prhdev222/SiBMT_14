@@ -136,6 +136,38 @@ const TYPE_FROM_FORM_LABEL = {
   'กลุ่มที่ 3 — ขอส่งตัวมาให้ยาเคมีบำบัด/ยากดภูมิ': TYPES.admission,
 };
 
+/**
+ * ทำข้อความตัวเลือกให้อยู่รูปเดียวกันก่อนเทียบ
+ *
+ * ของจริงเจอมาแล้ว (ก.ย. 2569): ตัวเลือกในฟอร์มมีอักขระที่ตามองไม่เห็น
+ * ปนมา (zero-width space / ขีดคนละชนิด / เว้นวรรคชนิดพิเศษ) ทำให้เทียบ
+ * แบบตรงตัวไม่ผ่านทั้งที่ข้อความ "ดูเหมือนกัน" ทุกประการ — จับด้วยตาไม่ได้
+ * และคัดลอกไปเทียบที่อื่นอักขระพวกนี้ก็หายระหว่างทาง
+ *
+ * จึงเทียบผ่านการ normalize ทั้งสองฝั่ง: ขีดทุกชนิดเป็นตัวเดียวกัน
+ * อักขระล่องหนหายไป ช่องว่างซ้ำยุบเหลือหนึ่ง — ข้อความจริงไม่ถูกแก้ในชีต
+ */
+function normalizeFormLabel_(value) {
+  return String(value || '')
+    .normalize('NFC')
+    .replace(/[\u200B\u200C\u200D\uFEFF]/g, '')   // อักขระกว้างศูนย์ → ลบทิ้ง
+    .replace(/[\u2010-\u2015\u2212-]/g, '-')        // ขีดทุกชนิด (‐‑‒–—―−-) → '-'
+    .replace(/[\s\u00A0]+/g, ' ')                    // ช่องว่างทุกชนิด/ซ้ำ → เว้นวรรคเดียว
+    .trim();
+}
+
+/** หา referral type จากข้อความตัวเลือก — คืน '' เมื่อไม่รู้จัก */
+function typeFromFormLabel_(label) {
+  const wanted = normalizeFormLabel_(label);
+  const keys = Object.keys(TYPE_FROM_FORM_LABEL);
+  for (let i = 0; i < keys.length; i++) {
+    if (normalizeFormLabel_(keys[i]) === wanted) {
+      return TYPE_FROM_FORM_LABEL[keys[i]];
+    }
+  }
+  return '';
+}
+
 const GROUP_NUMBER = {
   [TYPES.transplant]: 1,
   [TYPES.regimen]: 2,

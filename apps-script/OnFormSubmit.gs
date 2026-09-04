@@ -70,7 +70,9 @@ function onFormSubmit(e) {
 
     // 3. referral_type — แปลงข้อความตัวเลือกในฟอร์มเป็นค่าที่ระบบใช้
     const typeLabel = String(readCell_(sheet, map, row, 'referral_type') || '').trim();
-    const referralType = TYPE_FROM_FORM_LABEL[typeLabel];
+    // เทียบแบบ normalize — ทนอักขระล่องหน/ขีดต่างชนิดที่ติดมากับฟอร์ม
+    // (ดูเหตุผลที่ normalizeFormLabel_ ใน Config.gs)
+    const referralType = typeFromFormLabel_(typeLabel);
 
     if (!referralType) {
       // ข้อความตัวเลือกในฟอร์มถูกแก้จนไม่ตรงกับ TYPE_FROM_FORM_LABEL แล้ว
