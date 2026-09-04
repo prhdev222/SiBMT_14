@@ -382,6 +382,75 @@ export async function loadAttendings(): Promise<string[]> {
 }
 
 const RESIDENTS_SHEET = "residents";
+const DOCUMENTS_SHEET = "documents";
+
+export interface SystemDocument {
+  title: string;
+  /** tag กลุ่ม เช่น "1" / "2,3" / "ทั้งหมด" — ตีความที่ documentsForGroup */
+  groups: string;
+  url: string;
+  description: string;
+}
+
+/**
+ * คลังเอกสารสำคัญสำหรับแพทย์ต้นทาง (ใบสิทธิ, standing order, ประกาศสิทธิยา ฯลฯ)
+ *
+ * แอดมินอัปโหลดไฟล์เข้า Drive แล้วเพิ่มแถวในชีต documents — โผล่บนเว็บทันที
+ * เรียงตามลำดับแถวในชีต / active = no ซ่อนโดยไม่ต้องลบแถว
+ */
+export async function loadDocuments(): Promise<SystemDocument[]> {
+  if (!readCredentials()) {
+    return [
+      {
+        title: "ใบส่งตรวจ HLA typing (ตัวอย่างโหมดสาธิต)",
+        groups: "1",
+        url: "https://drive.google.com/file/d/demo/view",
+        description: "ให้ผู้ป่วยและพี่น้องไปเจาะเลือดที่โรงพยาบาลต้นทาง",
+      },
+      {
+        title: "Standing order เคมีบำบัด (ตัวอย่างโหมดสาธิต)",
+        groups: "2,3",
+        url: "https://drive.google.com/file/d/demo/view",
+        description: "ฉบับปรับปรุงล่าสุด",
+      },
+      {
+        title: "ประกาศสิทธิยามุ่งเป้า (ตัวอย่างโหมดสาธิต)",
+        groups: "ทั้งหมด",
+        url: "https://drive.google.com/file/d/demo/view",
+        description: "",
+      },
+    ];
+  }
+
+  try {
+    const rows = await readSheetRows(DOCUMENTS_SHEET);
+    return rows
+      .filter((row) => text(row["title"]) && text(row["url"]) && isActive(row))
+      .map((row) => ({
+        title: text(row["title"]),
+        groups: text(row["groups"]),
+        url: text(row["url"]),
+        description: text(row["description"]),
+      }));
+  } catch {
+    return [];
+  }
+}
+
+/** เอกสารที่ควรแสดงบนหน้าของกลุ่มนั้น — tag ตรงเลขกลุ่ม หรือ "ทั้งหมด"/ว่าง */
+export function documentsForGroup(
+  docs: SystemDocument[],
+  groupNumber: number,
+): SystemDocument[] {
+  return docs.filter((d) => {
+    const tag = d.groups.trim().toLowerCase();
+    if (!tag || tag === "ทั้งหมด" || tag === "all") return true;
+    return tag
+      .split(/[,\s]+/)
+      .map((part) => part.trim())
+      .includes(String(groupNumber));
+  });
+}
 
 /**
  * รายชื่อ resident ที่ตอบกลุ่ม 2/3 — ตัวเลือก dropdown ผู้รับผิดชอบบน dashboard

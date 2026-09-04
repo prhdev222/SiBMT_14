@@ -109,7 +109,7 @@ function checkCodeFiles() {
   const blankSheetKeys = typeof SHEETS === 'undefined' ? ['(ไม่มี SHEETS)'] :
     ['referrals', 'adviceLibrary', 'statsMonthly', 'statusLog', 'holidays',
      'config', 'indications', 'regimens', 'attendings', 'lineLinks',
-     'residents', 'residentSchedule']
+     'residents', 'residentSchedule', 'documents']
       .filter(function (k) { return !SHEETS[k]; });
 
   console.log('ตรวจชื่อที่โค้ดพึ่งพา ' + checked + ' รายการ');
@@ -183,6 +183,8 @@ function setupSheets() {
 
   createIfMissing_(ss, SHEETS.residentSchedule, RESIDENT_SCHEDULE_COLUMNS);
 
+  createIfMissing_(ss, SHEETS.documents, DOCUMENT_COLUMNS);
+
   console.log('สร้างชีตและคอลัมน์เรียบร้อย');
   console.log('ต้องกรอกเพิ่ม:');
   console.log('  • ' + SHEETS.holidays + ' — วันหยุดนักขัตฤกษ์');
@@ -192,6 +194,7 @@ function setupSheets() {
   console.log('  • ' + SHEETS.lineLinks + ' — ระบบเขียนเอง ไม่ต้องกรอก (ดูได้ว่าใครผูก LINE ไว้)');
   console.log('  • ' + SHEETS.residents + ' — รายชื่อ resident ที่ตอบกลุ่ม 2/3');
   console.log('  • ' + SHEETS.residentSchedule + ' — ตารางเวร (from_date, to_date, resident_name)');
+  console.log('  • ' + SHEETS.documents + ' — คลังเอกสารดาวน์โหลด (เฉพาะเอกสารไม่มีข้อมูลผู้ป่วย)');
 }
 
 /**
@@ -215,6 +218,16 @@ const RESIDENT_COLUMNS = ['name', 'active'];
  * 10:00 น. และมอบหมายเคสใหม่อัตโนมัติ — แลกเวรกันคือแก้แถวในตารางนี้ตรง ๆ
  */
 const RESIDENT_SCHEDULE_COLUMNS = ['from_date', 'to_date', 'resident_name'];
+
+/**
+ * คลังเอกสารสำคัญ — แสดงบนหน้ากลุ่มของเว็บ กรองตามคอลัมน์ groups
+ * (เช่น "1" / "2,3" / "ทั้งหมด") เรียงแถวในชีต = ลำดับบนเว็บ
+ * active พิมพ์ no = ซ่อนจากเว็บโดยไม่ต้องลบแถว
+ *
+ * ⚠️ url ต้องเป็นลิงก์แชร์แบบ "ผู้ที่มีลิงก์ → ผู้อ่าน" และใส่ได้เฉพาะ
+ * เอกสารวิชาการ/ฟอร์มเปล่าเท่านั้น — ห้ามมีชื่อหรือข้อมูลผู้ป่วยเด็ดขาด
+ */
+const DOCUMENT_COLUMNS = ['title', 'groups', 'url', 'description', 'active'];
 
 /**
  * แพทย์ต้นทางที่ผูกบัญชี LINE ไว้ เพื่อรับลิงก์คำตอบโดยไม่ต้องเปิดอีเมล

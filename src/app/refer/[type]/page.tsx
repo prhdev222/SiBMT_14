@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BackButton } from "@/components/BackButton";
+import { DocumentLibrary } from "@/components/DocumentLibrary";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
@@ -12,7 +13,10 @@ import {
   TRANSPLANT_TYPE_LABEL_TH,
   type TransplantIndication,
 } from "@/lib/transplant-indications";
-import { loadTransplantIndications } from "@/lib/referral-repository";
+import {
+  loadDocuments,
+  loadTransplantIndications,
+} from "@/lib/referral-repository";
 import {
   BATCH_NOTIFICATION,
   CONTACT,
@@ -73,8 +77,12 @@ export default async function ReferTypePage({
    *
    * กลุ่ม 4 ไม่ส่งข้อมูลเข้าระบบนี้เลย จึงไม่เกี่ยวข้องตั้งแต่ต้น
    */
-  const indications =
-    type === "TRANSPLANT_APPOINTMENT" ? await loadTransplantIndications() : [];
+  const [indications, documents] = await Promise.all([
+    type === "TRANSPLANT_APPOINTMENT"
+      ? loadTransplantIndications()
+      : Promise.resolve([]),
+    loadDocuments(),
+  ]);
 
   const showConsentCard =
     type === "REGIMEN_CONSULT" || type === "CHEMO_ADMISSION";
@@ -307,6 +315,8 @@ export default async function ReferTypePage({
             </Link>
           </section>
         )}
+
+        <DocumentLibrary documents={documents} groupNumber={meta.groupNumber} />
       </main>
     </div>
   );
