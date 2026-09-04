@@ -40,6 +40,7 @@ export default async function DashboardPage() {
             { href: "/dashboard/opd", label: "นัดตรวจ OPD" },
             { href: "/dashboard/stats", label: "สถิติและรายงาน" },
             { href: "/dashboard/schedule", label: "ตารางออกตรวจ Fellow" },
+            { href: "/dashboard/duty", label: "เวร Chief" },
             { href: "/dashboard/line-groups", label: "กลุ่ม LINE" },
             { href: "/", label: "กลับหน้าแรก", muted: true },
           ]}

@@ -178,6 +178,20 @@ function doPost(e) {
       return jsonResponse_({ ok: true, data: updateAssignedTo_(body.payload || {}) });
     }
 
+    // จัดการตารางเวร Chief จากหน้าเวรบนเว็บ (ดู src/app/dashboard/duty)
+    if (body.action === 'syncResidentSchedule') {
+      syncResidentScheduleFromHSOS();
+      return jsonResponse_({ ok: true, data: { ok: true } });
+    }
+
+    if (body.action === 'saveResidentShift') {
+      return jsonResponse_({ ok: true, data: saveResidentShift_(body.payload || {}) });
+    }
+
+    if (body.action === 'deleteResidentShift') {
+      return jsonResponse_({ ok: true, data: deleteResidentShift_(body.payload || {}) });
+    }
+
     // ติดเวอร์ชันไปกับข้อความ error ด้วย เพราะสาเหตุที่พบเกือบทุกครั้งของคำสั่ง
     // ที่ "หายไป" คือ deploy ค้างเวอร์ชันเก่า — บอกไปเลยว่าโค้ดตัวไหนเป็นคนตอบ
     return jsonResponse_({
@@ -498,6 +512,94 @@ function buildAttachmentBlock_(data) {
  * แล้วตัวกรอง dashboard หาไม่เจอ — เป็นคำสั่งหลังบ้าน (ผ่าน token) ข้อความ
  * error จึงบอกสาเหตุชัดได้ ไม่ต้องรวมเป็นข้อความกลางแบบคำสั่งของ Hemato Bot
  */
+/** วันที่ในชีตเวร → 'yyyy-MM-dd' เพื่อเทียบกับค่าที่เว็บส่งมา */
+function shiftDateKey_(value) {
+  const d = toDate_(value);
+  return d ? Utilities.formatDate(d, TIMEZONE, 'yyyy-MM-dd') : '';
+}
+
+/** หาแถวเวรที่ตรงกับช่วงเดิม (from/to/name) — คืน object แถวหรือ null */
+function findResidentShiftRow_(sheet, from, to, name) {
+  return readRows_(sheet).filter(function (r) {
+    return shiftDateKey_(r['from_date']) === from &&
+      shiftDateKey_(r['to_date']) === to &&
+      String(r['resident_name'] || '').trim() === name;
+  })[0] || null;
+}
+
+/** ชื่อ resident ที่ยังใช้งานในชีต residents — ใช้ตรวจก่อนบันทึกเวร */
+function activeResidentNames_() {
+  return readRows_(getSheet_(SHEETS.residents))
+    .filter(function (r) {
+      const active = String(r['active'] || '').trim().toLowerCase();
+      return String(r['name'] || '').trim() &&
+        active !== 'no' && active !== 'false' && active !== 'ไม่';
+    })
+    .map(function (r) { return String(r['name']).trim(); });
+}
+
+/**
+ * เพิ่ม/แก้ช่วงเวร Chief จากหน้าเวรบนเว็บ — ใช้ตอนแลกเวรกัน
+ * original* ว่างทั้งสาม = เพิ่มช่วงใหม่ / มีค่า = แก้แถวที่ตรงกับชุดเดิม
+ */
+function saveResidentShift_(payload) {
+  const fromDate = String(payload.fromDate || '').trim();
+  const toDate = String(payload.toDate || '').trim();
+  const residentName = String(payload.residentName || '').trim();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate) || !/^\d{4}-\d{2}-\d{2}$/.test(toDate)) {
+    throw new Error('รูปแบบวันที่ไม่ถูกต้อง (ต้องเป็น ปี-เดือน-วัน)');
+  }
+  if (fromDate > toDate) throw new Error('วันเริ่มเวรอยู่หลังวันสิ้นสุดเวร');
+  if (!residentName) throw new Error('ยังไม่ได้เลือกชื่อ resident');
+
+  if (activeResidentNames_().indexOf(residentName) === -1) {
+    throw new Error('ไม่พบชื่อ "' + residentName + '" ในชีต ' + SHEETS.residents);
+  }
+
+  const sheet = getSheet_(SHEETS.residentSchedule);
+  const map = ensureColumns_(sheet, RESIDENT_SCHEDULE_COLUMNS);
+
+  const originalFrom = String(payload.originalFrom || '').trim();
+  const originalTo = String(payload.originalTo || '').trim();
+  const originalName = String(payload.originalName || '').trim();
+
+  if (!originalFrom && !originalTo && !originalName) {
+    const row = new Array(sheet.getLastColumn()).fill('');
+    row[map['from_date']] = fromDate;
+    row[map['to_date']] = toDate;
+    row[map['resident_name']] = residentName;
+    sheet.appendRow(row);
+    return { ok: true };
+  }
+
+  const match = findResidentShiftRow_(sheet, originalFrom, originalTo, originalName);
+  if (!match) {
+    throw new Error('ไม่พบช่วงเวรเดิม — อาจถูกแก้ไปแล้ว กรุณาโหลดหน้าใหม่');
+  }
+
+  setCell_(sheet, map, match._row, 'from_date', fromDate);
+  setCell_(sheet, map, match._row, 'to_date', toDate);
+  setCell_(sheet, map, match._row, 'resident_name', residentName);
+  return { ok: true };
+}
+
+/** ลบช่วงเวรหนึ่งแถว — ระบุด้วยชุด from/to/name เดิม */
+function deleteResidentShift_(payload) {
+  const fromDate = String(payload.fromDate || '').trim();
+  const toDate = String(payload.toDate || '').trim();
+  const residentName = String(payload.residentName || '').trim();
+
+  const sheet = getSheet_(SHEETS.residentSchedule);
+  const match = findResidentShiftRow_(sheet, fromDate, toDate, residentName);
+  if (!match) {
+    throw new Error('ไม่พบช่วงเวรนี้ — อาจถูกลบไปแล้ว กรุณาโหลดหน้าใหม่');
+  }
+
+  sheet.deleteRow(match._row);
+  return { ok: true };
+}
+
 function updateAssignedTo_(payload) {
   const referralId = String(payload.referralId || '').trim();
   const assignedTo = String(payload.assignedTo || '').trim();

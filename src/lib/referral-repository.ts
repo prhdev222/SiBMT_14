@@ -382,7 +382,44 @@ export async function loadAttendings(): Promise<string[]> {
 }
 
 const RESIDENTS_SHEET = "residents";
+const RESIDENT_SCHEDULE_SHEET = "resident_schedule";
 const DOCUMENTS_SHEET = "documents";
+
+export interface ResidentShift {
+  /** ISO yyyy-mm-dd — วันแรกและวันสุดท้ายของช่วงเวร (รวมทั้งสองวัน) */
+  fromDate: string;
+  toDate: string;
+  name: string;
+}
+
+/**
+ * ตารางเวร Chief resident (sync จาก HSOS ทุกเช้า — ดู apps-script/SyncHsos.gs)
+ * เรียงตามวันเริ่มเวร ช่วงเหลื่อมกันได้ = อยู่เวรพร้อมกันหลายคน
+ */
+export async function loadResidentSchedule(): Promise<ResidentShift[]> {
+  if (!readCredentials()) {
+    return [
+      { fromDate: "2026-08-23", toDate: "2026-09-19", name: "ณัฐชยา (เดโม่)" },
+      { fromDate: "2026-08-23", toDate: "2026-09-19", name: "ภัคชนก (เดโม่)" },
+      { fromDate: "2026-09-20", toDate: "2026-10-17", name: "ณัฐชา (เดโม่)" },
+      { fromDate: "2026-09-20", toDate: "2026-10-17", name: "ศิวัชา (เดโม่)" },
+    ];
+  }
+
+  try {
+    const rows = await readSheetRows(RESIDENT_SCHEDULE_SHEET);
+    return rows
+      .map((row) => ({
+        fromDate: toIsoDate(row["from_date"]) ?? "",
+        toDate: toIsoDate(row["to_date"]) ?? "",
+        name: text(row["resident_name"]),
+      }))
+      .filter((s) => s.fromDate && s.toDate && s.name)
+      .sort((a, b) => a.fromDate.localeCompare(b.fromDate));
+  } catch {
+    return [];
+  }
+}
 
 export interface SystemDocument {
   title: string;

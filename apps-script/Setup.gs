@@ -392,11 +392,6 @@ function setupTriggers() {
   // Red Alert รายชั่วโมง
   ScriptApp.newTrigger('sendRedAlert').timeBased().everyHours(1).create();
 
-  // ดึงตารางเวร Chief จาก HSOS ทุกเช้าตี 5 — ก่อนรอบแจ้งเตือน 10:00
-  // (ดูเหตุผลการ sync ที่หัวไฟล์ SyncHsos.gs)
-  ScriptApp.newTrigger('syncResidentScheduleFromHSOS').timeBased().atHour(5)
-    .everyDays(1).inTimezone(TIMEZONE).create();
-
   // รอบแจ้งเตือนรวม 10:00 น. ทุกวัน (ฟังก์ชันข้ามวันหยุดเอง)
   ScriptApp.newTrigger('sendDailyBatch').timeBased().atHour(BATCH_HOUR).everyDays(1)
     .inTimezone(TIMEZONE).create();

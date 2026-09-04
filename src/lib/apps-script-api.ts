@@ -352,3 +352,28 @@ export async function updateAssignedTo(payload: {
 }): Promise<{ ok: boolean }> {
   return callAppsScript("updateAssignedTo", payload);
 }
+
+/** สั่ง Apps Script ดึงตารางเวร Chief จาก HSOS ทับชีตทันที (เขียนทับที่แก้มือ) */
+export async function syncResidentSchedule(): Promise<{ ok: boolean }> {
+  return callAppsScript("syncResidentSchedule", {});
+}
+
+/** เพิ่ม/แก้ช่วงเวร — original* ว่างทั้งสาม = เพิ่มช่วงใหม่ */
+export async function saveResidentShift(payload: {
+  originalFrom: string;
+  originalTo: string;
+  originalName: string;
+  fromDate: string;
+  toDate: string;
+  residentName: string;
+}): Promise<{ ok: boolean }> {
+  return callAppsScript("saveResidentShift", payload);
+}
+
+export async function deleteResidentShift(payload: {
+  fromDate: string;
+  toDate: string;
+  residentName: string;
+}): Promise<{ ok: boolean }> {
+  return callAppsScript("deleteResidentShift", payload);
+}
