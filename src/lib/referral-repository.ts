@@ -436,10 +436,24 @@ function toReferral(row: Record<string, string>): Referral | null {
     transplantIndication: text(row["transplant_indication"]),
     // อีเมลสองช่องในฟอร์มไม่ตรงกัน หรือยังไม่มีใครกดยืนยันลิงก์เกิน 1 วันทำการ (8 ชม.)
     // — เกินกว่านั้นแปลว่าไม่ใช่แค่ยังไม่ว่างเปิดอ่าน แต่อีเมลอาจใช้ไม่ได้จริง
-    emailUnverified:
-      text(row["email_mismatch"]).toLowerCase() === "yes" ||
-      (!text(row["email_verified_at"]) &&
-        number(row["elapsed_business_hours"]) >= 8),
+    //
+    // ⚠️ เงื่อนไข "ยังไม่ยืนยัน" ต้องเช็กก่อนว่ามีการออกลิงก์ยืนยันจริง
+    // (`email_verify_token` ไม่ว่าง) เคสที่ส่งเข้ามาก่อนฟีเจอร์นี้มีทั้งคู่ —
+    // ไม่มี email_verify_token เลย เพราะ onFormSubmit ตอนนั้นยังไม่สร้างให้ —
+    // ถ้าเช็กแค่ "email_verified_at ว่าง + เกิน 8 ชม." เฉย ๆ เคสเก่าทุกแถวที่
+    // ยังไม่จบ (กลุ่ม 2/3) จะโดนขึ้นธงเตือนหมดตั้งแต่วันเปิดใช้ฟีเจอร์นี้ ทั้งที่
+    // ไม่เคยมีลิงก์ให้กดยืนยันเลยตั้งแต่ต้น — เจ้าหน้าที่จะเห็นธงเต็มหน้าจอจน
+    // เลิกสนใจ (alert fatigue) แล้วพลาดเคสที่ธงขึ้นจริง ๆ ไป ตัว boolean
+    // นี้ไม่เก็บค่า token ไว้ใน Referral — ใช้แค่ตัดสิน "เคยออกลิงก์หรือยัง"
+    emailUnverified: (() => {
+      const tokenIssued = Boolean(text(row["email_verify_token"]));
+      const mismatch = text(row["email_mismatch"]).toLowerCase() === "yes";
+      const staleUnverified =
+        tokenIssued &&
+        !text(row["email_verified_at"]) &&
+        number(row["elapsed_business_hours"]) >= 8;
+      return mismatch || staleUnverified;
+    })(),
   };
 }
 

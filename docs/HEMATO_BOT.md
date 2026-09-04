@@ -113,8 +113,10 @@ client เช่นกัน คงข้อความคงที่เสม
 - เป็นเคสกลุ่มที่ 2 (ขอความเห็นสูตรยา) หรือกลุ่มที่ 3 (ส่งตัวมาเคโม)
 - สถานะยังไม่จบ (`!isTerminal(status)`)
 - อีเมลน่าจะใช้ไม่ได้ — สองช่องอีเมลในฟอร์มกรอกไม่ตรงกัน (`email_mismatch`)
-  **หรือ** ยังไม่มีใครกดลิงก์ยืนยันอีเมลเกิน 1 วันทำการ (`email_verified_at`
-  ว่างและ `elapsed_business_hours` ≥ 8)
+  **หรือ** ระบบเคยออกลิงก์ยืนยันให้แล้ว (`email_verify_token` ไม่ว่าง) แต่ยัง
+  ไม่มีใครกดเกิน 1 วันทำการ (`email_verified_at` ว่างและ
+  `elapsed_business_hours` ≥ 8) — เคสที่ส่งเข้ามาก่อนมีฟีเจอร์นี้ไม่เคยมีลิงก์
+  ให้กดเลย จึงไม่เข้าเงื่อนไขนี้ ไม่ขึ้นธงเตือนเท็จ
 
 เคสกลุ่ม 2/3 พึ่งอีเมลนี้ส่งคำแนะนำกลับ ถ้าธงขึ้นแปลว่าคำตอบอาจไปไม่ถึงแพทย์
 ต้นทาง เจ้าหน้าที่ควรโทรยืนยันเบอร์แทนก่อนส่งคำตอบ
@@ -218,13 +220,14 @@ Apps Script) และ `LINE_LOGIN_CHANNEL_ID`/`LINE_LOGIN_CHANNEL_SECRET` ท�
 
 ## 8. ผลตรวจก่อนปล่อย
 
-รันเมื่อ 2026-09-04 บนโค้ดก่อน commit เอกสารชุดนี้ — ทั้ง 4 คำสั่งผ่านหมด:
+รันเมื่อ 2026-09-04 หลัง fix wave สุดท้าย (keyed hashCode, phoneKey ตรงกับ .gs,
+emailUnverified gate ด้วย email_verify_token) — ทั้ง 4 คำสั่งผ่านหมด:
 
 | คำสั่ง | ผล |
 | --- | --- |
 | `npm run lint` | ผ่าน ไม่มี error/warning |
 | `npx tsc --noEmit` | ผ่าน ไม่มี type error |
-| `npx vitest run` | ผ่าน 26/26 tests (5 ไฟล์) |
+| `npx vitest run` | ผ่าน 28/28 tests (5 ไฟล์) |
 | `npm run cf:build` | ผ่าน — build Next.js สำเร็จ, bundle OpenNext สำเร็จ, ไม่มี edge-runtime error |
 
 `cf:build` คือด่านสำคัญที่สุดเพราะจำลอง production bundle จริงบน Cloudflare
