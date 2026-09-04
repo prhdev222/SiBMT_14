@@ -72,9 +72,11 @@ function syncResidentScheduleFromHSOS() {
 
   const rows = shifts.map(function (s) {
     const row = new Array(width).fill('');
-    row[map['from_date'] - 1] = s.from;
-    row[map['to_date'] - 1] = s.to;
-    row[map['resident_name'] - 1] = s.name;
+    // headerMap_/ensureColumns_ คืน index แบบเริ่มจาก 0 (ดู Util.gs)
+    // ห้ามลบหนึ่งซ้ำ — เคยพลาดแล้วข้อมูลเลื่อนซ้ายทั้งตาราง (4 ก.ย. 2569)
+    row[map['from_date']] = s.from;
+    row[map['to_date']] = s.to;
+    row[map['resident_name']] = s.name;
     return row;
   });
   sheet.getRange(2, 1, rows.length, width).setValues(rows);
@@ -158,7 +160,7 @@ function mergeHsosResidents_() {
     if (!name || existing[name]) return;
     if (Number(person.active) !== 1) return;
     const row = new Array(sheet.getLastColumn()).fill('');
-    row[map['name'] - 1] = name;
+    row[map['name']] = name; // index เริ่มจาก 0 เช่นกัน
     sheet.appendRow(row);
     existing[name] = true;
     added++;
