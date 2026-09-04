@@ -40,8 +40,10 @@ import {
   CODE_SENT_TEXT,
   CODE_VERIFIED_TEXT,
   EXPIRED_CODE_MARKER,
+  LINE_REDIRECT_TEXT,
   MAIN_MENU_CHIPS,
   MENU_CHIP,
+  PENDING_TEXT,
   REFERRAL_ID_EXAMPLE,
   REGIMEN_QUERY_PLACEHOLDER,
   REQUEST_CODE_FALLBACK_ERROR,
@@ -571,8 +573,23 @@ export function HematoBotWidget() {
                           // route handler ที่ redirect ต่อเอง (เช่น /hemato-bot/line
                           // ไป LINE OAuth) — next/link จะ fetch แบบ RSC ก่อนคลิกแล้วพัง
                           // เมื่อปลายทาง redirect ข้ามโดเมน จึงต้องเป็น <a> แท็บเดิม
+                          //
+                          // ระหว่างรอหน้า LINE โหลด (หลายวินาที) ต้องมีอะไรบอกว่า
+                          // ระบบกำลังทำงาน ไม่งั้นผู้ใช้คิดว่าปุ่มเสีย — ขึ้น bubble
+                          // แล้วปล่อยให้เบราว์เซอร์นำทางตามปกติ
                           return (
-                            <a key={link.href} href={link.href} className={LINK_CLASS}>
+                            <a
+                              key={link.href}
+                              href={link.href}
+                              className={LINK_CLASS}
+                              onClick={() => {
+                                setMessages((prev) => [
+                                  ...prev,
+                                  { from: "bot", text: LINE_REDIRECT_TEXT },
+                                ]);
+                                setPending(true);
+                              }}
+                            >
                               {link.label}
                             </a>
                           );
@@ -600,8 +617,20 @@ export function HematoBotWidget() {
             ))}
             {pending && (
               <div className="flex justify-start">
-                <p className="rounded-2xl rounded-bl-sm bg-zinc-100 px-3 py-2 text-sm text-zinc-500">
-                  กำลังค้นข้อมูล...
+                <p
+                  className="flex items-center gap-1.5 rounded-2xl rounded-bl-sm bg-zinc-100 px-3 py-2 text-sm text-zinc-500"
+                  role="status"
+                  aria-label={PENDING_TEXT}
+                >
+                  {PENDING_TEXT}
+                  {/* จุดสามจุดเด้งสลับกัน — สัญญาณว่าระบบยังทำงานอยู่ */}
+                  {[0, 150, 300].map((delay) => (
+                    <span
+                      key={delay}
+                      className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400"
+                      style={{ animationDelay: `${delay}ms` }}
+                    />
+                  ))}
                 </p>
               </div>
             )}

@@ -289,6 +289,17 @@ export const REQUEST_NEW_CODE_CHIP: BotChip = { label: "ขอรหัสให
 /** ข้อความชวนเลือกวิธียืนยันตัวตน — โชว์เมื่อยังไม่เคยยืนยันตัวตนในเซสชันนี้ */
 const ANSWERS_ENTRY_TEXT = "ยืนยันตัวตนก่อนอ่านคำตอบครับ เลือกวิธีที่สะดวก";
 
+/** ข้อความระหว่างรอ action — คู่กับจุดสามจุดเด้ง ๆ ใน widget */
+export const PENDING_TEXT = "กำลังค้นข้อมูล";
+
+/**
+ * ข้อความตอนกด "เข้าด้วย LINE" — การพาไป LINE ใช้เวลาหลายวินาที
+ * (route → LINE OAuth → อ่านชีต → เด้งกลับ) ถ้าไม่ขึ้นอะไรเลย
+ * ผู้ใช้จะคิดว่าปุ่มเสีย (feedback จากการใช้จริง 4 ก.ย. 2569)
+ */
+export const LINE_REDIRECT_TEXT =
+  "กำลังพาไปหน้า LINE เพื่อยืนยันตัวตน กรุณารอสักครู่...";
+
 /** ข้อความชวนเลือกวิธียืนยันตัวตน — ทั้ง 2 ปุ่ม (ลิงก์ LINE + chip ขอรหัสอีเมล) */
 export function answersEntryMessage(): BotMessage {
   return {
