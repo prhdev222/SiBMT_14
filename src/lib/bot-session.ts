@@ -42,7 +42,7 @@ export async function readBotPayload<T>(
   const [body, sig] = token.split(".");
   if (!body || !sig) return null;
 
-  if ((await hmac(body, secret)) !== sig) return null;
+  if (!timingSafeEqualString(await hmac(body, secret), sig)) return null;
 
   try {
     const payload = JSON.parse(dec.decode(base64UrlToBytes(body))) as T & {
@@ -71,4 +71,19 @@ function base64UrlToBytes(value: string): Uint8Array {
 
 function base64ToBytes(value: string): Uint8Array {
   return Uint8Array.from(atob(value), (c) => c.charCodeAt(0));
+}
+
+/**
+ * เทียบสตริงแบบ constant-time — กันไม่ให้เดาลายเซ็นทีละตัวอักษรจากเวลาตอบสนอง
+ *
+ * ตรรกะเดียวกับ timingSafeEqualString ใน src/lib/auth.ts แต่ก๊อปมาไว้ที่นี่
+ * เอง ไม่ import ข้ามไฟล์ เพราะ auth.ts ไม่ export ฟังก์ชันนี้ (ตั้งใจให้เป็น
+ * private ของไฟล์นั้น) และไฟล์นี้ตั้งใจไม่พึ่งพาไฟล์อื่นเพื่อให้ยังบริสุทธิ์
+ * (pure, ไม่รู้จัก environment) ตามที่คอมเมนต์หัวไฟล์ระบุไว้
+ */
+function timingSafeEqualString(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }

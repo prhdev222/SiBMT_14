@@ -127,7 +127,7 @@ export async function requestCodeAction(
   // waitUntil ของ Cloudflare ให้ทั้งสองเส้นทางตอบเร็วเท่ากัน
   if (email) scheduleBotCodeEmail(email, code);
 
-  const codeHash = await hashCode(code);
+  const codeHash = await hashCode(code, secret());
   const token = await signBotPayload(
     { codeHash, phone: key, exp: Date.now() + BOT_CODE_MAX_AGE * 1000 },
     secret(),
@@ -194,7 +194,7 @@ export async function verifyCodeAction(
     return { ok: false, error: "รหัสหมดอายุ กรุณาขอรหัสใหม่" };
   }
 
-  const enteredHash = await hashCode(code.trim());
+  const enteredHash = await hashCode(code.trim(), secret());
   if (enteredHash !== payload.codeHash) {
     return { ok: false, error: "รหัสไม่ถูกต้อง กรุณาพิมพ์ใหม่" };
   }
