@@ -95,10 +95,16 @@ export function DashboardClient({
   const [assignSaving, setAssignSaving] = useState(false);
   const [assignError, setAssignError] = useState<string | null>(null);
 
-  const assignedOf = (r: Referral): string | null =>
-    r.referralId in assignedOverrides
-      ? assignedOverrides[r.referralId]
-      : r.assignedTo;
+  const assignedOf = (r: Referral): string | null => {
+    if (r.referralId in assignedOverrides) return assignedOverrides[r.referralId];
+    if (r.assignedTo) return r.assignedTo;
+    // เคสกลุ่ม 1 ตอนจองคิวเขียนชื่อ fellow ไว้ที่ fellow_assigned ไม่ใช่
+    // assigned_to — ไม่ fallback ตรงนี้ตารางจะขึ้น "—" ทั้งที่มีเจ้าของคิวจริง
+    if (r.referralType === "TRANSPLANT_APPOINTMENT" && r.fellowAssigned) {
+      return r.fellowAssigned;
+    }
+    return null;
+  };
 
   async function changeAssigned(referralId: string, value: string) {
     setAssignSaving(true);

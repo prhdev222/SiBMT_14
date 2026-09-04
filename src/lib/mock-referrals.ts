@@ -59,7 +59,7 @@ export const MOCK_REFERRALS: Referral[] = [
     emailUnverified: false,
     urgency: "Routine",
     status: "Slot Reserved",
-    assignedTo: "พญ. สุดา (Fellow transplant)",
+    assignedTo: null, // จองคิวจริงไม่เขียน assigned_to — ทดสอบ fallback ไป fellowAssigned,
     elapsedBusinessHours: 14,
     followUpDate: "2026-08-05",
     possibleDuplicateOf: null,
