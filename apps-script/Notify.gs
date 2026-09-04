@@ -389,19 +389,42 @@ function sendDailyBatch() {
   });
   message += 'รวม ' + open.length + ' เคส\n';
 
-  // ปักหมุดเคสที่ต้องรีบไว้บนสุดของรายการ
-  if (red.length > 0) {
-    message += '\n🚨 เกินกำหนดแล้ว ' + red.length + ' เคส\n';
-    red.slice(0, 10).forEach(function (r) {
-      message += '• ' + r['referral_id'] + ' (' + r['elapsed_business_hours'] + ' ชม.)\n';
+  // แบ่งเคสเป็นระดับตาม "เวลาทำการที่เหลือ" ก่อนครบกำหนด (redHours = 3 วันทำการ)
+  //
+  // เดิมแสดงชั่วโมงที่ผ่านไปแล้ว ซึ่งคนอ่านตีความกลับด้าน (feedback ใช้จริง
+  // 4 ก.ย. 2569 — เห็น "23.3 ชม." แล้วคิดว่ายังเหลือเวลาอีกมาก ทั้งที่จริง
+  // เหลือไม่ถึงชั่วโมง) จึงกลับด้านเป็น "เหลืออีก" และติดสัญลักษณ์สีตามระดับ
+  // LINE ใส่สีตัวอักษรไม่ได้ ใช้วงกลมสีแทน — เพดานเวลา 24 ชม.ทำการ = 3 วันทำการ
+  const tiers = [
+    { icon: '🔴', title: 'เกินกำหนดแล้ว', rows: [] },
+    { icon: '🟠', title: 'เหลือไม่ถึง 1 วันทำการ', rows: [] },
+    { icon: '🟡', title: 'เหลือประมาณ 2 วันทำการ', rows: [] },
+    { icon: '🆕', title: 'เคสใหม่วันนี้ (เหลือ 3 วันทำการ)', rows: [] },
+  ];
+  const HOURS_PER_DAY = BUSINESS.endHour - BUSINESS.startHour;
+  open.forEach(function (r) {
+    const elapsed = parseFloat(r['elapsed_business_hours']) || 0;
+    if (elapsed >= ESCALATION.redHours) tiers[0].rows.push(r);
+    else if (elapsed >= ESCALATION.yellowHours) tiers[1].rows.push(r);
+    else if (elapsed >= HOURS_PER_DAY) tiers[2].rows.push(r);
+    else tiers[3].rows.push(r);
+  });
+
+  tiers.forEach(function (tier) {
+    if (tier.rows.length === 0) return;
+    message += '\n' + tier.icon + ' ' + tier.title + ' — ' + tier.rows.length + ' เคส\n';
+    tier.rows.slice(0, 10).forEach(function (r) {
+      const elapsed = parseFloat(r['elapsed_business_hours']) || 0;
+      const left = Math.round((ESCALATION.redHours - elapsed) * 10) / 10;
+      const label = left >= 0
+        ? 'เหลืออีก ' + left + ' ชม.ทำการ'
+        : 'เกินมา ' + Math.abs(left) + ' ชม.ทำการ';
+      message += '• ' + r['referral_id'] + ' (' + label + ')\n';
     });
-  }
-  if (yellow.length > 0) {
-    message += '\n⚠️ ใกล้ครบกำหนด ' + yellow.length + ' เคส\n';
-    yellow.slice(0, 10).forEach(function (r) {
-      message += '• ' + r['referral_id'] + ' (' + r['elapsed_business_hours'] + ' ชม.)\n';
-    });
-  }
+    if (tier.rows.length > 10) {
+      message += '  ...และอีก ' + (tier.rows.length - 10) + ' เคส (ดูใน dashboard)\n';
+    }
+  });
 
   message += '\nเปิดดูรายละเอียด:\n' + DASHBOARD_URL;
 
