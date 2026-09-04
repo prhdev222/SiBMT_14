@@ -216,9 +216,10 @@ export function DashboardClient({
         <StatCard label="สงสัยเคสซ้ำ" value={stats.duplicates} tone="amber" />
       </div>
 
-      {/* workload per group */}
-      <div className="grid gap-3 sm:grid-cols-4">
-        {REFERRAL_TYPES_ORDERED.map((type) => {
+      {/* workload per group — กลุ่ม 4 อัตโนมัติทั้งสาย เคสจบทันทีไม่มีงานค้าง
+          การ์ดจะเป็น 0 ตลอดกาล ตัดออก (มติผู้ใช้ 5 ก.ย. 2569) */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        {REFERRAL_TYPES_ORDERED.filter((t) => t !== "GENERAL_OPD").map((type) => {
           const meta = REFERRAL_TYPE_META[type];
           const active = referralType === type;
           return (
