@@ -371,6 +371,28 @@ export async function loadAttendings(): Promise<string[]> {
   }
 }
 
+const RESIDENTS_SHEET = "residents";
+
+/**
+ * รายชื่อ resident ที่ตอบกลุ่ม 2/3 — ตัวเลือก dropdown ผู้รับผิดชอบบน dashboard
+ *
+ * โหมดสาธิตคืนชื่อชุดเดียวกับที่ mock referrals ใช้ เพื่อให้ dropdown ทดลองได้
+ */
+export async function loadResidents(): Promise<string[]> {
+  if (!readCredentials()) {
+    return ["นพ. พีรพัฒน์", "นพ. ธนกฤต", "พญ. ณัฐกานต์", "พญ. ศิรินทิพย์"];
+  }
+
+  try {
+    const rows = await readSheetRows(RESIDENTS_SHEET);
+    return rows
+      .filter((row) => text(row["name"]) && isActive(row))
+      .map((row) => text(row["name"]));
+  } catch {
+    return [];
+  }
+}
+
 /** ว่างไว้ = ใช้งานอยู่ — ต้องพิมพ์ no ชัดเจนถึงจะถือว่าเลิกใช้ */
 function isActive(row: Record<string, string>): boolean {
   const value = text(row["active"]).toLowerCase();

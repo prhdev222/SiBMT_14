@@ -98,6 +98,33 @@ function onFormSubmit(e) {
     // 4. สถานะเริ่มต้น
     const initialStatus = referralType === TYPES.general ? 'Auto Replied' : 'Submitted';
     setCell_(sheet, map, row, 'status', initialStatus);
+
+    // 4.1 มอบหมายเคสกลุ่ม 2/3 ให้ resident ที่อยู่เวรวันนี้อัตโนมัติ
+    // (ตามชีต resident_schedule — แก้ทีหลังได้จาก dropdown บน dashboard)
+    //
+    // อยู่เวรพร้อมกันหลายคน (เช่น แยกวอร์ดชาย/หญิง): วนแจกตามลำดับแถว
+    // ในตารางเวร (มติผู้ใช้ 4 ก.ย. 2569) — ดูว่าเคสกลุ่ม 2/3 ล่าสุดถูกมอบ
+    // ให้ใครในทีมเวรชุดนี้ แล้วมอบเคสใหม่ให้คนถัดไป ครบแล้ววนกลับคนแรก
+    // ไม่ต้องเก็บตัวนับที่ไหน อ่านจากประวัติในชีตเอง จึงไม่มีวันเพี้ยน
+    if (referralType === TYPES.regimen || referralType === TYPES.admission) {
+      const duty = onDutyResidents_(submittedAt);
+      if (duty.length === 1) {
+        setCell_(sheet, map, row, 'assigned_to', duty[0].name);
+      } else if (duty.length > 1) {
+        const names = duty.map(function (d) { return d.name; });
+        let lastHolder = '';
+        readRows_(sheet).forEach(function (r) {
+          const holder = String(r['assigned_to'] || '').trim();
+          if (r._row !== row && names.indexOf(holder) !== -1) {
+            lastHolder = holder; // แถวล่างสุดที่เจอ = เคสล่าสุด
+          }
+        });
+        const next = names.indexOf(lastHolder) === -1
+          ? 0
+          : (names.indexOf(lastHolder) + 1) % names.length;
+        setCell_(sheet, map, row, 'assigned_to', names[next]);
+      }
+    }
     setCell_(sheet, map, row, 'elapsed_business_hours', 0);
     setCell_(sheet, map, row, 'alert_level', 'none');
     logStatusChange_(referralId, '', initialStatus, 'system', 'สร้างจากแบบฟอร์ม');

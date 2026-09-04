@@ -174,6 +174,10 @@ function doPost(e) {
       return jsonResponse_({ ok: true, data: confirmEmail_(body.payload || {}) });
     }
 
+    if (body.action === 'updateAssignedTo') {
+      return jsonResponse_({ ok: true, data: updateAssignedTo_(body.payload || {}) });
+    }
+
     // ติดเวอร์ชันไปกับข้อความ error ด้วย เพราะสาเหตุที่พบเกือบทุกครั้งของคำสั่ง
     // ที่ "หายไป" คือ deploy ค้างเวอร์ชันเก่า — บอกไปเลยว่าโค้ดตัวไหนเป็นคนตอบ
     return jsonResponse_({
@@ -485,6 +489,46 @@ function buildAttachmentBlock_(data) {
     data.fileName + '\n' +
     data.fileUrl + '\n' +
     '(ลิงก์นี้ไม่ปรากฏในการค้นหา เปิดได้เฉพาะผู้ที่มีลิงก์)\n\n';
+}
+
+/**
+ * เปลี่ยนผู้รับผิดชอบเคสจาก dropdown บน dashboard — ค่าว่าง = ยกเลิกมอบหมาย
+ *
+ * ตรวจชื่อกับชีต residents ก่อนเสมอ กันชื่อสะกดผิดหลุดเข้า assigned_to
+ * แล้วตัวกรอง dashboard หาไม่เจอ — เป็นคำสั่งหลังบ้าน (ผ่าน token) ข้อความ
+ * error จึงบอกสาเหตุชัดได้ ไม่ต้องรวมเป็นข้อความกลางแบบคำสั่งของ Hemato Bot
+ */
+function updateAssignedTo_(payload) {
+  const referralId = String(payload.referralId || '').trim();
+  const assignedTo = String(payload.assignedTo || '').trim();
+
+  if (!referralId) throw new Error('ไม่ได้ระบุเลขที่อ้างอิงของเคส');
+
+  if (assignedTo) {
+    const known = readRows_(getSheet_(SHEETS.residents))
+      .filter(function (r) {
+        const active = String(r['active'] || '').trim().toLowerCase();
+        return String(r['name'] || '').trim() &&
+          active !== 'no' && active !== 'false' && active !== 'ไม่';
+      })
+      .map(function (r) { return String(r['name']).trim(); });
+
+    if (known.indexOf(assignedTo) === -1) {
+      throw new Error('ไม่พบชื่อ "' + assignedTo + '" ในชีต ' + SHEETS.residents +
+        ' — เพิ่มชื่อในชีตก่อนแล้วลองใหม่');
+    }
+  }
+
+  const sheet = getSheet_(SHEETS.referrals);
+  const map = headerMap_(sheet);
+  const match = readRows_(sheet).filter(function (r) {
+    return String(r['referral_id'] || '').trim() === referralId;
+  })[0];
+
+  if (!match) throw new Error('ไม่พบเคส ' + referralId + ' — กรุณาโหลดหน้าใหม่');
+
+  setCell_(sheet, map, match._row, 'assigned_to', assignedTo);
+  return { ok: true };
 }
 
 function saveAdvice_(payload) {

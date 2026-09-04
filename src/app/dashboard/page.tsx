@@ -1,7 +1,11 @@
 import { DashboardClient } from "@/components/DashboardClient";
 import { SessionBar } from "@/components/SessionBar";
 import { PageHeader } from "@/components/PageHeader";
-import { loadConfigValues, loadReferrals } from "@/lib/referral-repository";
+import {
+  loadConfigValues,
+  loadReferrals,
+  loadResidents,
+} from "@/lib/referral-repository";
 import { requireSession } from "@/lib/session";
 
 /**
@@ -14,10 +18,8 @@ export default async function DashboardPage() {
   // ตรวจก่อนโหลดข้อมูล — ไม่มี proxy.ts แล้ว ด่านนี้คือด่านเดียว
   const session = await requireSession("/dashboard");
 
-  const [{ referrals, isSampleData, error }, config] = await Promise.all([
-    loadReferrals(),
-    loadConfigValues(),
-  ]);
+  const [{ referrals, isSampleData, error }, config, residents] =
+    await Promise.all([loadReferrals(), loadConfigValues(), loadResidents()]);
 
   return (
     <div className="flex flex-col flex-1 bg-zinc-50">
@@ -58,7 +60,7 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        <DashboardClient referrals={referrals} />
+        <DashboardClient referrals={referrals} residents={residents} />
 
         <ResponsibleContacts config={config} />
       </main>

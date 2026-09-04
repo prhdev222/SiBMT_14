@@ -341,3 +341,14 @@ export async function confirmEmail(payload: {
 }): Promise<{ ok: boolean }> {
   return callAppsScript("confirmEmail", payload);
 }
+
+/**
+ * เปลี่ยนผู้รับผิดชอบเคสจาก dropdown บน dashboard — ค่าว่าง = ยกเลิกมอบหมาย
+ * Apps Script ตรวจชื่อกับชีต residents ก่อนบันทึกเสมอ
+ */
+export async function updateAssignedTo(payload: {
+  referralId: string;
+  assignedTo: string;
+}): Promise<{ ok: boolean }> {
+  return callAppsScript("updateAssignedTo", payload);
+}

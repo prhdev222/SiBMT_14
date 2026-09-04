@@ -352,6 +352,35 @@ function maskLineId_(id) {
  * ไม่มีการแจ้งเตือนนอกรอบนี้ เพื่อปกป้องเวลาเรียนของแพทย์ประจำบ้าน
  * (ยกเว้น Red Alert ซึ่งเป็นตาข่ายนิรภัยชั้นสุดท้าย)
  */
+/**
+ * รายชื่อ resident ที่อยู่เวรตอบคำปรึกษา ณ วันที่กำหนด ตามชีต resident_schedule
+ *
+ * หนึ่งแถว = หนึ่งคนหนึ่งช่วง (รวมวันแรกและวันสุดท้าย) ช่วงเหลื่อมกันได้
+ * แลกเวรกัน = แก้แถวในชีตตรง ๆ ระบบอ่านสดทุกครั้ง ไม่มี cache
+ *
+ * คืน [] เมื่อชีตยังไม่ถูกสร้างหรืออ่านไม่ได้ — การแจ้งเตือนรายวันต้องไม่ตาย
+ * เพียงเพราะตารางเวรยังไม่พร้อม (ข้อความจะเตือนให้เติมตารางแทน)
+ */
+function onDutyResidents_(date) {
+  try {
+    const rows = readRows_(getSheet_(SHEETS.residentSchedule));
+    const found = [];
+    rows.forEach(function (r) {
+      const from = toDate_(r['from_date']);
+      const to = toDate_(r['to_date']);
+      const name = String(r['resident_name'] || '').trim();
+      if (!from || !to || !name) return;
+      const start = new Date(from); start.setHours(0, 0, 0, 0);
+      const end = new Date(to); end.setHours(23, 59, 59, 999);
+      if (date >= start && date <= end) found.push({ name: name, until: to });
+    });
+    return found;
+  } catch (error) {
+    console.error('อ่านตารางเวร resident ไม่ได้: ' + error);
+    return [];
+  }
+}
+
 function sendDailyBatch() {
   const holidays = loadHolidays_();
   const now = new Date();
@@ -383,6 +412,20 @@ function sendDailyBatch() {
   });
 
   let message = '☀️ สรุปเคสรอดำเนินการ ' + formatThaiDate_(now) + '\n';
+
+  // ระบุชื่อเวรตอบคำปรึกษาจากตาราง — resident ทุกคนอยู่ในกลุ่ม LINE ถาวร
+  // (API ของ LINE ดึงคนเข้า/ออกจากกลุ่มไม่ได้) ตารางเวรจึงเป็นตัวชี้ตัวแทน
+  const duty = onDutyResidents_(now);
+  if (duty.length > 0) {
+    message += '🩺 เวรตอบคำปรึกษา: ' + duty.map(function (d) {
+      return d.name + ' (ถึง ' + formatThaiDate_(d.until) + ')';
+    }).join(', ') + '\n';
+  } else {
+    // เตือนในข้อความรายวันจนกว่าจะเติม — แอดมินเห็นเองไม่ต้องมีใครไปตาม
+    message += '⚠️ ยังไม่มีชื่อเวรในตาราง ' + SHEETS.residentSchedule +
+      ' — รบกวนแอดมินเติมตารางเวรด้วย\n';
+  }
+
   message += '────────────────\n';
   [1, 2, 3].forEach(function (g) {
     if (countByGroup[g]) message += 'กลุ่มที่ ' + g + ': ' + countByGroup[g] + ' เคส\n';

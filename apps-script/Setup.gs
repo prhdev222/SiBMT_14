@@ -108,7 +108,8 @@ function checkCodeFiles() {
   // แล้ว insertSheet(undefined) สร้างแท็บชื่อ "Sheet1" ให้แทนโดยไม่ error
   const blankSheetKeys = typeof SHEETS === 'undefined' ? ['(ไม่มี SHEETS)'] :
     ['referrals', 'adviceLibrary', 'statsMonthly', 'statusLog', 'holidays',
-     'config', 'indications', 'regimens', 'attendings', 'lineLinks']
+     'config', 'indications', 'regimens', 'attendings', 'lineLinks',
+     'residents', 'residentSchedule']
       .filter(function (k) { return !SHEETS[k]; });
 
   console.log('ตรวจชื่อที่โค้ดพึ่งพา ' + checked + ' รายการ');
@@ -178,6 +179,10 @@ function setupSheets() {
 
   createIfMissing_(ss, SHEETS.lineLinks, LINE_LINK_COLUMNS);
 
+  createIfMissing_(ss, SHEETS.residents, RESIDENT_COLUMNS);
+
+  createIfMissing_(ss, SHEETS.residentSchedule, RESIDENT_SCHEDULE_COLUMNS);
+
   console.log('สร้างชีตและคอลัมน์เรียบร้อย');
   console.log('ต้องกรอกเพิ่ม:');
   console.log('  • ' + SHEETS.holidays + ' — วันหยุดนักขัตฤกษ์');
@@ -185,6 +190,8 @@ function setupSheets() {
   console.log('  • ' + SHEETS.regimens + ' — วาง docs/chemo_regimens.tsv (204 สูตร)');
   console.log('  • ' + SHEETS.attendings + ' — พิมพ์ชื่ออาจารย์ผู้ให้คำปรึกษา');
   console.log('  • ' + SHEETS.lineLinks + ' — ระบบเขียนเอง ไม่ต้องกรอก (ดูได้ว่าใครผูก LINE ไว้)');
+  console.log('  • ' + SHEETS.residents + ' — รายชื่อ resident ที่ตอบกลุ่ม 2/3');
+  console.log('  • ' + SHEETS.residentSchedule + ' — ตารางเวร (from_date, to_date, resident_name)');
 }
 
 /**
@@ -195,6 +202,19 @@ function setupSheets() {
  * แท็บที่ยังไม่ได้กรอกไม่ควรทำให้ทั้งระบบตอบคำปรึกษาไม่ได้
  */
 const ATTENDING_COLUMNS = ['name', 'active', 'note'];
+
+/**
+ * รายชื่อ resident ที่ตอบคำปรึกษากลุ่ม 2/3 — ตัวเลือก dropdown ผู้รับผิดชอบ
+ * active เว้นว่าง = ใช้งานอยู่ พิมพ์ no เมื่อจบไปแล้ว (แบบเดียวกับ attendings)
+ */
+const RESIDENT_COLUMNS = ['name', 'active'];
+
+/**
+ * ตารางเวรตอบคำปรึกษา — หนึ่งแถวต่อหนึ่งคนหนึ่งช่วง (รวมวันแรกและวันสุดท้าย)
+ * ช่วงเหลื่อมกันได้ = อยู่เวรพร้อมกันหลายคน ระบบใช้ตารางนี้ระบุชื่อในข้อความ
+ * 10:00 น. และมอบหมายเคสใหม่อัตโนมัติ — แลกเวรกันคือแก้แถวในตารางนี้ตรง ๆ
+ */
+const RESIDENT_SCHEDULE_COLUMNS = ['from_date', 'to_date', 'resident_name'];
 
 /**
  * แพทย์ต้นทางที่ผูกบัญชี LINE ไว้ เพื่อรับลิงก์คำตอบโดยไม่ต้องเปิดอีเมล

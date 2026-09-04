@@ -20,6 +20,8 @@ const SHEETS = {
   attendings: 'attendings',        // รายชื่ออาจารย์ผู้ให้คำปรึกษา หมุนเวียนทุกปี
   lineLinks: 'line_links',         // แพทย์ต้นทางที่ผูกบัญชี LINE ไว้รับคำตอบ
   dashboardLogins: 'dashboard_logins', // ใครเข้า dashboard ด้วย LINE เมื่อไร
+  residents: 'residents',          // รายชื่อ resident ที่ตอบกลุ่ม 2/3 — ตัวเลือก dropdown
+  residentSchedule: 'resident_schedule', // ตารางเวรตอบคำปรึกษา (ช่วงวันที่ เหลื่อมกันได้)
 };
 
 /**
