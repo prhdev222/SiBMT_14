@@ -27,6 +27,7 @@ import {
   requestCodeAction,
   verifyCodeAction,
   verifiedCasesAction,
+  listDocumentsAction,
   resendAnswerAction,
   searchRegimensAction,
 } from "@/app/hemato-bot/actions";
@@ -54,7 +55,12 @@ import {
   RETRY_STATUS_CHIP,
   SEARCH_ANOTHER_ID_CHIP,
   SEARCH_ANOTHER_PHONE_CHIP,
+  DOCS_EMPTY_TEXT,
+  DOCS_FALLBACK_ERROR,
   STATIC_STEP_MESSAGES,
+  docMessage,
+  docsListFooterChips,
+  docsListHeaderMessage,
   STATUS_NOT_FOUND_TEXT,
   VERIFY_CODE_FALLBACK_ERROR,
   answerCaseMessage,
@@ -449,7 +455,41 @@ export function HematoBotWidget() {
     setMessages((prev) => [...prev, { from: "bot", text, chips: [MENU_CHIP] }]);
   }
 
+  async function selectDocsGroup(group: 1 | 2 | 3 | null, label: string) {
+    if (pending) return;
+    setMessages((prev) => [...prev, { from: "user", text: label }]);
+    setPending(true);
+    const result = await listDocumentsAction(group);
+    setPending(false);
+    setStep("docs.list");
+
+    if (!result.ok) {
+      setMessages((prev) => [
+        ...prev,
+        { from: "bot", text: result.error ?? DOCS_FALLBACK_ERROR, chips: docsListFooterChips() },
+      ]);
+      return;
+    }
+    if (result.docs.length === 0) {
+      setMessages((prev) => [
+        ...prev,
+        { from: "bot", text: DOCS_EMPTY_TEXT, chips: docsListFooterChips() },
+      ]);
+      return;
+    }
+    setMessages((prev) => [
+      ...prev,
+      docsListHeaderMessage(result.docs.length),
+      ...result.docs.map(docMessage),
+      { from: "bot", text: "ดูหมวดอื่นหรือกลับเมนูหลักได้เลยครับ", chips: docsListFooterChips() },
+    ]);
+  }
+
   function handleChip(chip: BotChip) {
+    if (chip.docGroup !== undefined) {
+      void selectDocsGroup(chip.docGroup, chip.label);
+      return;
+    }
     if (chip.resendReferralId) {
       void submitResend(chip.resendReferralId, chip.label);
       return;

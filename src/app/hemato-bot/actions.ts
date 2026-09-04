@@ -29,7 +29,12 @@ import {
   shapeStatus,
   type BotCaseStatus,
 } from "@/lib/bot-lookup";
-import { loadRawReferralRows, loadRegimens } from "@/lib/referral-repository";
+import {
+  documentsForGroup,
+  loadDocuments,
+  loadRawReferralRows,
+  loadRegimens,
+} from "@/lib/referral-repository";
 import { allowBotCode, allowBotLookup } from "@/lib/rate-limit";
 import { resendAdviceEmail, sendBotCodeEmail } from "@/lib/apps-script-api";
 import { phoneKey } from "@/lib/phone-key";
@@ -303,4 +308,34 @@ export async function searchRegimensAction(
       r.abbr.toLowerCase().includes(q) ||
       r.components.toLowerCase().includes(q),
   );
+}
+
+/**
+ * รายการเอกสารจากชีต documents สำหรับเมนู 📚 ของแชท
+ *
+ * เป็นข้อมูลสาธารณะเดียวกับกล่องเอกสารบนหน้ากลุ่ม (ไม่ใช่ข้อมูลผู้ป่วย)
+ * — เพดานการเปิดเผยไม่เกี่ยว แต่คุม rate เหมือน action อื่นเพื่อความสม่ำเสมอ
+ */
+export async function listDocumentsAction(
+  groupNumber: 1 | 2 | 3 | null,
+): Promise<
+  | { ok: true; docs: { title: string; url: string; description: string }[] }
+  | { ok: false; error: string }
+> {
+  if (!(await allowBotLookup())) {
+    return { ok: false, error: "ค้นบ่อยเกินไป กรุณารออีกสักครู่" };
+  }
+
+  const docs = await loadDocuments();
+  const filtered =
+    groupNumber === null ? docs : documentsForGroup(docs, groupNumber);
+
+  return {
+    ok: true,
+    docs: filtered.map((d) => ({
+      title: d.title,
+      url: d.url,
+      description: d.description,
+    })),
+  };
 }

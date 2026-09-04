@@ -33,6 +33,8 @@ export type BotStep =
   | "regimens.result"
   | "indications.type"
   | "indications.disease"
+  | "docs.ask"
+  | "docs.list"
   | "booking"
   | "reschedule"
   | "group4"
@@ -42,6 +44,11 @@ export interface BotChip {
   label: string;
   /** ปุ่มเปลี่ยน step ปกติ — ไม่ตั้งคู่กับ resendReferralId/query/transplantType/indicationId */
   go?: BotStep;
+  /**
+   * ถ้ามีค่า chip นี้เรียก listDocumentsAction ด้วยเลขกลุ่ม (null = ทั้งหมด)
+   * — ใช้เฉพาะปุ่มเลือกหมวดใน docs.ask
+   */
+  docGroup?: 1 | 2 | 3 | null;
   /**
    * ถ้ามีค่า แปลว่า chip นี้ไม่เปลี่ยน step แต่เรียก resendAnswerAction(referralId)
    * แทน — ใช้เฉพาะปุ่ม "ส่งสำเนาเข้าอีเมลเดิม" ใน answers.list (ต่อ 1 เคส)
@@ -125,6 +132,7 @@ export const MAIN_MENU_CHIPS: BotChip[] = [
   { label: "🔁 เลื่อน/ยกเลิกนัด", go: "reschedule" },
   { label: "💊 สูตรเคมี", go: "regimens.ask" },
   { label: "🧬 Transplant indication", go: "indications.type" },
+  { label: "📚 เอกสาร", go: "docs.ask" },
   { label: "🌐 กลุ่ม 4 / ติดต่อแอดมิน", go: "group4" },
 ];
 
@@ -151,6 +159,7 @@ export function menuMessage(): BotMessage {
  */
 export const STATIC_STEP_MESSAGES: Partial<Record<BotStep, () => BotMessage[]>> = {
   "indications.type": () => [indicationsTypeMessage()],
+  "docs.ask": () => [docsAskMessage()],
   booking: () => [
     {
       from: "bot",
@@ -443,6 +452,53 @@ export function uniqueDiseaseGroups(regimens: RegimenListItem[]): string[] {
 /** ข้อความถามคำค้น + chips กลุ่มโรคเด่น — diseaseGroups ว่างได้ (เช่นตอน demo ที่
  * ไม่มีชีตให้อ่าน) ก็ยังพิมพ์ค้นเองในช่องกรอกด้านล่างแผงแชทได้ตามปกติ
  */
+/** ถามหมวดเอกสาร — เลือกกลุ่มหรือดูทั้งหมด */
+export function docsAskMessage(): BotMessage {
+  return {
+    from: "bot",
+    text: "ต้องการเอกสารของกลุ่มไหนครับ",
+    chips: [
+      { label: "กลุ่ม 1 — ปลูกถ่าย", docGroup: 1 },
+      { label: "กลุ่ม 2 — ปรึกษาสูตรยา", docGroup: 2 },
+      { label: "กลุ่ม 3 — ส่งตัวให้ยาเคมี", docGroup: 3 },
+      { label: "📚 ดูทั้งหมด", docGroup: null },
+      MENU_CHIP,
+    ],
+  };
+}
+
+export const DOCS_EMPTY_TEXT =
+  "ยังไม่มีเอกสารในหมวดนี้ครับ ลองดูหมวดอื่น หรือติดต่อแอดมินได้เลย";
+
+export const DOCS_FALLBACK_ERROR =
+  "เปิดรายการเอกสารไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
+
+/** รายการเอกสารหนึ่งไฟล์ — ลิงก์เปิดแท็บใหม่ (ไฟล์อยู่บน Google Drive) */
+export function docMessage(doc: {
+  title: string;
+  url: string;
+  description: string;
+}): BotMessage {
+  return {
+    from: "bot",
+    sticky: true,
+    text: doc.description ? doc.title + "\n" + doc.description : doc.title,
+    links: [{ label: "📄 เปิดเอกสาร", href: doc.url, external: true }],
+  };
+}
+
+/** สรุปหัวรายการเอกสาร + chips ไปหมวดอื่น */
+export function docsListHeaderMessage(count: number): BotMessage {
+  return {
+    from: "bot",
+    text: "พบ " + count + " ไฟล์ครับ กดเปิดได้เลย",
+  };
+}
+
+export function docsListFooterChips(): BotChip[] {
+  return [{ label: "ดูหมวดอื่น", go: "docs.ask" }, MENU_CHIP];
+}
+
 export function regimensAskMessage(diseaseGroups: string[]): BotMessage {
   return {
     from: "bot",
