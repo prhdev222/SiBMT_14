@@ -17,6 +17,35 @@
 const HSOS_API = 'https://hsos-worker.uradev222.workers.dev/api';
 
 /**
+ * เมนู "SiBMT" บนแถบเมนูของ Google Sheet — ให้แอดมินกด sync ได้เอง
+ * โดยไม่ต้องเปิด Apps Script editor (โผล่อัตโนมัติทุกครั้งที่เปิดชีต)
+ *
+ * ⚠️ หนึ่งโปรเจกต์มี onOpen ได้ตัวเดียว — ถ้าวันหลังอยากเพิ่มเมนูอื่น
+ * ให้มาเพิ่ม addItem ในฟังก์ชันนี้ อย่าประกาศ onOpen ใหม่ที่ไฟล์อื่น
+ */
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('SiBMT')
+    .addItem('🔄 Sync เวรจาก HSOS ตอนนี้', 'syncFromMenu_')
+    .addToUi();
+}
+
+/** ห่อ sync ให้รายงานผลเป็น popup — คนกดจากเมนูไม่เห็น Execution log */
+function syncFromMenu_() {
+  try {
+    syncResidentScheduleFromHSOS();
+    SpreadsheetApp.getUi().alert(
+      'Sync เวรจาก HSOS เรียบร้อยแล้ว ✓\n\n' +
+      'ดูผลได้ที่แท็บ resident_schedule และ residents'
+    );
+  } catch (error) {
+    SpreadsheetApp.getUi().alert(
+      'Sync ไม่สำเร็จ: ' + error + '\n\nตารางเดิมยังอยู่ครบ ลองใหม่อีกครั้งได้'
+    );
+  }
+}
+
+/**
  * sync ทั้งสองชีต — รันมือครั้งแรกเพื่อเติมตารางทันทีก็ได้
  *
  * resident_schedule: เขียนทับทั้งชีต (mirror ของ HSOS)
