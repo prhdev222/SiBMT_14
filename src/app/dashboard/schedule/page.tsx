@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MonthNav } from "./MonthNav";
 import {
   loadFellowSchedule,
   loadFellows,
@@ -254,22 +255,34 @@ function EmptyState({ source }: { source: FellowScheduleSource }) {
 }
 
 function MonthPicker({ months, selected }: { months: string[]; selected: string }) {
+  // ป้ายเดือนไทย format ฝั่ง server แล้วส่งให้ client — MonthNav ไม่ต้องรู้วิธีแปลง
+  const labels: Record<string, string> = {};
+  for (const m of months) labels[m] = formatMonthTh(m);
+
   return (
-    <div className="flex flex-wrap gap-2">
-      {months.map((m) => (
-        <Link
-          key={m}
-          href={`/dashboard/schedule?month=${m}`}
-          className={`rounded-lg px-3 py-1.5 text-sm font-medium border transition-colors ${
-            m === selected
-              ? "bg-blue-600 text-white border-blue-600"
-              : "bg-white text-zinc-700 border-zinc-300 hover:border-zinc-500"
-          }`}
-        >
-          {formatMonthTh(m)}
-        </Link>
-      ))}
-    </div>
+    <>
+      {/* มือถือ: ลูกศรเลื่อนทีละเดือน + dropdown (ดูเหตุผลใน MonthNav.tsx) */}
+      <div className="sm:hidden">
+        <MonthNav months={months} selected={selected} formatLabel={labels} />
+      </div>
+
+      {/* desktop: เม็ดเดือนเห็นครบทุกเดือนเหมือนเดิม */}
+      <div className="hidden sm:flex flex-wrap gap-2">
+        {months.map((m) => (
+          <Link
+            key={m}
+            href={`/dashboard/schedule?month=${m}`}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium border transition-colors ${
+              m === selected
+                ? "bg-blue-600 text-white border-blue-600"
+                : "bg-white text-zinc-700 border-zinc-300 hover:border-zinc-500"
+            }`}
+          >
+            {formatMonthTh(m)}
+          </Link>
+        ))}
+      </div>
+    </>
   );
 }
 
