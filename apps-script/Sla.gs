@@ -64,6 +64,21 @@ function previewAdminAlert() {
   return text;
 }
 
+/**
+ * ทดสอบยิงเข้ากลุ่ม LINE ทันที — ข้ามด่านเวลาทำการ (เสาร์-อาทิตย์/นอกเวลาก็ส่งได้)
+ * ไม่ประทับ red_alert_sent_at → เคสแดงยังถูกส่งซ้ำในรอบจริง 10:00 วันทำการถัดไป
+ * ใช้เฉพาะตอนอยากเห็นข้อความจริงในกลุ่ม — รอบปกติปล่อยให้ sendRedAlert รันเอง
+ */
+function sendRedAlertTest() {
+  const message = buildAdminAlertMessage_(new Date(), false);
+  if (!message) {
+    Logger.log('(ไม่มีเคสแดง/เหลือง — ไม่มีอะไรจะส่ง)');
+    return;
+  }
+  pushLineMessage_(message, 'red');
+  Logger.log('ส่งข้อความทดสอบเข้ากลุ่มแล้ว (ไม่ได้ประทับสถานะ)');
+}
+
 /** ชื่อผู้รับผิดชอบที่ต้องไปเตือน — assigned_to หรือ fellow_assigned (กลุ่ม 1) */
 function responsibleName_(r) {
   const assigned = String(r['assigned_to'] || '').trim();
