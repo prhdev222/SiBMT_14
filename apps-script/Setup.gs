@@ -389,8 +389,10 @@ function setupTriggers() {
   // คำนวณ SLA รายชั่วโมง (ตัวฟังก์ชันข้ามการทำงานเองนอกเวลาทำการ)
   ScriptApp.newTrigger('recalculateSla').timeBased().everyHours(1).create();
 
-  // Red Alert รายชั่วโมง
-  ScriptApp.newTrigger('sendRedAlert').timeBased().everyHours(1).create();
+  // Red Alert รวมรอบเดียวกับสรุป 10:00 — ไม่ยิงตามเวลาครบชั่วโมงเป๊ะ ๆ
+  // (มติผู้ใช้ 5 ก.ย. 2569) เคสที่ครบกำหนดระหว่างวันรอประกาศรอบเช้าถัดไป
+  ScriptApp.newTrigger('sendRedAlert').timeBased().atHour(BATCH_HOUR).everyDays(1)
+    .inTimezone(TIMEZONE).create();
 
   // รอบแจ้งเตือนรวม 10:00 น. ทุกวัน (ฟังก์ชันข้ามวันหยุดเอง)
   ScriptApp.newTrigger('sendDailyBatch').timeBased().atHour(BATCH_HOUR).everyDays(1)

@@ -71,26 +71,28 @@ function sendRedAlert() {
 
   if (pending.length === 0) return;
 
+  // รวมทุกเคสที่เพิ่งครบกำหนดเป็นข้อความเดียว ส่งพร้อมรอบ 10:00
+  // (มติผู้ใช้ 5 ก.ย. 2569 — เดิมยิงทันทีรายเคสตอนครบชั่วโมงเป๊ะ ๆ
+  // ซึ่งไม่ได้ทำให้ใครตอบเร็วขึ้น และมาทีละข้อความรกแชทแอดมิน)
+  const hoursPerDay = BUSINESS.endHour - BUSINESS.startHour;
+  let message =
+    '🚨 RED ALERT — ครบกำหนดตอบ ' + (ESCALATION.redHours / hoursPerDay) +
+    ' วันทำการแล้ว ' + pending.length + ' เคส\n' +
+    '────────────────\n';
+
   pending.forEach(function (r) {
     const groupNo = GROUP_NUMBER[String(r['referral_type'])] || '-';
-    // แปลงชั่วโมงทำการเป็น "วันทำการ" — เลข 24 ชม.ทำการเคยถูกอ่านผิดว่า
-    // แจ้งช้า/เร็วเกินจริง (feedback 5 ก.ย. 2569) ทั้งที่คือ 3 วันทำการพอดี
     const elapsed = parseFloat(r['elapsed_business_hours']) || 0;
-    const hoursPerDay = BUSINESS.endHour - BUSINESS.startHour;
     const days = Math.round((elapsed / hoursPerDay) * 10) / 10;
-    const message =
-      '🚨 RED ALERT — ครบกำหนดตอบ ' + (ESCALATION.redHours / hoursPerDay) +
-      ' วันทำการแล้ว\n' +
-      'Referral ID: ' + r['referral_id'] + '\n' +
-      'กลุ่มที่: ' + groupNo + '\n' +
-      'ค้างมาแล้ว ' + days + ' วันทำการ\n' +
-      'กรุณาเข้าตรวจสอบโดยด่วน\n' +
-      DASHBOARD_URL;
+    message += '• ' + r['referral_id'] + ' · กลุ่ม ' + groupNo +
+      ' · ค้าง ' + days + ' วันทำการ\n';
 
-    pushLineMessage_(message, 'red');
     setCell_(sheet, map, r._row, 'red_alert_sent_at', now);
     logStatusChange_(r['referral_id'], r['status'], r['status'], 'system', 'ส่ง Red Alert');
   });
+
+  message += '\nกรุณาเข้าตรวจสอบโดยด่วน\n' + DASHBOARD_URL;
+  pushLineMessage_(message, 'red');
 }
 
 function isWithinBusinessHours_(date, holidays) {
