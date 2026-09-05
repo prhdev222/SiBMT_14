@@ -45,6 +45,10 @@ function onFormSubmit(e) {
   // รอได้ถึง 30 วินาที กันกรณีส่งฟอร์มพร้อมกันแล้ว referral_id ชนกัน
   lock.waitLock(30000);
   try {
+    // กู้หัวคอลัมน์ก่อนอ่านอะไรทั้งสิ้น — Google Forms อาจเพิ่งเขียนทับหัว
+    // กลับเป็นภาษาไทย (เช่นหลังแก้ฟอร์ม) ซึ่งทำให้อ่านคอลัมน์ตามชื่อไม่เจอ
+    restoreFormHeadersQuiet_();
+
     const sheet = getSheet_(SHEETS.referrals);
     const map = ensureColumns_(sheet, SYSTEM_COLUMNS);
     const row = e && e.range ? e.range.getRow() : sheet.getLastRow();

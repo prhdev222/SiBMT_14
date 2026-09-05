@@ -1070,6 +1070,46 @@ function restoreFormHeaders() {
   console.log('รัน runSelfTest() ต่อเพื่อยืนยัน');
 }
 
+/**
+ * กู้หัวคอลัมน์แบบเงียบ — เรียกอัตโนมัติต้น onFormSubmit ก่อนอ่านคอลัมน์
+ *
+ * Google Forms เขียนหัวคอลัมน์กลับเป็นภาษาไทยทุกครั้งที่แตะฟอร์ม ทำให้ทั้ง
+ * ระบบอ่านคอลัมน์ตามชื่อไม่เจอ (dashboard ว่าง, กลุ่ม/วันที่หาย) — ตัวนี้
+ * ตรวจและกู้ให้เองทุก submit จะได้ไม่ต้องรอคนมาสังเกตแล้วกดกู้มือ
+ *
+ * ต่างจาก restoreFormHeaders() ตรงที่ "ไม่ throw" — ระหว่าง submit จริง
+ * ถ้ายามกันพลาดไม่ผ่าน (โครงสร้างผิดคาด) ต้องปล่อยให้ flow เดินต่อ ดีกว่า
+ * บล็อกการบันทึกเคสทั้งใบ คืน true เมื่อมีการกู้ / false เมื่อไม่ต้องกู้หรือกู้ไม่ได้
+ */
+function restoreFormHeadersQuiet_() {
+  try {
+    const sheet = getSheet_(SHEETS.referrals);
+    const width = sheet.getLastColumn();
+    const n = FORM_COLUMN_ORDER.length;
+    if (width < n + 1) return false;
+
+    const current = sheet.getRange(1, 1, 1, width).getValues()[0]
+      .map(function (h) { return String(h).trim(); });
+
+    // ยามเดียวกับ restoreFormHeaders — referral_id ต้องอยู่คอลัมน์ถัดจากช่วงฟอร์ม
+    // ถ้าไม่ใช่ แปลว่าโครงสร้างเลื่อน ไม่ใช่แค่หัวเพี้ยน — อย่าเดาแก้ ปล่อยผ่าน
+    if (current[n] !== 'referral_id') return false;
+
+    let needFix = false;
+    for (let i = 0; i < n; i++) {
+      if (current[i] !== FORM_COLUMN_ORDER[i]) { needFix = true; break; }
+    }
+    if (!needFix) return false;
+
+    sheet.getRange(1, 1, 1, n).setValues([FORM_COLUMN_ORDER]);
+    console.log('onFormSubmit: กู้หัวคอลัมน์อัตโนมัติแล้ว (ฟอร์มเขียนทับกลับเป็นไทย)');
+    return true;
+  } catch (err) {
+    console.error('กู้หัวคอลัมน์อัตโนมัติไม่สำเร็จ: ' + err);
+    return false;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* จัดชีตให้อาจารย์อ่านและตอบได้                                          */
 /* ------------------------------------------------------------------ */
