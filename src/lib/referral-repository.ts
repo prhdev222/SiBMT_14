@@ -263,6 +263,124 @@ export async function loadReferralByAnswerToken(
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* บทสนทนาต่อเนื่องต่อเคส (Case Conversation)                          */
+/* ------------------------------------------------------------------ */
+
+const MESSAGES_SHEET = "messages";
+
+export interface CaseMessage {
+  id: string;
+  senderRole: "referrer" | "resident" | "system";
+  senderName: string;
+  channel: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface CaseThread {
+  referralId: string;
+  caseToken: string;
+  referralType: ReferralType;
+  status: Status;
+  referrerOrg: string;
+  submittedAt: string;
+  messages: CaseMessage[];
+}
+
+/** โหลดข้อความของเคสหนึ่ง เรียงตามเวลา — ใช้ทั้งหน้า /case และ dashboard */
+export async function loadMessages(referralId: string): Promise<CaseMessage[]> {
+  if (!readCredentials()) return demoMessages(referralId);
+
+  try {
+    const rows = await readSheetRows(MESSAGES_SHEET);
+    return rows
+      .filter((r) => text(r["referral_id"]) === referralId && text(r["text"]))
+      .map((r) => ({
+        id: text(r["message_id"]),
+        senderRole: (text(r["sender_role"]) || "system") as
+          | "referrer"
+          | "resident"
+          | "system",
+        senderName: text(r["sender_name"]),
+        channel: text(r["channel"]),
+        text: text(r["text"]),
+        createdAt: text(r["created_at"]),
+      }))
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  } catch {
+    return [];
+  }
+}
+
+/** โหลดเคส + ข้อความจาก case_token — สำหรับหน้า /case/[token] (ไม่ต้องล็อกอิน) */
+export async function loadCaseByToken(
+  token: string,
+): Promise<CaseThread | null> {
+  if (token.length < 16) return null;
+
+  if (!readCredentials()) {
+    const demo = MOCK_REFERRALS.find(
+      (r) => demoCaseToken(r.referralId) === token,
+    );
+    if (!demo) return null;
+    return {
+      referralId: demo.referralId,
+      caseToken: token,
+      referralType: demo.referralType,
+      status: demo.status,
+      referrerOrg: demo.referrerOrg,
+      submittedAt: demo.submittedAt,
+      messages: demoMessages(demo.referralId),
+    };
+  }
+
+  try {
+    const rows = await readSheetRows(REFERRALS_SHEET);
+    const row = rows.find((r) => text(r["case_token"]) === token);
+    if (!row) return null;
+    const referralId = text(row["referral_id"]);
+    return {
+      referralId,
+      caseToken: token,
+      referralType: text(row["referral_type"]) as ReferralType,
+      status: (text(row["status"]) || "Submitted") as Status,
+      referrerOrg: text(row["referrer_org"]),
+      submittedAt: text(row["submitted_at"] || row["Timestamp"]),
+      messages: await loadMessages(referralId),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** token ปลอมของเคสสำหรับโหมดสาธิต — เปิดหน้า /case ทดสอบได้ */
+export function demoCaseToken(referralId: string): string {
+  return `case-${referralId}`.padEnd(32, "0");
+}
+
+/** ข้อความตัวอย่างโหมดสาธิต — ให้เห็นหน้าตา thread เวลาไม่มี Google Sheet */
+function demoMessages(referralId: string): CaseMessage[] {
+  return [
+    {
+      id: "demo-1",
+      senderRole: "referrer",
+      senderName: "รพ.ตัวอย่าง (เดโม่)",
+      channel: "web",
+      text: `สวัสดีครับ ขอสอบถามความคืบหน้าเคส ${referralId} ครับ`,
+      createdAt: "2026-09-05 09:10",
+    },
+    {
+      id: "demo-2",
+      senderRole: "resident",
+      senderName: "พญ. ณัฐชยา (เดโม่)",
+      channel: "line",
+      text: "รับเรื่องแล้วค่ะ กำลังปรึกษาอาจารย์ เดี๋ยวแจ้งกลับภายในวันนี้นะคะ",
+      createdAt: "2026-09-05 09:32",
+    },
+  ];
+}
+
 /**
  * แถวดิบสำหรับ Hemato Bot — ใช้ฝั่ง server เท่านั้น อย่าส่งทั้งแถวให้ client
  *

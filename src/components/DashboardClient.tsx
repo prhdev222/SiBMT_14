@@ -6,6 +6,7 @@ import {
   updateAssignedToAction,
   updateStatusAction,
 } from "@/app/dashboard/actions";
+import { DentThread } from "@/components/DentThread";
 import { downloadCsv, fileStamp, toCsv } from "@/lib/csv";
 import {
   ALERT_COLOR,
@@ -75,11 +76,14 @@ export function DashboardClient({
   referrals,
   residents,
   fellows,
+  username,
 }: {
   referrals: Referral[];
   residents: string[];
   /** รายชื่อ fellow (จากตารางออกตรวจ) — ผู้รับผิดชอบของเคสกลุ่ม 1 */
   fellows: string[];
+  /** ชื่อผู้ล็อกอิน — ใช้เป็นชื่อผู้ส่งในบทสนทนา */
+  username: string;
 }) {
   const [search, setSearch] = useState("");
   const [referralType, setReferralType] = useState<ReferralType | "all">("all");
@@ -613,6 +617,17 @@ export function DashboardClient({
               <p className="text-zinc-800">{selected.note}</p>
             </div>
           )}
+
+          {/* บทสนทนากับแพทย์ต้นทาง */}
+          <div className="border-t border-zinc-100 pt-3">
+            <p className="mb-2 text-sm font-semibold text-zinc-900">
+              💬 บทสนทนากับแพทย์ต้นทาง
+            </p>
+            <DentThread
+              referralId={selected.referralId}
+              senderName={assignedOf(selected) ?? username}
+            />
+          </div>
         </div>
       )}
     </div>

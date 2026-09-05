@@ -73,6 +73,7 @@ export default async function DashboardPage() {
           referrals={referrals}
           residents={residents}
           fellows={fellows}
+          username={session.username}
         />
 
         <ResponsibleContacts config={config} />

@@ -23,6 +23,7 @@ const SHEETS = {
   residents: 'residents',          // รายชื่อ resident ที่ตอบกลุ่ม 2/3 — ตัวเลือก dropdown
   residentSchedule: 'resident_schedule', // ตารางเวรตอบคำปรึกษา (ช่วงวันที่ เหลื่อมกันได้)
   documents: 'documents',          // คลังเอกสารสำคัญให้แพทย์ต้นทางดาวน์โหลด
+  messages: 'messages',            // บทสนทนาต่อเนื่องต่อเคส (แพทย์ต้นทาง ↔ dent)
 };
 
 /**

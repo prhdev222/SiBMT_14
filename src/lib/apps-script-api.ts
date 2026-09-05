@@ -456,3 +456,33 @@ export async function updateStatus(payload: {
 }): Promise<{ ok: boolean }> {
   return callAppsScript("updateStatus", payload);
 }
+
+/* ------------------------------------------------------------------ */
+/* บทสนทนาต่อเนื่องต่อเคส (Case Conversation)                          */
+/* ------------------------------------------------------------------ */
+
+/** แพทย์ต้นทางส่งข้อความจากหน้า /case/[token] */
+export async function postReferrerMessage(payload: {
+  caseToken: string;
+  text: string;
+}): Promise<{ ok: boolean }> {
+  return callAppsScript("postReferrerMessage", payload);
+}
+
+/** dent ส่งข้อความจาก dashboard */
+export async function postDentMessage(payload: {
+  referralId: string;
+  text: string;
+  senderName: string;
+}): Promise<{ ok: boolean }> {
+  return callAppsScript("postDentMessage", payload);
+}
+
+/** ล้างธง unread เมื่อเปิดอ่าน thread */
+export async function markThreadRead(payload: {
+  side: "referrer" | "dent";
+  referralId?: string;
+  caseToken?: string;
+}): Promise<{ ok: boolean }> {
+  return callAppsScript("markThreadRead", payload);
+}

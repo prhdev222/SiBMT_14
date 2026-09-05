@@ -38,14 +38,34 @@ service account อ่านชีตฝั่งเว็บ + Apps Script เ�
    `line_link → เบอร์ → เคสที่เปิดอยู่` (หลายเคส → บอทให้เลือกด้วย state machine)
 4. **LINE กลุ่ม fellow/resident**: dent พิมพ์ `ตอบ HEM-xxxx: <ข้อความ>` → ลง thread
 
+## หลักการประหยัด LINE: reply-first, push ให้น้อยและรวบ
+
+LINE **reply (replyToken) ฟรีไม่จำกัด** แต่ **push มีโควตา** จึงออกแบบให้:
+
+- ทุก event ขาเข้า (แพทย์ต้นทางพิมพ์ใน OA / dent พิมพ์ในกลุ่ม) → ตอบด้วย
+  `replyLineMessage_` (ฟรี) เสมอ — ยืนยันบันทึกแล้ว + แสดง thread ล่าสุด
+- อยากเช็กความคืบหน้า = พิมพ์ถาม บอท reply ให้ (pull ฟรี) ไม่ต้องรอ push
+- push (`sendOneLinePush_`/`pushLineMessage_`) ใช้เฉพาะ "เตือนอีกฝั่งว่ามี
+  ข้อความใหม่" และ **รวบเป็นครั้งเดียว**: push ก็ต่อเมื่ออีกฝั่ง "อ่านทันแล้ว"
+  (ไม่มี pending) เท่านั้น — พิมพ์รัว ๆ ก่อนเขามาอ่าน จะไม่ push ซ้ำ
+- อีเมล (ฟรี) แนบเนื้อความเต็ม + ลิงก์เสมอ เป็นสำเนาสำรอง
+
+### coalescing flags (คอลัมน์ใน `referrals`)
+- `referrer_unread` / `dent_unread` = `yes` เมื่อมีข้อความใหม่ที่อีกฝั่งยังไม่อ่าน
+- push เตือน **เฉพาะตอนเปลี่ยนจากว่าง → yes** (ข้อความแรกหลังอ่านทัน)
+- ล้างเป็นว่างเมื่อฝ่ายนั้น "อ่าน/ตอบ" (เปิด `/case`, พิมพ์ตอบ, หรือ pull ใน LINE)
+
 ## Core (ใช้ร่วมทุก surface, ใน Apps Script)
 
 - `appendMessage_(row, role, name, channel, text)` — เขียนแถวใน `messages`
-- `notifyCounterparty_(row, role, text)` — แจ้งอีกฝั่ง:
-  - dent ส่ง → แพทย์ต้นทาง: `sendOneLinePush_(userId)` (ถ้ามี line_link) + อีเมล
-    (มีเนื้อความเต็ม + ลิงก์ `/case/[token]`)
-  - แพทย์ต้นทางส่ง → dent: `pushLineMessage_(text, audience)`
-    audience = `fellow` ถ้ากลุ่ม 1, ไม่งั้น `batch` (กลุ่ม resident)
+- `markCaughtUp_(row, side)` — ล้าง unread flag ของฝั่งนั้น (side=referrer|dent)
+- `notifyCounterparty_(row, role, text, hasReplyToken)` — แจ้งอีกฝั่งแบบรวบ:
+  - ตั้ง unread flag ของอีกฝั่ง; push **เฉพาะถ้าเพิ่งเปลี่ยนเป็น yes**
+  - dent ส่ง → แพทย์ต้นทาง: push `sendOneLinePush_(userId)` (ถ้ามี line_link
+    และยังไม่ pending) + อีเมล (เนื้อความเต็ม + ลิงก์ `/case/[token]`) เสมอ
+  - แพทย์ต้นทางส่ง → dent: push `pushLineMessage_(text, audience)` เฉพาะถ้ายังไม่
+    pending · audience = `fellow` ถ้ากลุ่ม 1, ไม่งั้น `batch`
+  - ฝ่ายที่เพิ่งพิมพ์เข้ามาทาง LINE จะได้ **reply (ฟรี)** ยืนยัน ไม่นับ push
 
 ## doPost actions (Api.gs)
 

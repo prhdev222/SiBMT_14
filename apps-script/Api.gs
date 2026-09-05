@@ -229,6 +229,18 @@ function doPost(e) {
       return jsonResponse_({ ok: true, data: updateStatus_(body.payload || {}) });
     }
 
+    if (body.action === 'postReferrerMessage') {
+      return jsonResponse_({ ok: true, data: postReferrerMessage_(body.payload || {}) });
+    }
+
+    if (body.action === 'postDentMessage') {
+      return jsonResponse_({ ok: true, data: postDentMessage_(body.payload || {}) });
+    }
+
+    if (body.action === 'markThreadRead') {
+      return jsonResponse_({ ok: true, data: markThreadRead_(body.payload || {}) });
+    }
+
     // ติดเวอร์ชันไปกับข้อความ error ด้วย เพราะสาเหตุที่พบเกือบทุกครั้งของคำสั่ง
     // ที่ "หายไป" คือ deploy ค้างเวอร์ชันเก่า — บอกไปเลยว่าโค้ดตัวไหนเป็นคนตอบ
     return jsonResponse_({

@@ -185,6 +185,8 @@ function setupSheets() {
 
   createIfMissing_(ss, SHEETS.documents, DOCUMENT_COLUMNS);
 
+  createIfMissing_(ss, SHEETS.messages, MESSAGE_COLUMNS);
+
   console.log('สร้างชีตและคอลัมน์เรียบร้อย');
   console.log('ต้องกรอกเพิ่ม:');
   console.log('  • ' + SHEETS.holidays + ' — วันหยุดนักขัตฤกษ์');

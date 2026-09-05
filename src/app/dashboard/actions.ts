@@ -10,9 +10,12 @@
 import { requireSession } from "@/lib/session";
 import {
   isBookingConfigured,
+  markThreadRead,
+  postDentMessage,
   updateAssignedTo,
   updateStatus,
 } from "@/lib/apps-script-api";
+import { loadMessages, type CaseMessage } from "@/lib/referral-repository";
 import type { Status } from "@/lib/referral-types";
 
 /**
@@ -84,5 +87,60 @@ export async function updateStatusAction(
           ? error.message
           : "บันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
     };
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* บทสนทนาต่อเนื่องต่อเคส (ฝั่ง dent บน dashboard)                       */
+/* ------------------------------------------------------------------ */
+
+/** โหลดข้อความของเคส — เรียกตอนเปิดกล่องรายละเอียด (lazy) */
+export async function loadMessagesAction(
+  referralId: string,
+): Promise<CaseMessage[]> {
+  await requireSession();
+  const id = referralId.trim();
+  if (!id) return [];
+  return loadMessages(id);
+}
+
+/** dent ส่งข้อความในเคส */
+export async function postDentMessageAction(
+  referralId: string,
+  text: string,
+  senderName: string,
+): Promise<{ ok: boolean; error?: string }> {
+  await requireSession();
+  const id = referralId.trim();
+  if (!id) return { ok: false, error: "ไม่พบเลขที่อ้างอิงของเคส" };
+  if (!text.trim()) return { ok: false, error: "ยังไม่ได้พิมพ์ข้อความ" };
+  if (!isBookingConfigured()) {
+    return { ok: false, error: "โหมดสาธิต — ยังไม่ได้เชื่อม Apps Script" };
+  }
+  try {
+    await postDentMessage({
+      referralId: id,
+      text: text.trim(),
+      senderName: senderName.trim(),
+    });
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "ส่งไม่สำเร็จ กรุณาลองใหม่",
+    };
+  }
+}
+
+/** ล้างธง unread ฝั่ง dent เมื่อเปิดอ่าน thread */
+export async function markReadDentAction(referralId: string): Promise<void> {
+  await requireSession();
+  const id = referralId.trim();
+  if (!id || !isBookingConfigured()) return;
+  try {
+    await markThreadRead({ side: "dent", referralId: id });
+  } catch {
+    // ล้างธงไม่สำเร็จไม่ใช่เรื่องคอขาดบาดตาย
   }
 }

@@ -167,8 +167,14 @@ function onFormSubmit(e) {
     // ที่ส่งมาก่อนเปลี่ยนฟอร์ม และการแก้ฟอร์มผิดพลาด ทำให้ค่าว่างได้อยู่ดี
     // เขียน log ไว้แทนการเงียบ — เดิมเคสที่ไม่มีอีเมลจะไม่ได้รับรหัสอ้างอิงเลย
     // แล้วไม่มีใครรู้จนกว่าแพทย์จะโทรมาถาม
+    // token สำหรับหน้าคุยต่อเนื่อง /case/[token] — ออกตั้งแต่สร้างเคส
+    // แพทย์ต้นทางจะได้คุยกับทีมได้ทันทีตั้งแต่วันแรก
+    const caseToken = generateManageToken_();
+    ensureColumns_(sheet, CASE_THREAD_COLUMNS);
+    setCell_(sheet, headerMap_(sheet), row, 'case_token', caseToken);
+
     if (email) {
-      sendReferralIdEmail_(email, referralId, referralType, verifyToken);
+      sendReferralIdEmail_(email, referralId, referralType, verifyToken, caseToken);
     } else {
       console.warn(
         'เคส ' + referralId + ' ไม่มีอีเมลผู้ส่ง — ไม่ได้ส่งรหัสอ้างอิงกลับ ' +
@@ -193,7 +199,7 @@ function onFormSubmit(e) {
  *   Config.gs) — ใส่ลิงก์ "ยืนยันอีเมลของท่าน" ก็ต่อเมื่อมีค่า เผื่อกรณีสร้าง
  *   token ไม่สำเร็จ จะได้ไม่ส่งอีเมลที่มีลิงก์พังออกไป
  */
-function sendReferralIdEmail_(email, referralId, referralType, verifyToken) {
+function sendReferralIdEmail_(email, referralId, referralType, verifyToken, caseToken) {
   const groupNo = GROUP_NUMBER[referralType] || '-';
 
   const body =
@@ -202,6 +208,7 @@ function sendReferralIdEmail_(email, referralId, referralType, verifyToken) {
     'กลุ่มที่: ' + groupNo + '\n\n' +
     'กรุณาเก็บรหัสนี้ไว้ หากต้องการส่งข้อมูลเพิ่มเติมหรือสอบถามความคืบหน้า\n' +
     'ให้แจ้งรหัสนี้กับเจ้าหน้าที่\n\n' +
+    buildCaseThreadBlock_(caseToken) +
     buildVerifyEmailBlock_(referralId, verifyToken) +
     'ทีมงานจะรับเรื่องในรอบประจำวันเวลา 10:00 น. ของวันทำการ\n' +
     'และตอบกลับภายใน 3 วันทำการ\n\n' +
@@ -221,6 +228,14 @@ function sendReferralIdEmail_(email, referralId, referralType, verifyToken) {
     // ส่งอีเมลไม่สำเร็จต้องไม่ทำให้การรับเคสล้มเหลว
     console.error('ส่งอีเมลรหัสอ้างอิงไม่สำเร็จ (' + referralId + '): ' + err);
   }
+}
+
+/** บล็อกลิงก์หน้าคุยต่อเนื่อง — แพทย์ต้นทางกดเข้าไปถาม-ตอบกับทีมได้ทันที */
+function buildCaseThreadBlock_(caseToken) {
+  if (!caseToken) return '';
+  return '--- คุยกับทีมเรื่องเคสนี้ ---\n' +
+    SITE_URL + '/case/' + caseToken + '\n' +
+    '(สอบถาม/ส่งข้อมูลเพิ่ม แล้วดูคำตอบได้ที่ลิงก์นี้ ไม่ต้องเปิดอีเมล)\n\n';
 }
 
 /**
