@@ -390,3 +390,8 @@ export async function protectHeaders(): Promise<{
 }> {
   return callAppsScript("protectHeaders", {});
 }
+
+/** ปลดล็อกหัวคอลัมน์ที่ตั้งจากระบบ — คืนรายชื่อแท็บที่ปลด */
+export async function unprotectHeaders(): Promise<{ unlocked: string[] }> {
+  return callAppsScript("unprotectHeaders", {});
+}

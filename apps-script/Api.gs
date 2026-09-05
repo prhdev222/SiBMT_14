@@ -193,6 +193,10 @@ function doPost(e) {
       return jsonResponse_({ ok: true, data: protectHeaderRows() });
     }
 
+    if (body.action === 'unprotectHeaders') {
+      return jsonResponse_({ ok: true, data: unprotectHeaderRows() });
+    }
+
     if (body.action === 'saveResidentShift') {
       return jsonResponse_({ ok: true, data: saveResidentShift_(body.payload || {}) });
     }

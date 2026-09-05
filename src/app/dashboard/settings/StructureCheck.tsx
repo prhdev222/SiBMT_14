@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { checkStructureAction, protectHeadersAction } from "./actions";
+import {
+  checkStructureAction,
+  protectHeadersAction,
+  unprotectHeadersAction,
+} from "./actions";
 
 /**
  * ปุ่มตรวจโครงสร้างชีต — แอดมินกดหลังแก้ตาราง เพื่อรู้ทันทีว่ายังถูกต้องไหม
@@ -20,6 +24,7 @@ export function StructureCheck() {
     | { kind: "idle" }
     | { kind: "loading" }
     | { kind: "done"; locked: string[] }
+    | { kind: "unlocked"; tabs: string[] }
     | { kind: "error"; message: string }
   >({ kind: "idle" });
 
@@ -32,6 +37,23 @@ export function StructureCheck() {
       setState({ kind: "ok" });
     } else {
       setState({ kind: "problems", items: result.problems ?? [] });
+    }
+  }
+
+  async function runUnlock() {
+    if (
+      !window.confirm(
+        "ปลดล็อกหัวคอลัมน์ทุกแท็บ?\n\nหลังปลดล็อก ใครก็แก้แถวหัวคอลัมน์ได้ — " +
+          "ระวังการแก้ผิดที่ทำให้ระบบอ่านข้อมูลไม่เจอ",
+      )
+    )
+      return;
+    setLock({ kind: "loading" });
+    const result = await unprotectHeadersAction();
+    if (result.ok) {
+      setLock({ kind: "unlocked", tabs: result.unlocked ?? [] });
+    } else {
+      setLock({ kind: "error", message: result.error ?? "ปลดล็อกไม่สำเร็จ" });
     }
   }
 
@@ -59,17 +81,34 @@ export function StructureCheck() {
           กดล็อกหัวคอลัมน์ครั้งเดียว — กันแอดมินใหม่เผลอแก้หัวคอลัมน์แล้วระบบพัง
           (แถวข้อมูลยังแก้ได้ตามปกติ)
         </p>
-        <button
-          type="button"
-          onClick={runLock}
-          disabled={lock.kind === "loading"}
-          className="rounded-lg border-2 border-zinc-800 px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-100 disabled:opacity-50"
-        >
-          {lock.kind === "loading" ? "กำลังล็อก…" : "🔒 ล็อกหัวคอลัมน์ทุกแท็บ"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={runLock}
+            disabled={lock.kind === "loading"}
+            className="rounded-lg border-2 border-zinc-800 px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-100 disabled:opacity-50"
+          >
+            {lock.kind === "loading" ? "กำลังดำเนินการ…" : "🔒 ล็อกหัวคอลัมน์ทุกแท็บ"}
+          </button>
+          <button
+            type="button"
+            onClick={runUnlock}
+            disabled={lock.kind === "loading"}
+            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+          >
+            🔓 ปลดล็อก
+          </button>
+        </div>
         {lock.kind === "done" && (
           <p className="text-sm text-green-800">
             ล็อกแล้ว 🔒 — {lock.locked.length} แท็บ ({lock.locked.join(", ")})
+          </p>
+        )}
+        {lock.kind === "unlocked" && (
+          <p className="text-sm text-zinc-700">
+            {lock.tabs.length
+              ? "ปลดล็อกแล้ว 🔓 — " + lock.tabs.join(", ")
+              : "ไม่พบหัวคอลัมน์ที่ล็อกไว้"}
           </p>
         )}
         {lock.kind === "error" && (

@@ -28,6 +28,7 @@ function onOpen() {
     .createMenu('SiBMT')
     .addItem('🔄 Sync เวรจาก HSOS ตอนนี้', 'syncFromMenu_')
     .addItem('🔒 ล็อกหัวคอลัมน์ (กันแก้พลาด)', 'protectHeadersFromMenu_')
+    .addItem('🔓 ปลดล็อกหัวคอลัมน์', 'unprotectHeadersFromMenu_')
     .addToUi();
 }
 
@@ -182,5 +183,20 @@ function protectHeadersFromMenu_() {
     );
   } catch (error) {
     SpreadsheetApp.getUi().alert('ล็อกไม่สำเร็จ: ' + error);
+  }
+}
+
+/** ปลดล็อกหัวคอลัมน์จากเมนู */
+function unprotectHeadersFromMenu_() {
+  try {
+    const r = unprotectHeaderRows();
+    SpreadsheetApp.getUi().alert(
+      r.unlocked.length
+        ? 'ปลดล็อกแล้ว 🔓\n\n' + r.unlocked.join(', ') +
+          '\n\nแก้หัวคอลัมน์ได้ตามปกติแล้ว'
+        : 'ไม่พบหัวคอลัมน์ที่ล็อกไว้ (อาจปลดไปแล้ว)'
+    );
+  } catch (error) {
+    SpreadsheetApp.getUi().alert('ปลดล็อกไม่สำเร็จ: ' + error);
   }
 }

@@ -5,6 +5,7 @@ import {
   checkStructure,
   isBookingConfigured,
   protectHeaders,
+  unprotectHeaders,
 } from "@/lib/apps-script-api";
 
 /**
@@ -52,6 +53,28 @@ export async function protectHeadersAction(): Promise<{
       ok: false,
       error:
         error instanceof Error ? error.message : "ล็อกไม่สำเร็จ กรุณาลองใหม่",
+    };
+  }
+}
+
+/** ปลดล็อกหัวคอลัมน์ */
+export async function unprotectHeadersAction(): Promise<{
+  ok: boolean;
+  unlocked?: string[];
+  error?: string;
+}> {
+  await requireSession();
+  if (!isBookingConfigured()) {
+    return { ok: false, error: "โหมดสาธิต — ยังไม่ได้เชื่อม Apps Script" };
+  }
+  try {
+    const r = await unprotectHeaders();
+    return { ok: true, unlocked: r.unlocked ?? [] };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "ปลดล็อกไม่สำเร็จ กรุณาลองใหม่",
     };
   }
 }

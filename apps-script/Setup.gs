@@ -607,6 +607,45 @@ function protectHeaderRows() {
   return { locked: done, skipped: skipped };
 }
 
+/**
+ * ปลดล็อกหัวคอลัมน์ที่ตั้งจากเมนู SiBMT — ลบเฉพาะ protection ที่เราตั้งไว้เอง
+ * (ดูจาก description) ไม่แตะ protection อื่นที่คนอาจตั้งไว้เองในชีต
+ */
+function unprotectHeaderRows() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const done = [];
+
+  ss.getSheets().forEach(function (sheet) {
+    let removed = 0;
+    sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE).forEach(function (p) {
+      if (p.getDescription() === HEADER_PROTECTION_DESC) { p.remove(); removed++; }
+    });
+    if (removed > 0) done.push(sheet.getName());
+  });
+
+  // ไฟล์ตารางเวร fellow (คนละไฟล์)
+  try {
+    const schedId = PropertiesService.getScriptProperties()
+      .getProperty('SCHEDULE_SHEET_ID');
+    if (schedId) {
+      SpreadsheetApp.openById(schedId).getSheets().forEach(function (sheet) {
+        sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE).forEach(function (p) {
+          if (p.getDescription() === HEADER_PROTECTION_DESC) {
+            p.remove();
+            if (done.indexOf(sheet.getName() + ' (ไฟล์ตารางเวร)') === -1) {
+              done.push(sheet.getName() + ' (ไฟล์ตารางเวร)');
+            }
+          }
+        });
+      });
+    }
+  } catch (err) {
+    console.error('ปลดล็อกไฟล์ตารางเวรไม่ได้: ' + err);
+  }
+
+  return { unlocked: done };
+}
+
 /** ล็อกหัวคอลัมน์ของชีตเดียว — ลบ protection เดิมของเราก่อน กันซ้ำ */
 function protectOneHeader_(sheet) {
   sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE).forEach(function (p) {
