@@ -63,35 +63,52 @@ function sendRedAlert() {
   const map = headerMap_(sheet);
   const rows = readRows_(sheet);
 
-  const pending = rows.filter(function (r) {
-    if (isTerminal_(r['status'])) return false;
-    if (String(r['alert_level']) !== 'red') return false;
-    return !r['red_alert_sent_at'];
-  });
-
-  if (pending.length === 0) return;
-
-  // รวมทุกเคสที่เพิ่งครบกำหนดเป็นข้อความเดียว ส่งพร้อมรอบ 10:00
-  // (มติผู้ใช้ 5 ก.ย. 2569 — เดิมยิงทันทีรายเคสตอนครบชั่วโมงเป๊ะ ๆ
-  // ซึ่งไม่ได้ทำให้ใครตอบเร็วขึ้น และมาทีละข้อความรกแชทแอดมิน)
   const hoursPerDay = BUSINESS.endHour - BUSINESS.startHour;
-  let message =
-    '🚨 RED ALERT — ครบกำหนดตอบ ' + (ESCALATION.redHours / hoursPerDay) +
-    ' วันทำการแล้ว ' + pending.length + ' เคส\n' +
-    '────────────────\n';
 
-  pending.forEach(function (r) {
-    const groupNo = GROUP_NUMBER[String(r['referral_type'])] || '-';
-    const elapsed = parseFloat(r['elapsed_business_hours']) || 0;
-    const days = Math.round((elapsed / hoursPerDay) * 10) / 10;
-    message += '• ' + r['referral_id'] + ' · กลุ่ม ' + groupNo +
-      ' · ค้าง ' + days + ' วันทำการ\n';
-
-    setCell_(sheet, map, r._row, 'red_alert_sent_at', now);
-    logStatusChange_(r['referral_id'], r['status'], r['status'], 'system', 'ส่ง Red Alert');
+  // เคสเกินกำหนด (แดง) ที่ยังไม่เคยแจ้ง — แจ้งครั้งเดียวต่อเคส
+  const overdue = rows.filter(function (r) {
+    return !isTerminal_(r['status']) &&
+      String(r['alert_level']) === 'red' && !r['red_alert_sent_at'];
   });
 
-  message += '\nกรุณาเข้าตรวจสอบโดยด่วน\n' + DASHBOARD_URL;
+  // เคสใกล้ครบกำหนด (เหลือง = เหลือ < 1 วันทำการ) — แสดงทุกวันจนกว่าจะจบ/กลายเป็นแดง
+  // ให้ admin เห็นล่วงหน้าก่อนเลยเดดไลน์ จะได้กระทุ้ง resident ทัน
+  // (มติผู้ใช้ 5 ก.ย. 2569) ไม่ใช้ flag "แจ้งแล้ว" เพราะเป็นรายการเตือนรายวัน
+  const nearDue = rows.filter(function (r) {
+    return !isTerminal_(r['status']) && String(r['alert_level']) === 'yellow';
+  });
+
+  if (overdue.length === 0 && nearDue.length === 0) return;
+
+  // รวมเป็นข้อความเดียว ส่งพร้อมรอบ 10:00 ไปกลุ่มแอดมิน (ไม่ยิงระหว่างวัน
+  // กัน toxic ต้องคอยเฝ้า LINE — feedback 5 ก.ย. 2569)
+  let message = '📋 สรุปเคสที่ต้องเร่ง (สำหรับแอดมิน) ' + formatThaiDate_(now) + '\n';
+
+  if (overdue.length > 0) {
+    message += '\n🔴 เกินกำหนดแล้ว — ' + overdue.length + ' เคส\n';
+    overdue.forEach(function (r) {
+      const groupNo = GROUP_NUMBER[String(r['referral_type'])] || '-';
+      const elapsed = parseFloat(r['elapsed_business_hours']) || 0;
+      const days = Math.round((elapsed / hoursPerDay) * 10) / 10;
+      message += '• ' + r['referral_id'] + ' · กลุ่ม ' + groupNo +
+        ' · ค้าง ' + days + ' วันทำการ\n';
+      setCell_(sheet, map, r._row, 'red_alert_sent_at', now);
+      logStatusChange_(r['referral_id'], r['status'], r['status'], 'system', 'ส่ง Red Alert');
+    });
+  }
+
+  if (nearDue.length > 0) {
+    message += '\n🟠 ใกล้ครบกำหนด (เหลือ < 1 วันทำการ) — ' + nearDue.length + ' เคส\n';
+    nearDue.forEach(function (r) {
+      const groupNo = GROUP_NUMBER[String(r['referral_type'])] || '-';
+      const elapsed = parseFloat(r['elapsed_business_hours']) || 0;
+      const left = Math.round((ESCALATION.redHours - elapsed) * 10) / 10;
+      message += '• ' + r['referral_id'] + ' · กลุ่ม ' + groupNo +
+        ' · เหลือ ' + (left > 0 ? left : 0) + ' ชม.ทำการ\n';
+    });
+  }
+
+  message += '\nกระทุ้ง resident ที่รับผิดชอบก่อนเลยกำหนด — เปิดดู:\n' + DASHBOARD_URL;
   pushLineMessage_(message, 'red');
 }
 
