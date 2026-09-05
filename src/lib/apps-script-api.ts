@@ -448,3 +448,11 @@ export async function deleteDocument(payload: {
 }): Promise<{ ok: boolean }> {
   return callAppsScript("deleteDocument", payload);
 }
+
+/** เปลี่ยนสถานะเคส (ปิดเคส / เปิดกลับ) — status ต้องเป็นค่าใน ALL_STATUSES */
+export async function updateStatus(payload: {
+  referralId: string;
+  status: string;
+}): Promise<{ ok: boolean }> {
+  return callAppsScript("updateStatus", payload);
+}

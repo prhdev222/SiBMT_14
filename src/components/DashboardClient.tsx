@@ -2,7 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/Badge";
-import { updateAssignedToAction } from "@/app/dashboard/actions";
+import {
+  updateAssignedToAction,
+  updateStatusAction,
+} from "@/app/dashboard/actions";
 import { downloadCsv, fileStamp, toCsv } from "@/lib/csv";
 import {
   ALERT_COLOR,
@@ -84,7 +87,30 @@ export function DashboardClient({
   const [diseaseGroup, setDiseaseGroup] = useState<DiseaseGroup | "all">("all");
   const [assignedTo, setAssignedTo] = useState<string>("all");
   const [alertOnly, setAlertOnly] = useState(false);
+  const [showClosed, setShowClosed] = useState(false);
   const [selected, setSelected] = useState<Referral | null>(null);
+
+  /** สถานะที่เพิ่งแก้ฝั่ง client (เช่น กดปิดเคส) — เห็นผลทันทีไม่ต้องโหลดใหม่ */
+  const [statusOverrides, setStatusOverrides] = useState<
+    Record<string, Status>
+  >({});
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
+
+  const statusOf = (r: Referral): Status =>
+    statusOverrides[r.referralId] ?? r.status;
+
+  async function changeStatus(referralId: string, next: Status) {
+    setStatusSaving(true);
+    setStatusError(null);
+    const result = await updateStatusAction(referralId, next);
+    if (result.ok) {
+      setStatusOverrides((prev) => ({ ...prev, [referralId]: next }));
+    } else {
+      setStatusError(result.error ?? "บันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+    }
+    setStatusSaving(false);
+  }
 
   /**
    * ผู้รับผิดชอบที่เพิ่งแก้จาก dropdown — ข้อมูลหลักมาจาก server ตอนโหลดหน้า
@@ -124,7 +150,11 @@ export function DashboardClient({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    // เห็นเคสที่ปิดแล้วเมื่อกดสวิตช์ หรือเมื่อเลือกกรองสถานะ "ปิดเคสแล้ว" ตรง ๆ
+    const wantClosed = showClosed || status === "Closed";
     return referrals.filter((r) => {
+      const st = statusOf(r);
+      if (!wantClosed && st === "Closed") return false;
       if (
         q &&
         !r.referralId.toLowerCase().includes(q) &&
@@ -133,7 +163,7 @@ export function DashboardClient({
         return false;
       if (referralType !== "all" && r.referralType !== referralType)
         return false;
-      if (status !== "all" && r.status !== status) return false;
+      if (status !== "all" && st !== status) return false;
       if (diseaseGroup !== "all" && r.diseaseGroup !== diseaseGroup)
         return false;
       if (assignedTo !== "all") {
@@ -153,6 +183,8 @@ export function DashboardClient({
     diseaseGroup,
     assignedTo,
     alertOnly,
+    showClosed,
+    statusOverrides,
   ]);
 
   const stats = useMemo(() => {
@@ -200,10 +232,11 @@ export function DashboardClient({
       // "ยังไม่ปิด" = ยังไม่ถึงสถานะจบ — ต้องใช้ isTerminal ไม่ใช่เทียบ "Closed"
       // เพราะ "ส่งคำแนะนำกลับแล้ว"/"นัด OPD"/"ปฏิเสธ" ก็คือจบแล้วเช่นกัน
       // (บั๊ก 5 ก.ย. 2569: การ์ดนับเคสที่ตอบไปแล้วเป็น "ยังไม่ปิด")
-      if (!isTerminal(r.status)) counts[r.referralType] += 1;
+      if (!isTerminal(statusOf(r))) counts[r.referralType] += 1;
     }
     return counts;
-  }, [referrals]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [referrals, statusOverrides]);
 
   return (
     <div className="space-y-6">
@@ -327,7 +360,7 @@ export function DashboardClient({
           ))}
         </select>
 
-        <label className="flex items-center gap-2 text-sm text-zinc-700 sm:col-span-2">
+        <label className="flex items-center gap-2 text-sm text-zinc-700">
           <input
             type="checkbox"
             checked={alertOnly}
@@ -335,6 +368,16 @@ export function DashboardClient({
             className="rounded border-zinc-300"
           />
           แสดงเฉพาะเคสที่มีการแจ้งเตือน
+        </label>
+
+        <label className="flex items-center gap-2 text-sm text-zinc-700">
+          <input
+            type="checkbox"
+            checked={showClosed}
+            onChange={(e) => setShowClosed(e.target.checked)}
+            className="rounded border-zinc-300"
+          />
+          แสดงเคสที่ปิดแล้ว (ข้อมูลเก่า)
         </label>
 
         <div className="sm:col-span-2 flex justify-end">
@@ -397,8 +440,8 @@ export function DashboardClient({
                   <td className="px-4 py-3">
                     <div className="flex flex-col items-start gap-1">
                       <Badge
-                        label={STATUS_LABEL_TH[r.status]}
-                        colorClass={STATUS_COLOR[r.status]}
+                        label={STATUS_LABEL_TH[statusOf(r)]}
+                        colorClass={STATUS_COLOR[statusOf(r)]}
                       />
                       {needsEmailFlag(r) && (
                         <Badge
@@ -474,7 +517,7 @@ export function DashboardClient({
                   : "ยังไม่ระบุ"
               }
             />
-            <Detail label="สถานะ" value={STATUS_LABEL_TH[selected.status]} />
+            <Detail label="สถานะ" value={STATUS_LABEL_TH[statusOf(selected)]} />
             <div>
               <p className="text-zinc-500">ผู้รับผิดชอบ</p>
               <select
@@ -519,6 +562,42 @@ export function DashboardClient({
             />
             <Detail label="วันติดตาม" value={selected.followUpDate ?? "—"} />
           </dl>
+
+          {/* ปิดเคส / เปิดกลับ — ปิดแล้วเคสจะหายจากลิสต์หลัก ดูได้ที่ "แสดงเคสที่ปิดแล้ว" */}
+          <div className="flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-3">
+            {statusOf(selected) === "Closed" ? (
+              <>
+                <button
+                  onClick={() =>
+                    changeStatus(selected.referralId, "Advice Sent")
+                  }
+                  disabled={statusSaving}
+                  className="rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+                >
+                  เปิดเคสกลับ
+                </button>
+                <span className="text-xs text-zinc-500">
+                  เคสนี้ปิดแล้ว — ซ่อนจากลิสต์หลัก
+                </span>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => changeStatus(selected.referralId, "Closed")}
+                  disabled={statusSaving}
+                  className="rounded-lg bg-zinc-800 px-3 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-50"
+                >
+                  {statusSaving ? "กำลังปิด…" : "ปิดเคส"}
+                </button>
+                <span className="text-xs text-zinc-500">
+                  ปิดแล้วเคสจะหายจากลิสต์หลัก (ดูย้อนหลังได้)
+                </span>
+              </>
+            )}
+          </div>
+          {statusError && (
+            <p className="text-xs text-red-600">{statusError}</p>
+          )}
 
           {selected.possibleDuplicateOf && (
             <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900">

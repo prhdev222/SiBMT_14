@@ -225,6 +225,10 @@ function doPost(e) {
       return jsonResponse_({ ok: true, data: deleteDocument_(body.payload || {}) });
     }
 
+    if (body.action === 'updateStatus') {
+      return jsonResponse_({ ok: true, data: updateStatus_(body.payload || {}) });
+    }
+
     // ติดเวอร์ชันไปกับข้อความ error ด้วย เพราะสาเหตุที่พบเกือบทุกครั้งของคำสั่ง
     // ที่ "หายไป" คือ deploy ค้างเวอร์ชันเก่า — บอกไปเลยว่าโค้ดตัวไหนเป็นคนตอบ
     return jsonResponse_({
@@ -771,6 +775,44 @@ function deleteDocument_(payload) {
   if (!match) throw new Error('ไม่พบเอกสารนี้ — อาจถูกลบไปแล้ว กรุณาโหลดหน้าใหม่');
 
   sheet.deleteRow(match._row);
+  return { ok: true };
+}
+
+/**
+ * เปลี่ยนสถานะเคสจาก dashboard — ใช้กับปุ่ม "ปิดเคส" / "เปิดเคสกลับ"
+ *
+ * ปิดเคส (สถานะจบ) → ประทับ closed_at ถ้ายังไม่มี เพื่อให้ SLA หยุดนับที่เวลาปิด
+ * เปิดกลับ (สถานะไม่จบ) → ล้าง closed_at ให้ SLA เดินต่อ
+ */
+function updateStatus_(payload) {
+  const referralId = String(payload.referralId || '').trim();
+  const status = String(payload.status || '').trim();
+
+  if (!referralId) throw new Error('ไม่ได้ระบุเลขที่อ้างอิงของเคส');
+  if (ALL_STATUSES.indexOf(status) === -1) {
+    throw new Error('สถานะไม่ถูกต้อง: ' + status);
+  }
+
+  const sheet = getSheet_(SHEETS.referrals);
+  const map = headerMap_(sheet);
+  const match = readRows_(sheet).filter(function (r) {
+    return String(r['referral_id'] || '').trim() === referralId;
+  })[0];
+  if (!match) throw new Error('ไม่พบเคส ' + referralId + ' — กรุณาโหลดหน้าใหม่');
+
+  const prev = String(match['status'] || '').trim();
+  const now = new Date();
+  setCell_(sheet, map, match._row, 'status', status);
+
+  if (TERMINAL_STATUSES.indexOf(status) !== -1) {
+    if (!String(match['closed_at'] || '').trim()) {
+      setCell_(sheet, map, match._row, 'closed_at', now);
+    }
+  } else {
+    setCell_(sheet, map, match._row, 'closed_at', '');
+  }
+
+  logStatusChange_(referralId, prev, status, 'admin', 'เปลี่ยนสถานะจาก dashboard');
   return { ok: true };
 }
 
