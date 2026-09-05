@@ -245,6 +245,10 @@ function doPost(e) {
       return jsonResponse_({ ok: true, data: closeCaseByToken_(body.payload || {}) });
     }
 
+    if (body.action === 'reopenCaseByToken') {
+      return jsonResponse_({ ok: true, data: reopenCaseByToken_(body.payload || {}) });
+    }
+
     // ติดเวอร์ชันไปกับข้อความ error ด้วย เพราะสาเหตุที่พบเกือบทุกครั้งของคำสั่ง
     // ที่ "หายไป" คือ deploy ค้างเวอร์ชันเก่า — บอกไปเลยว่าโค้ดตัวไหนเป็นคนตอบ
     return jsonResponse_({

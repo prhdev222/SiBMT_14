@@ -5,6 +5,7 @@ import {
   isBookingConfigured,
   markThreadRead,
   postReferrerMessage,
+  reopenCaseByToken,
 } from "@/lib/apps-script-api";
 
 /**
@@ -61,6 +62,26 @@ export async function closeCaseAction(
       ok: false,
       error:
         error instanceof Error ? error.message : "จบเคสไม่สำเร็จ กรุณาลองใหม่",
+    };
+  }
+}
+
+/** แพทย์ต้นทางเปิดเคสที่ปิดไปแล้วกลับมาถามเพิ่ม */
+export async function reopenCaseAction(
+  caseToken: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!caseToken) return { ok: false, error: "ลิงก์ไม่ถูกต้อง" };
+  if (!isBookingConfigured()) {
+    return { ok: false, error: "โหมดสาธิต — ยังไม่ได้เชื่อม Apps Script" };
+  }
+  try {
+    await reopenCaseByToken({ caseToken });
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "เปิดเคสไม่สำเร็จ กรุณาลองใหม่",
     };
   }
 }

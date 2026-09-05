@@ -175,11 +175,39 @@ function postReferrerMessage_(payload) {
   })[0];
   if (!row) throw new Error('ลิงก์ไม่ถูกต้อง หรือเคสนี้ถูกปิดไปแล้ว');
 
+  // เคสที่ปิดเองแล้ว ต้องกด "เปิดเคสใหม่" ก่อนถึงจะถามเพิ่มได้ — ไม่แทรกเงียบ ๆ
+  if (String(row['status'] || '').trim() === 'Closed') {
+    throw new Error('เคสนี้ปิดแล้ว — กรุณากด "เปิดเคสใหม่เพื่อถามเพิ่ม" ก่อน');
+  }
+
   const name = String(row['referrer_org'] || 'แพทย์ต้นทาง').trim();
   appendMessage_(row['referral_id'], 'referrer', name, 'web', text);
   markCaughtUp_(sheet, map, row, 'referrer');
   notifyCounterparty_(sheet, map, row, 'referrer', text);
   return { ok: true };
+}
+
+/** เปิดเคสที่ปิดไปแล้วกลับมาถามเพิ่ม (จากหน้า /case) — ยืนยันด้วย case_token */
+function reopenCaseByToken_(payload) {
+  const caseToken = String(payload.caseToken || '').trim();
+  if (!caseToken) throw new Error('ลิงก์ไม่ถูกต้อง');
+  const sheet = getSheet_(SHEETS.referrals);
+  const map = headerMap_(sheet);
+  const row = readRows_(sheet).filter(function (r) {
+    return String(r['case_token'] || '').trim() === caseToken;
+  })[0];
+  if (!row) throw new Error('ลิงก์ไม่ถูกต้อง');
+  reopenReferralRow_(sheet, map, row);
+  return { ok: true };
+}
+
+/** ตั้งเคสกลับเป็น "รอตรวจ" + ล้างเวลาปิด + บันทึก log (ใช้ทั้ง web และ LINE) */
+function reopenReferralRow_(sheet, map, row) {
+  const prev = String(row['status'] || '').trim();
+  setCell_(sheet, map, row._row, 'status', 'Pending Review');
+  setCell_(sheet, map, row._row, 'closed_at', '');
+  logStatusChange_(row['referral_id'], prev, 'Pending Review', 'referrer',
+    'แพทย์ต้นทางเปิดเคสใหม่เพื่อถามเพิ่ม');
 }
 
 /** dent ส่งข้อความจาก dashboard */
@@ -525,7 +553,11 @@ function handleReferrerCommand_(event, text, userId) {
     return true;
   }
 
-  // ถามเพิ่ม → ให้พิมพ์คำถามต่อ แล้วส่งเข้าเคสนั้นทันที
+  // ถามเพิ่ม → ถ้าเคยปิดไปแล้ว เปิดใหม่ก่อน (ถือว่ากดถามเพิ่ม = ตั้งใจเปิด)
+  // แล้วรอพิมพ์คำถามส่งเข้าเคสนั้น
+  if (String(row['status'] || '').trim() === 'Closed') {
+    reopenReferralRow_(sheet, map, row);
+  }
   writeContactFlow_(userId, { step: 'messageToCase', caseId: referralId });
   replyLineMessage_(event.replyToken,
     'พิมพ์คำถามเพิ่มสำหรับเคส ' + referralId + ' ได้เลยครับ');

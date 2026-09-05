@@ -493,3 +493,10 @@ export async function closeCaseByToken(payload: {
 }): Promise<{ ok: boolean }> {
   return callAppsScript("closeCaseByToken", payload);
 }
+
+/** เปิดเคสที่ปิดไปแล้วกลับมาถามเพิ่ม (ยืนยันด้วย case_token) */
+export async function reopenCaseByToken(payload: {
+  caseToken: string;
+}): Promise<{ ok: boolean }> {
+  return callAppsScript("reopenCaseByToken", payload);
+}

@@ -6,6 +6,7 @@ import { MessageThreadView } from "@/components/MessageThreadView";
 import {
   closeCaseAction,
   markReadReferrerAction,
+  reopenCaseAction,
   sendReferrerMessageAction,
 } from "./actions";
 
@@ -30,6 +31,7 @@ export function ReferrerThread({
 }) {
   const [closed, setClosed] = useState(initiallyClosed);
   const [closing, setClosing] = useState(false);
+  const [reopening, setReopening] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -58,6 +60,15 @@ export function ReferrerThread({
     setClosing(false);
   }
 
+  async function reopen() {
+    setReopening(true);
+    setError(null);
+    const result = await reopenCaseAction(caseToken);
+    if (result.ok) setClosed(false);
+    else setError(result.error ?? "เปิดเคสไม่สำเร็จ");
+    setReopening(false);
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <MessageThreadView
@@ -65,11 +76,22 @@ export function ReferrerThread({
         mySide="referrer"
         myName={referrerOrg || "แพทย์ต้นทาง"}
         onSend={(text) => sendReferrerMessageAction(caseToken, text)}
+        locked={closed}
       />
 
       {closed ? (
-        <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-sm text-emerald-800">
-          ✓ เคสนี้ปิดแล้ว — ถ้ามีคำถามเพิ่ม พิมพ์ด้านบนได้ ทีมจะเห็นและติดต่อกลับ
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2.5">
+          <span className="text-sm text-emerald-800">
+            ✓ เคสนี้ปิดแล้ว — มีคำถามเพิ่ม? เปิดเคสใหม่ก่อนได้เลย
+          </span>
+          <button
+            type="button"
+            onClick={reopen}
+            disabled={reopening}
+            className="rounded-lg border border-emerald-400 bg-white px-3.5 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+          >
+            {reopening ? "กำลังเปิด…" : "เปิดเคสใหม่เพื่อถามเพิ่ม"}
+          </button>
         </div>
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-zinc-50 border border-zinc-200 px-3 py-2.5">

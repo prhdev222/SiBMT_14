@@ -14,11 +14,14 @@ export function MessageThreadView({
   mySide,
   myName,
   onSend,
+  locked = false,
 }: {
   initialMessages: CaseMessage[];
   mySide: "referrer" | "resident";
   myName: string;
   onSend: (text: string) => Promise<{ ok: boolean; error?: string }>;
+  /** true = ล็อกช่องพิมพ์ (เช่น เคสปิดแล้ว) — โชว์เฉพาะประวัติสนทนา */
+  locked?: boolean;
 }) {
   const [messages, setMessages] = useState<CaseMessage[]>(initialMessages);
   const [draft, setDraft] = useState("");
@@ -103,30 +106,34 @@ export function MessageThreadView({
         )}
       </div>
 
-      <div className="flex items-end gap-2 border-t border-zinc-100 pt-3">
-        <textarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
-          }}
-          rows={2}
-          placeholder="พิมพ์ข้อความ… (แนบลิงก์ไฟล์ได้)"
-          className="flex-1 min-w-0 resize-y rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-        />
-        <button
-          type="button"
-          onClick={send}
-          disabled={sending || !draft.trim()}
-          className="shrink-0 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-blue-300"
-        >
-          {sending ? "กำลังส่ง…" : "ส่ง"}
-        </button>
-      </div>
-      {error && <p className="text-xs text-red-600">{error}</p>}
-      <p className="text-[11px] text-zinc-400">
-        กด Ctrl/⌘ + Enter เพื่อส่งเร็ว · ทุกข้อความถูกบันทึกเป็นบันทึกการปรึกษา
-      </p>
+      {locked ? null : (
+        <>
+          <div className="flex items-end gap-2 border-t border-zinc-100 pt-3">
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
+              }}
+              rows={2}
+              placeholder="พิมพ์ข้อความ… (แนบลิงก์ไฟล์ได้)"
+              className="flex-1 min-w-0 resize-y rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+            />
+            <button
+              type="button"
+              onClick={send}
+              disabled={sending || !draft.trim()}
+              className="shrink-0 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-blue-300"
+            >
+              {sending ? "กำลังส่ง…" : "ส่ง"}
+            </button>
+          </div>
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          <p className="text-[11px] text-zinc-400">
+            กด Ctrl/⌘ + Enter เพื่อส่งเร็ว · ทุกข้อความถูกบันทึกเป็นบันทึกการปรึกษา
+          </p>
+        </>
+      )}
     </div>
   );
 }
