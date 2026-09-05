@@ -184,6 +184,11 @@ function doPost(e) {
       return jsonResponse_({ ok: true, data: { ok: true } });
     }
 
+    // ตรวจโครงสร้างชีตจากหน้า settings — คืนรายการปัญหา (ว่าง = ปกติ)
+    if (body.action === 'checkStructure') {
+      return jsonResponse_({ ok: true, data: { problems: runSelfTest() } });
+    }
+
     if (body.action === 'saveResidentShift') {
       return jsonResponse_({ ok: true, data: saveResidentShift_(body.payload || {}) });
     }

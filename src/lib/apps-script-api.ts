@@ -377,3 +377,8 @@ export async function deleteResidentShift(payload: {
 }): Promise<{ ok: boolean }> {
   return callAppsScript("deleteResidentShift", payload);
 }
+
+/** ตรวจโครงสร้างชีต (runSelfTest ฝั่ง Apps Script) — คืนรายการปัญหา ว่าง = ปกติ */
+export async function checkStructure(): Promise<{ problems: string[] }> {
+  return callAppsScript("checkStructure", {});
+}

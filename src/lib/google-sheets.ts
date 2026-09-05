@@ -42,6 +42,18 @@ export function scheduleSpreadsheetId(): string | null {
   return process.env.GOOGLE_SCHEDULE_SHEET_ID || null;
 }
 
+/** ลิงก์เปิด Google Sheet หลัก (ข้อมูลผู้ป่วย) — null ถ้ายังไม่ตั้ง env */
+export function mainSheetUrl(): string | null {
+  const id = process.env.GOOGLE_SHEET_ID;
+  return id ? `https://docs.google.com/spreadsheets/d/${id}/edit` : null;
+}
+
+/** ลิงก์เปิดไฟล์ตารางเวร fellow (คนละไฟล์) — null ถ้ายังไม่ตั้ง env */
+export function scheduleSheetUrl(): string | null {
+  const id = process.env.GOOGLE_SCHEDULE_SHEET_ID;
+  return id ? `https://docs.google.com/spreadsheets/d/${id}/edit` : null;
+}
+
 /** เขียนตารางเวรจากเว็บได้หรือยัง */
 export function canWriteSchedule(): boolean {
   return Boolean(readCredentials() && scheduleSpreadsheetId());
