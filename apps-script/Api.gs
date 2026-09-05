@@ -640,7 +640,8 @@ function deleteResidentShift_(payload) {
 /* ให้แอดมินเปิดชีตแก้เอง เพราะจำกัดรูปแบบ + ไม่แตะแถวหัว                 */
 /* ------------------------------------------------------------------ */
 
-const ATTENDING_COLUMNS = ['name', 'active'];
+// ATTENDING_COLUMNS / DOCUMENT_COLUMNS ประกาศไว้แล้วใน Setup.gs (global scope
+// ร่วมกันทุกไฟล์) จึงใช้ซ้ำที่นี่ ไม่ประกาศใหม่เพื่อกันชื่อชน
 
 /** เพิ่มอาจารย์ใหม่ หรือแก้ชื่อเดิม (ระบุ originalName เพื่อแก้) */
 function saveAttending_(payload) {
@@ -697,8 +698,6 @@ function setAttendingActive_(payload) {
 /* จัดการคลังเอกสาร/ลิงก์ไฟล์ (ชีต documents) จากเว็บ                    */
 /* ระบุแถวเดิมด้วยคู่ (title,url) เดิม แบบเดียวกับเวร resident            */
 /* ------------------------------------------------------------------ */
-
-const DOCUMENT_COLUMNS = ['title', 'url', 'groups', 'description', 'active'];
 
 function findDocumentRow_(sheet, title, url) {
   const t = String(title || '').trim();
