@@ -133,7 +133,7 @@ export default async function AnswerPage({
             >
               LINE {LINE_OA.displayName}
             </a>{" "}
-            แล้วกดปุ่ม &ldquo;ผูกบัญชี&rdquo;
+            แล้วพิมพ์คำว่า &ldquo;ผูกบัญชี&rdquo; ในแชท
           </p>
         </section>
 
