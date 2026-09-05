@@ -313,10 +313,18 @@ function handleLineEvent_(event) {
     handlePickCaseForMessage_(event, flow, text, id);
     return;
   }
+  if (flow && flow.step === 'messageToCase') {
+    handleMessageToCase_(event, flow, text, id);
+    return;
+  }
   if (flow) {
     advanceContactFlow_(event, flow, text, id);
     return;
   }
+
+  // ปุ่มลัดจากการ์ดคำตอบ: "จบเคส HEM-xxxx" / "ถามเพิ่ม HEM-xxxx"
+  // ต้องมาก่อนการค้นรหัส เพราะข้อความมีรหัสอ้างอิงอยู่ด้วย
+  if (handleReferrerCommand_(event, text, id)) return;
 
   const matched = text.match(LINE_REFERRAL_ID_PATTERN);
   if (!matched) {

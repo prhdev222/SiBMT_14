@@ -1,6 +1,7 @@
 "use server";
 
 import {
+  closeCaseByToken,
   isBookingConfigured,
   markThreadRead,
   postReferrerMessage,
@@ -41,5 +42,25 @@ export async function markReadReferrerAction(caseToken: string): Promise<void> {
     await markThreadRead({ side: "referrer", caseToken });
   } catch {
     // อ่าน thread ได้อยู่แล้ว การล้างธงไม่สำเร็จไม่ใช่เรื่องคอขาดบาดตาย
+  }
+}
+
+/** แพทย์ต้นทางกดจบเคสเอง (อ่านคำแนะนำแล้วดูแลต่อได้เอง) */
+export async function closeCaseAction(
+  caseToken: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!caseToken) return { ok: false, error: "ลิงก์ไม่ถูกต้อง" };
+  if (!isBookingConfigured()) {
+    return { ok: false, error: "โหมดสาธิต — ยังไม่ได้เชื่อม Apps Script" };
+  }
+  try {
+    await closeCaseByToken({ caseToken });
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "จบเคสไม่สำเร็จ กรุณาลองใหม่",
+    };
   }
 }

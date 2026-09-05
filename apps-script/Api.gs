@@ -241,6 +241,10 @@ function doPost(e) {
       return jsonResponse_({ ok: true, data: markThreadRead_(body.payload || {}) });
     }
 
+    if (body.action === 'closeCaseByToken') {
+      return jsonResponse_({ ok: true, data: closeCaseByToken_(body.payload || {}) });
+    }
+
     // ติดเวอร์ชันไปกับข้อความ error ด้วย เพราะสาเหตุที่พบเกือบทุกครั้งของคำสั่ง
     // ที่ "หายไป" คือ deploy ค้างเวอร์ชันเก่า — บอกไปเลยว่าโค้ดตัวไหนเป็นคนตอบ
     return jsonResponse_({
@@ -956,6 +960,9 @@ function saveAdvice_(payload) {
       setCell_(sheet, map2, match._row, 'closed_at', now);
     }
 
+    // token ห้องคุยต่อเนื่อง — ให้แพทย์ต้นทาง "ถามเพิ่ม" หรือ "จบเคส" จากอีเมลได้
+    const caseToken = ensureCaseToken_(sheet, map2, match);
+
     // ส่งคำตอบกลับทันที ไม่ต้องรอให้ใครคัดลอกไปส่งเอง
     const email = String(match['referrer_email'] || '').trim();
     let emailed = false;
@@ -973,6 +980,7 @@ function saveAdvice_(payload) {
         attending: String(payload.attending || '').trim(),
         visit: visit,
         answerUrl: SITE_URL + '/answer/' + answerToken,
+        caseToken: caseToken,
       });
     }
 
@@ -1073,6 +1081,7 @@ function sendAdviceEmail_(email, data) {
       (data.question ? '--- คำถามของท่าน ---\n' + data.question + '\n\n' : '') +
       '--- ข้อมูลที่ขอเพิ่ม ---\n' + data.advice + '\n\n' +
       requestReply +
+      buildCaseActionsBlock_(data.caseToken, false) +
       buildAttachmentBlock_(data) +
       buildAdviceContactBlock_(data) +
       buildLineLinkInvite_() +
@@ -1091,6 +1100,7 @@ function sendAdviceEmail_(email, data) {
         ? '--- เปิดคำตอบนี้บนเว็บ ---\n' + data.answerUrl + '\n' +
           '(ลิงก์นี้เปิดได้เฉพาะผู้ที่มีลิงก์ ส่งต่อให้ทีมดูได้)\n\n'
         : '') +
+      buildCaseActionsBlock_(data.caseToken) +
       buildLineLinkInvite_() +
       'กรุณาอย่าส่งชื่อ-สกุล หรือเลข HN ของผู้ป่วยทางอีเมลนี้\n\n' +
       '--\n' +

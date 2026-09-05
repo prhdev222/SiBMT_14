@@ -20,10 +20,13 @@ export const metadata: Metadata = {
  */
 export default async function CasePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ done?: string }>;
 }) {
   const { token } = await params;
+  const { done } = await searchParams;
   const thread = await loadCaseByToken(token);
 
   if (!thread) {
@@ -81,6 +84,8 @@ export default async function CasePage({
             caseToken={thread.caseToken}
             referrerOrg={thread.referrerOrg}
             initialMessages={thread.messages}
+            initiallyClosed={thread.status === "Closed"}
+            autoPromptClose={done === "1"}
           />
         </div>
         <p className="mt-4 text-center text-xs text-zinc-400">

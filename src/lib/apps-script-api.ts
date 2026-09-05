@@ -486,3 +486,10 @@ export async function markThreadRead(payload: {
 }): Promise<{ ok: boolean }> {
   return callAppsScript("markThreadRead", payload);
 }
+
+/** แพทย์ต้นทางจบเคสเองจากหน้า /case (ยืนยันด้วย case_token) */
+export async function closeCaseByToken(payload: {
+  caseToken: string;
+}): Promise<{ ok: boolean }> {
+  return callAppsScript("closeCaseByToken", payload);
+}

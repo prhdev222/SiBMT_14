@@ -127,11 +127,10 @@ function sendMessageEmailToReferrer_(email, referralId, caseToken, text, fromNam
     'มีข้อความใหม่ในเคส ' + referralId + '\n\n' +
     'จาก: ' + fromName + '\n' +
     'ข้อความ:\n' + text + '\n\n' +
-    'อ่านทั้งหมดและตอบกลับได้ที่:\n' +
-    SITE_URL + '/case/' + caseToken + '\n\n' +
+    buildCaseActionsBlock_(caseToken) +
     '--\n' +
     'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช\n' +
-    'อีเมลนี้ส่งจากระบบอัตโนมัติ กรุณาอย่าตอบกลับ (ตอบผ่านลิงก์ด้านบนแทน)';
+    'อีเมลนี้ส่งจากระบบอัตโนมัติ กรุณาอย่าตอบกลับ (ใช้ลิงก์ด้านบนแทน)';
   try {
     MailApp.sendEmail({
       to: email,
@@ -141,6 +140,20 @@ function sendMessageEmailToReferrer_(email, referralId, caseToken, text, fromNam
   } catch (err) {
     console.error('ส่งอีเมลข้อความใหม่ไม่สำเร็จ (' + referralId + '): ' + err);
   }
+}
+
+/**
+ * บล็อกลิงก์ "ถามเพิ่ม / จบเคส" ต่อท้ายอีเมล — ให้แพทย์ต้นทางเลือกได้เลย
+ * ลิงก์จบเคสพาไปหน้ายืนยันก่อน (ไม่ปิดทันทีจากการคลิก กันสแกนเนอร์อีเมลกดเอง)
+ */
+function buildCaseActionsBlock_(caseToken, includeClose) {
+  if (!caseToken) return '';
+  let s = 'เลือกได้:\n' +
+    '  • มีคำถามเพิ่ม / อ่านทั้งหมด → ' + SITE_URL + '/case/' + caseToken + '\n';
+  if (includeClose !== false) {
+    s += '  • พอใจคำตอบแล้ว จบเคส → ' + SITE_URL + '/case/' + caseToken + '?done=1\n';
+  }
+  return s + '\n';
 }
 
 /* ------------------------------------------------------------------ */
@@ -188,6 +201,31 @@ function postDentMessage_(payload) {
   appendMessage_(referralId, 'resident', senderName || 'ทีมโลหิตวิทยา', 'web', text);
   markCaughtUp_(sheet, map, row, 'dent');
   notifyCounterparty_(sheet, map, row, 'resident', text);
+  return { ok: true };
+}
+
+/**
+ * แพทย์ต้นทางจบเคสเองจากหน้า /case (อ่านคำแนะนำแล้วดูแลต่อได้เอง)
+ * ยืนยันสิทธิ์ด้วย case_token — ตั้งสถานะ Closed + ประทับ closed_at
+ */
+function closeCaseByToken_(payload) {
+  const caseToken = String(payload.caseToken || '').trim();
+  if (!caseToken) throw new Error('ลิงก์ไม่ถูกต้อง');
+
+  const sheet = getSheet_(SHEETS.referrals);
+  const map = headerMap_(sheet);
+  const row = readRows_(sheet).filter(function (r) {
+    return String(r['case_token'] || '').trim() === caseToken;
+  })[0];
+  if (!row) throw new Error('ลิงก์ไม่ถูกต้อง');
+
+  const prev = String(row['status'] || '').trim();
+  setCell_(sheet, map, row._row, 'status', 'Closed');
+  if (!String(row['closed_at'] || '').trim()) {
+    setCell_(sheet, map, row._row, 'closed_at', new Date());
+  }
+  logStatusChange_(row['referral_id'], prev, 'Closed', 'referrer',
+    'แพทย์ต้นทางจบเคสเอง');
   return { ok: true };
 }
 
@@ -440,4 +478,71 @@ function appendDentLineReply_(event, referralId, body) {
   notifyCounterparty_(sheet, map, row, 'resident', body);
   replyLineMessage_(event.replyToken,
     '✅ บันทึกและส่งถึงแพทย์ต้นทางแล้ว (เคส ' + referralId + ')');
+}
+
+/* ================================================================== */
+/* ปุ่มลัด LINE ของแพทย์ต้นทาง: จบเคส / ถามเพิ่ม (จากการ์ดคำตอบ)         */
+/* ================================================================== */
+
+/**
+ * แพทย์ต้นทางแตะปุ่ม "จบเคส HEM-xxxx" หรือ "ถามเพิ่ม HEM-xxxx" ใน LINE
+ * คืน true ถ้าจัดการแล้ว — ยืนยันสิทธิ์ด้วย line_link (เบอร์ต้องตรงกับเคส)
+ */
+function handleReferrerCommand_(event, text, userId) {
+  const mClose = text.match(/^จบเคส\s+(HEM-\d{8}-\d{4})/i);
+  const mMore = text.match(/^ถามเพิ่ม\s+(HEM-\d{8}-\d{4})/i);
+  if (!mClose && !mMore) return false;
+
+  const link = findLineLink_(userId);
+  if (!link) return false;
+
+  const referralId = (mClose ? mClose[1] : mMore[1]).toUpperCase();
+  const sheet = getSheet_(SHEETS.referrals);
+  const map = headerMap_(sheet);
+  const row = readRows_(sheet).filter(function (r) {
+    return String(r['referral_id'] || '').trim() === referralId;
+  })[0];
+  if (!row) {
+    replyLineMessage_(event.replyToken, 'ไม่พบเคส ' + referralId);
+    return true;
+  }
+  if (phoneKey_(row['referrer_phone']) !== phoneKey_(link['referrer_phone'])) {
+    replyLineMessage_(event.replyToken, 'เคสนี้ไม่ตรงกับบัญชีของท่าน');
+    return true;
+  }
+
+  if (mClose) {
+    const prev = String(row['status'] || '').trim();
+    setCell_(sheet, map, row._row, 'status', 'Closed');
+    if (!String(row['closed_at'] || '').trim()) {
+      setCell_(sheet, map, row._row, 'closed_at', new Date());
+    }
+    logStatusChange_(referralId, prev, 'Closed', 'referrer',
+      'แพทย์ต้นทางจบเคสเอง (LINE)');
+    replyLineMessage_(event.replyToken,
+      '✓ จบเคส ' + referralId + ' แล้ว ขอบคุณครับ\n' +
+      'ถ้ามีคำถามเพิ่มภายหลัง พิมพ์เข้ามาได้ทุกเมื่อ');
+    return true;
+  }
+
+  // ถามเพิ่ม → ให้พิมพ์คำถามต่อ แล้วส่งเข้าเคสนั้นทันที
+  writeContactFlow_(userId, { step: 'messageToCase', caseId: referralId });
+  replyLineMessage_(event.replyToken,
+    'พิมพ์คำถามเพิ่มสำหรับเคส ' + referralId + ' ได้เลยครับ');
+  return true;
+}
+
+/** พิมพ์คำถามต่อหลังกด "ถามเพิ่ม" — ส่งเข้าเคสที่เลือกไว้ */
+function handleMessageToCase_(event, flow, text, userId) {
+  const caseId = String(flow.caseId || '').trim();
+  const sheet = getSheet_(SHEETS.referrals);
+  const row = readRows_(sheet).filter(function (r) {
+    return String(r['referral_id'] || '').trim() === caseId;
+  })[0];
+  clearContactFlow_(userId);
+  if (!row) {
+    replyLineMessage_(event.replyToken, 'ไม่พบเคส ' + caseId + ' แล้ว');
+    return;
+  }
+  routeReferrerMessageToCase_(event, row, text);
 }

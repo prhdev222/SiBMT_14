@@ -778,13 +778,18 @@ function notifyReferrerOnLine_(row, answerToken) {
     const notice = isIncomplete
       ? 'ทีมโลหิตวิทยาขอข้อมูลเพิ่มเติมสำหรับเคส ' + referralId
       : 'ทีมโลหิตวิทยาตอบคำปรึกษา ' + referralId + ' แล้ว';
-    return sendOneLineMessage_(token, userId, [
-      linkButtonMessage_(
-        notice,
-        isIncomplete ? 'ดูรายละเอียด' : 'เปิดคำตอบ',
-        SITE_URL + '/answer/' + answerToken
-      ),
-    ]);
+    const msg = linkButtonMessage_(
+      notice,
+      isIncomplete ? 'ดูรายละเอียด' : 'เปิดคำตอบ',
+      SITE_URL + '/answer/' + answerToken
+    );
+    // เมื่อเป็นคำตอบสุดท้าย ให้ปุ่มลัด "จบเคส / ถามเพิ่ม" ใน LINE เลย
+    // (ตอบด้วยการแตะปุ่ม = ส่งข้อความกลับ บอทจัดการต่อ — ดู handleReferrerCommand_)
+    const messages = isIncomplete ? [msg] : [withQuickReply_(msg, [
+      { label: '✓ พอใจ จบเคส', text: 'จบเคส ' + referralId },
+      { label: '💬 ถามเพิ่ม', text: 'ถามเพิ่ม ' + referralId },
+    ])];
+    return sendOneLineMessage_(token, userId, messages);
   } catch (err) {
     console.error('เด้งลิงก์คำตอบเข้า LINE ไม่สำเร็จ: ' + err);
     return false;
