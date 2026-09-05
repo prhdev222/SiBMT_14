@@ -120,6 +120,8 @@ export default async function ReviewPage() {
               มี <span className="font-semibold text-zinc-900">{open.length}</span>{" "}
               เคสรอตอบ — เรียงจากที่รอนานที่สุด
             </p>
+            {/* ชื่อผู้ตอบจงใจเว้นว่าง — บัญชีล็อกอินเป็นของใช้ร่วม (เช่น "admin")
+                ไม่ใช่ชื่อคน และค่าที่ค้างในช่องบัง dropdown รายชื่อ resident */}
             <ReviewList
               cases={open.map((r) => ({
                 referralId: r.referralId,
@@ -141,7 +143,7 @@ export default async function ReviewPage() {
                 note: r.note,
                 similar: findSimilarCases(r, pool),
               }))}
-              defaultAnsweredBy={session.username}
+              defaultAnsweredBy=""
               defaultWardPhone={config["chemo_ward_phone"] ?? ""}
               regimens={regimens}
               regimenLibraryUrl={config["regimen_library_url"] ?? ""}
