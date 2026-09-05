@@ -227,7 +227,7 @@ function ShiftForm({
           />
         </label>
         <label className="text-xs text-zinc-600">
-          Chief resident
+          resident / fellow
           <select
             value={residentName}
             onChange={(e) => setResidentName(e.target.value)}

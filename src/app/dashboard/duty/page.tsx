@@ -13,7 +13,7 @@ import { formatThaiDate } from "@/lib/thai-date";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "เวร Chief Resident — ส่งต่อผู้ป่วยโลหิตวิทยา ศิริราช",
+  title: "เวร resident / fellow — ส่งต่อผู้ป่วยโลหิตวิทยา ศิริราช",
   robots: { index: false, follow: false },
 };
 
@@ -56,7 +56,7 @@ export default async function DutyPage() {
       <SessionBar username={session.username} />
       <PageHeader
         eyebrow="กลุ่มที่ 2 และ 3 — ตอบคำปรึกษา"
-        title="เวร Chief Resident"
+        title="เวร resident / fellow"
         links={[
           { href: "/dashboard/schedule", label: "ตารางออกตรวจ Fellow" },
           { href: "/dashboard", label: "กลับ Dashboard", muted: true },
@@ -69,7 +69,7 @@ export default async function DutyPage() {
             <p className="font-semibold">ยังไม่มีตารางเวรในระบบ</p>
             <p>
               กดปุ่มด้านล่างเพื่อดึงตารางเวรจาก HSOS หรือเพิ่มช่วงเวรเอง —
-              ถ้ายังว่างหลังดึง ให้ตรวจว่ากรอกเวร Chief ใน HSOS แล้ว
+              ถ้ายังว่างหลังดึง ให้ตรวจว่ากรอกเวร resident/fellow ใน HSOS แล้ว
             </p>
             <DutyEditor shifts={[]} residents={residents} />
           </div>
@@ -154,7 +154,7 @@ function ShiftTable({
       <thead>
         <tr className="text-left text-xs text-zinc-500">
           <th className="pb-2 font-medium">ช่วงเวร</th>
-          <th className="pb-2 font-medium">Chief resident</th>
+          <th className="pb-2 font-medium">resident / fellow</th>
         </tr>
       </thead>
       <tbody>

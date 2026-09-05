@@ -142,7 +142,7 @@ export default async function SettingsPage() {
                   <span className="mr-1.5" aria-hidden>
                     🗓️
                   </span>
-                  เวร Chief Resident
+                  เวร resident / fellow
                 </h2>
                 <p className="text-sm text-zinc-500 mt-0.5">
                   แก้/แลกเวรได้บนเว็บโดยตรง ไม่ต้องเปิดชีต
