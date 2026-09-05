@@ -542,7 +542,7 @@ function buildVisitBlock_(visit) {
   if (!visit) return '';
 
   const referLine = 'นัด ' + formatThaiDate_(visit.date, true) + ' เวลา ' +
-    visit.time + ' น. พบ ' + visit.doctor + ' (OPD 700 อายุรศาสตร์โลหิตวิทยา)';
+    visit.time + ' น. พบแพทย์' + visit.doctor + ' (OPD 700 อายุรศาสตร์โลหิตวิทยา)';
 
   return '--- นัดมาประเมินความพร้อมที่ OPD 700 ---\n\n' +
     '  วันที่    ' + formatThaiDate_(visit.date, true) + '\n' +
@@ -961,7 +961,7 @@ function saveAdvice_(payload) {
     if (visit) {
       setCell_(sheet, map2, match._row, 'appointment_date', visit.date);
       setCell_(sheet, map2, match._row, 'appointment_note',
-        visit.time + ' น. พบ ' + visit.doctor + ' (OPD 700)');
+        visit.time + ' น. พบแพทย์' + visit.doctor + ' (OPD 700)');
     }
     if (TERMINAL_STATUSES.indexOf(status) !== -1) {
       setCell_(sheet, map2, match._row, 'closed_at', now);
