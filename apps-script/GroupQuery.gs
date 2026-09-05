@@ -147,7 +147,22 @@ function handleGroupQuery_(event, text, sourceId) {
   }
 
   const match = text.match(GROUP_QUERY_APPOINTMENT);
-  if (!match) return false;
+  if (!match) {
+    // ไม่ตรงคำสั่งไหนเลย — ลองตีความว่าเป็น "ชื่อ fellow" ที่พิมพ์มาดูนัดตัวเอง
+    // จับเฉพาะข้อความสั้น ๆ ที่ตรงชื่อ fellow จริงเท่านั้น จึงไม่แทรกบทสนทนาทั่วไป
+    const matchedFellow = matchFellowByName_(text);
+    if (matchedFellow === null) return false; // ไม่ตรงชื่อใคร — เงียบตามเดิม
+    if (Array.isArray(matchedFellow)) {
+      replyLineMessage_(event.replyToken,
+        'มี fellow ชื่อคล้ายกันหลายท่าน พิมพ์ให้ชัดขึ้นครับ:\n' +
+        matchedFellow.map(function (n) { return '• ' + n; }).join('\n'));
+      return true;
+    }
+    replyOrReport_(event.replyToken, function () {
+      return buildFellowOwnReply_(matchedFellow);
+    });
+    return true;
+  }
 
   const target = parseQueryDate_(match[2]);
   if (!target) {
@@ -202,6 +217,7 @@ function buildMenuText_(actions) {
     text += '  ' + a.text + '\n';
   });
   text += '  นัด 15/9  (ดูวันอื่น ใส่ปี พ.ศ. ได้)\n';
+  text += '  (fellow) พิมพ์ชื่อตัวเอง เพื่อดูนัดของตัวเอง\n';
   text += '\n📌 ปักหมุดข้อความนี้ไว้ให้ทุกคนเห็น';
   return text;
 }
@@ -516,5 +532,82 @@ function buildDutyReply_() {
 
   text += '\nเคสใหม่ถูกมอบหมายให้เวรตอนนี้อัตโนมัติ (วนตามลำดับ)\n' +
     'แก้/แลกเวร: ' + SITE_URL + '/dashboard/duty';
+  return text;
+}
+
+/**
+ * ชื่อ fellow ที่มีนัด (ยืนยันแล้ว) ข้างหน้าตั้งแต่วันนี้ — ใช้เป็นบัญชีคำที่
+ * ยอมให้พิมพ์เพื่อดูนัดตัวเอง จึงไม่ตอบข้อความทั่วไปที่ไม่ใช่ชื่อ fellow
+ */
+function upcomingFellowNames_() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const seen = {};
+  readRows_(getSheet_(SHEETS.referrals)).forEach(function (r) {
+    if (String(r['referral_type']).trim() !== TYPES.transplant) return;
+    if (String(r['status']).trim() !== 'Appointment Confirmed') return;
+    const when = toDate_(r['appointment_date']);
+    if (!when || when < start) return;
+    const name = String(r['fellow_assigned'] || '').trim();
+    if (name) seen[name] = true;
+  });
+  return Object.keys(seen);
+}
+
+/**
+ * จับคู่ข้อความที่พิมพ์กับชื่อ fellow — พิมพ์บางส่วนก็เจอ
+ * คืน: ชื่อเต็ม (ตรงหนึ่งคน) / อาร์เรย์ (ตรงหลายคน ให้เลือก) / null (ไม่ตรงใคร)
+ */
+function matchFellowByName_(text) {
+  const q = String(text || '').trim().toLowerCase();
+  // ยาวเกินไปไม่ใช่การพิมพ์ชื่อ — กันประโยคยาวมาแมตช์ชื่อโดยบังเอิญ
+  if (!q || q.length > 40) return null;
+
+  const names = upcomingFellowNames_();
+  const hits = names.filter(function (n) {
+    return n.toLowerCase().indexOf(q) !== -1;
+  });
+  if (hits.length === 0) return null;
+  if (hits.length === 1) return hits[0];
+  // ตรงเป๊ะทั้งชื่อ ให้ชนะการตรงบางส่วน
+  const exact = hits.filter(function (n) { return n.toLowerCase() === q; });
+  return exact.length === 1 ? exact[0] : hits;
+}
+
+/**
+ * นัดข้างหน้าทั้งหมดของ fellow คนเดียว — เรียงตามวัน
+ * ในแชทมีแค่ วันนัด·เลขเคส·กลุ่มโรค (PDPA-003) รายละเอียดเต็มดูใน dashboard
+ */
+function buildFellowOwnReply_(fellowName) {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+
+  const list = [];
+  readRows_(getSheet_(SHEETS.referrals)).forEach(function (r) {
+    if (String(r['referral_type']).trim() !== TYPES.transplant) return;
+    if (String(r['status']).trim() !== 'Appointment Confirmed') return;
+    if (String(r['fellow_assigned'] || '').trim() !== fellowName) return;
+    const when = toDate_(r['appointment_date']);
+    if (!when || when < start) return;
+    list.push({
+      when: when,
+      id: String(r['referral_id'] || '').trim(),
+      disease: String(r['disease_group'] || '').trim(),
+    });
+  });
+
+  if (list.length === 0) {
+    return '📅 ' + fellowName + ' — ยังไม่มีนัดข้างหน้าครับ';
+  }
+
+  list.sort(function (a, b) { return a.when - b.when; });
+  let text = '📅 นัดของ ' + fellowName + ' — ' + list.length + ' เคส\n' +
+    '────────────────\n';
+  list.forEach(function (item) {
+    text += '• ' + formatThaiDate_(item.when) + ' · ' + item.id +
+      (item.disease ? ' · ' + item.disease : '') + '\n';
+  });
+  text += '\nเปิดดูรายละเอียด (ต้องล็อกอิน):\n' +
+    SITE_URL + '/dashboard/schedule';
   return text;
 }
