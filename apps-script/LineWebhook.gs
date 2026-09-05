@@ -238,6 +238,10 @@ function handleLineEvent_(event) {
   // และเฉพาะกลุ่มที่อยู่ใน LINE_TARGET_* (ดู GroupQuery.gs)
   if (handleGroupQuery_(event, text, id)) return;
 
+  // dent ตอบแพทย์ต้นทางจากในกลุ่ม: พิมพ์  ตอบ HEM-xxxx: <ข้อความ>
+  // (reply ในกลุ่มฟรี ไม่กิน push — ดู Messages.gs)
+  if (handleDentReply_(event, text, id)) return;
+
   // ค้นสถานะเฉพาะแชทตัวต่อตัว
   //
   // ในกลุ่ม resident มีรหัสอ้างอิงลอยอยู่เต็มไปหมดจากรอบแจ้งเตือน 10:00 น.
@@ -301,6 +305,10 @@ function handleLineEvent_(event) {
   // อยู่ระหว่างตอบคำถามของโฟลว์ติดต่อเจ้าหน้าที่ — ต้องมาก่อนการค้นรหัส
   // เพราะขั้นตอนหนึ่งของโฟลว์คือให้พิมพ์รหัสอ้างอิงพอดี
   const flow = readContactFlow_(id);
+  if (flow && flow.step === 'pickCaseForMessage') {
+    handlePickCaseForMessage_(event, flow, text, id);
+    return;
+  }
   if (flow) {
     advanceContactFlow_(event, flow, text, id);
     return;
@@ -327,6 +335,10 @@ function handleLineEvent_(event) {
         'เช่น  admin ขอบคุณครับ แล้วจะลองใหม่');
       return;
     }
+
+    // แพทย์ต้นทางที่ผูก LINE แล้ว พิมพ์ข้อความอิสระ = ส่งถึงทีมในเคสของตัวเอง
+    // (ก่อนตอบ "ไม่แน่ใจ" — เพราะคนที่ผูกบัญชีแล้วส่วนใหญ่คือแพทย์ต้นทางจริง)
+    if (handleReferrerLineMessage_(event, text, id)) return;
 
     // คำถามลอย ๆ — ชี้ไปกลุ่มที่ 2 ไม่ส่งต่อให้แอดมิน
     //

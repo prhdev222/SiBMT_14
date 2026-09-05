@@ -26,9 +26,21 @@ function ensureCaseToken_(sheet, map, row) {
   return token;
 }
 
+/** ชีต messages — สร้างให้อัตโนมัติถ้ายังไม่มี (ไม่ต้องรัน setupSheets ก่อน) */
+function ensureMessagesSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEETS.messages);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEETS.messages);
+    sheet.getRange(1, 1, 1, MESSAGE_COLUMNS.length).setValues([MESSAGE_COLUMNS]);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
 /** เขียนหนึ่งข้อความลงชีต messages */
 function appendMessage_(referralId, role, name, channel, text) {
-  const sheet = getSheet_(SHEETS.messages);
+  const sheet = ensureMessagesSheet_();
   const map = ensureColumns_(sheet, MESSAGE_COLUMNS);
   const rowArr = new Array(sheet.getLastColumn()).fill('');
   rowArr[map['message_id']] = Utilities.getUuid();
@@ -195,4 +207,161 @@ function markThreadRead_(payload) {
   if (!row) return { ok: true };
   markCaughtUp_(sheet, map, row, side);
   return { ok: true };
+}
+
+/* ================================================================== */
+/* LINE typing (Phase 2) — พิมพ์ตอบผ่าน LINE ทั้งสองฝั่ง               */
+/* reply (ฟรี) เป็นหลัก · push เตือนอีกฝั่งแบบรวบ (ดู notifyCounterparty_)*/
+/* ================================================================== */
+
+// dent พิมพ์ในกลุ่ม:  ตอบ HEM-xxxx: <ข้อความ>
+const LINE_DENT_REPLY_PATTERN =
+  /^ตอบ\s+(HEM-\d{8}-\d{4})\s*[:：]\s*([\s\S]+)$/i;
+
+/** กลุ่ม LINE ของเจ้าหน้าที่ (fellow/resident/admin) ที่ตั้งค่าไว้ */
+function isStaffGroup_(sourceId) {
+  const props = PropertiesService.getScriptProperties();
+  const inTarget = function (key) {
+    return parseLineTargets_(props.getProperty(key)).indexOf(sourceId) !== -1;
+  };
+  return inTarget('LINE_TARGET_FELLOW') ||
+    inTarget('LINE_TARGET_RESIDENT') ||
+    inTarget('LINE_TARGET_ADMIN');
+}
+
+/** เคสที่ยังไม่จบของแพทย์ต้นทางเบอร์นี้ */
+function openCasesForPhone_(phone) {
+  const key = phoneKey_(phone);
+  if (!key) return [];
+  return readRows_(getSheet_(SHEETS.referrals)).filter(function (r) {
+    return phoneKey_(r['referrer_phone']) === key && !isTerminal_(r['status']);
+  });
+}
+
+/**
+ * dent ตอบแพทย์ต้นทางจากในกลุ่ม — คืน true ถ้าจัดการแล้ว
+ * จำกัดเฉพาะกลุ่มเจ้าหน้าที่ที่ตั้งค่าไว้ (กันคนนอกแอบส่งในนาม dent)
+ */
+function handleDentReply_(event, text, sourceId) {
+  const m = text.match(LINE_DENT_REPLY_PATTERN);
+  if (!m) return false;
+  if (!isStaffGroup_(sourceId)) return false;
+
+  const referralId = m[1].toUpperCase();
+  const body = String(m[2] || '').trim();
+  if (!body) return false;
+
+  const sheet = getSheet_(SHEETS.referrals);
+  const map = headerMap_(sheet);
+  const row = readRows_(sheet).filter(function (r) {
+    return String(r['referral_id'] || '').trim() === referralId;
+  })[0];
+  if (!row) {
+    replyLineMessage_(event.replyToken, 'ไม่พบเคส ' + referralId + ' ในระบบ');
+    return true;
+  }
+
+  appendMessage_(referralId, 'resident', 'ทีมโลหิตวิทยา', 'line', body);
+  markCaughtUp_(sheet, map, row, 'dent');
+  notifyCounterparty_(sheet, map, row, 'resident', body);
+  replyLineMessage_(event.replyToken,
+    '✅ บันทึกและส่งถึงแพทย์ต้นทางแล้ว (เคส ' + referralId + ')');
+  return true;
+}
+
+/**
+ * แพทย์ต้นทางที่ผูก LINE พิมพ์ข้อความอิสระ = ส่งถึงทีมในเคสตัวเอง
+ * คืน true ถ้าจัดการแล้ว (ผูกบัญชีอยู่) — false = ปล่อยให้ระบบตอบ "ไม่แน่ใจ" ต่อ
+ */
+function handleReferrerLineMessage_(event, text, userId) {
+  const link = findLineLink_(userId);
+  if (!link) return false;
+
+  const open = openCasesForPhone_(link['referrer_phone']);
+  if (open.length === 0) {
+    replyLineMessage_(event.replyToken,
+      'ตอนนี้ไม่พบเคสที่กำลังดำเนินการของท่าน\n' +
+      'ถ้าต้องการส่งเคสใหม่ กรุณากรอกแบบฟอร์มส่งต่อ หรือพิมพ์ "เคสของฉัน" เพื่อดูรายการ');
+    return true;
+  }
+  if (open.length === 1) {
+    routeReferrerMessageToCase_(event, open[0], text);
+    return true;
+  }
+
+  // หลายเคส → ให้เลือกก่อน แล้วค่อยส่งข้อความที่พิมพ์ไว้
+  const ids = open.map(function (r) { return String(r['referral_id'] || ''); });
+  writeContactFlow_(userId, {
+    step: 'pickCaseForMessage', pendingText: text, caseIds: ids,
+  });
+  replyLineMessage_(event.replyToken, [withQuickReply_(
+    { type: 'text',
+      text: 'ท่านมีหลายเคสที่กำลังดำเนินการ — เลือกเคสที่จะส่งข้อความนี้:' },
+    caseQuickReply_(ids))]);
+  return true;
+}
+
+/** ปุ่มลัดเลือกเคส (รหัสอ้างอิง) + ปุ่มยกเลิก */
+function caseQuickReply_(ids) {
+  const items = ids.slice(0, 12).map(function (id) {
+    return { label: id.replace('HEM-', ''), text: id };
+  });
+  items.push({ label: '✕ ยกเลิก', text: 'ยกเลิก' });
+  return items;
+}
+
+/** เขียนข้อความของแพทย์ต้นทางลงเคส + แจ้ง dent + ตอบรับ (reply ฟรี) */
+function routeReferrerMessageToCase_(event, row, text) {
+  const sheet = getSheet_(SHEETS.referrals);
+  const map = headerMap_(sheet);
+  const referralId = String(row['referral_id'] || '').trim();
+  const name = String(row['referrer_org'] || 'แพทย์ต้นทาง').trim();
+
+  appendMessage_(referralId, 'referrer', name, 'line', text);
+  markCaughtUp_(sheet, map, row, 'referrer');
+  notifyCounterparty_(sheet, map, row, 'referrer', text);
+  replyLineMessage_(event.replyToken,
+    '📨 ส่งข้อความถึงทีมแล้ว (เคส ' + referralId + ')\n' +
+    'จะแจ้งเตือนที่นี่เมื่อมีคนตอบกลับครับ');
+}
+
+/** ผู้ใช้เลือกเคสที่จะส่งข้อความ (ตอนมีหลายเคส) */
+function handlePickCaseForMessage_(event, flow, text, userId) {
+  const ids = flow.caseIds || [];
+  const raw = String(text || '').trim();
+  const pick = raw.toUpperCase();
+
+  let chosen = null;
+  const asNum = parseInt(raw, 10);
+  if (!isNaN(asNum) && asNum >= 1 && asNum <= ids.length) {
+    chosen = ids[asNum - 1];
+  } else {
+    for (let i = 0; i < ids.length; i++) {
+      if (String(ids[i]).toUpperCase() === pick) { chosen = ids[i]; break; }
+    }
+    if (!chosen) {
+      for (let j = 0; j < ids.length; j++) {
+        if (String(ids[j]).toUpperCase().indexOf(pick) !== -1) {
+          chosen = ids[j]; break;
+        }
+      }
+    }
+  }
+
+  if (!chosen) {
+    replyLineMessage_(event.replyToken,
+      'ไม่พบเคสที่เลือก — พิมพ์รหัส HEM-... หรือเลขลำดับให้ตรง หรือพิมพ์ "ยกเลิก"');
+    return;
+  }
+
+  const sheet = getSheet_(SHEETS.referrals);
+  const row = readRows_(sheet).filter(function (r) {
+    return String(r['referral_id'] || '').trim() === chosen;
+  })[0];
+  clearContactFlow_(userId);
+  if (!row) {
+    replyLineMessage_(event.replyToken, 'ไม่พบเคส ' + chosen + ' แล้ว');
+    return;
+  }
+  routeReferrerMessageToCase_(event, row, flow.pendingText || '');
 }

@@ -37,6 +37,11 @@ function anonymizeExpired() {
   // ต้องทำก่อนลบแถว เพราะ url อยู่ในแถวที่กำลังจะหายไป
   trashAttachments_(expired);
 
+  // บทสนทนา (ชีต messages) ต้องหมดอายุพร้อมเคสด้วย — เป็นข้อมูลของเคสเดียวกัน
+  deleteMessagesForReferrals_(expired.map(function (r) {
+    return String(r['referral_id'] || '').trim();
+  }));
+
   // ลบจากล่างขึ้นบน มิฉะนั้นเลขแถวจะเลื่อนระหว่างลบ
   expired
     .map(function (r) { return r._row; })
@@ -46,6 +51,31 @@ function anonymizeExpired() {
     });
 
   console.log('ถอดชื่อและย้ายเข้าคลังแล้ว ' + expired.length + ' เคส');
+}
+
+/**
+ * ลบบทสนทนาของเคสที่หมดอายุออกจากชีต messages
+ *
+ * ข้อความในบทสนทนาเป็นข้อมูลของเคสเดียวกัน จึงต้องหายไปพร้อมเคสตาม retention
+ * เดียวกัน — ไม่ใช่ค้างอยู่หลังเคสถูกถอดชื่อไปแล้ว ลบจากล่างขึ้นบนกันเลขแถวเลื่อน
+ */
+function deleteMessagesForReferrals_(referralIds) {
+  if (!referralIds || referralIds.length === 0) return;
+  const target = {};
+  referralIds.forEach(function (id) { if (id) target[id] = true; });
+
+  let sheet;
+  try {
+    sheet = getSheet_(SHEETS.messages);
+  } catch (err) {
+    return; // ยังไม่มีชีต messages (ระบบเก่า) — ไม่มีอะไรต้องลบ
+  }
+
+  readRows_(sheet)
+    .filter(function (r) { return target[String(r['referral_id'] || '').trim()]; })
+    .map(function (r) { return r._row; })
+    .sort(function (a, b) { return b - a; })
+    .forEach(function (rowNumber) { sheet.deleteRow(rowNumber); });
 }
 
 /**
