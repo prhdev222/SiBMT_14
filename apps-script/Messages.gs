@@ -95,10 +95,11 @@ function notifyCounterparty_(sheet, map, row, senderRole, text) {
         SITE_URL + '/dashboard)');
     }
   } else {
-    // แจ้งแพทย์ต้นทาง: อีเมลเสมอ (ฟรี) + push เตือนแบบรวบ
-    const wasPending =
-      String(readCell_(sheet, map2, row._row, 'referrer_unread') || '')
-        .toLowerCase() === 'yes';
+    // แจ้งแพทย์ต้นทาง: push ทุกข้อความทันที + อีเมลเสมอ (ฟรี)
+    //
+    // ไม่ coalesce ฝั่งนี้ (ต่างจากฝั่ง dent): แพทย์ต้นทางอยากได้คำตอบทันที
+    // ไม่ควรรอ และคำตอบจาก dent มีไม่บ่อย จึงไม่เปลืองโควตามากนัก
+    // (มติผู้ใช้ 5 ก.ย. 2569)
     setCell_(sheet, map2, row._row, 'referrer_unread', 'yes');
 
     const email = String(row['referrer_email'] || '').trim();
@@ -106,17 +107,15 @@ function notifyCounterparty_(sheet, map, row, senderRole, text) {
       sendMessageEmailToReferrer_(email, referralId, caseToken, preview,
         String(row['sender_name'] || 'ทีมโลหิตวิทยา'));
     }
-    if (!wasPending) {
-      const userId = findLineUserByPhone_(row['referrer_phone']);
-      if (userId) {
-        const token = PropertiesService.getScriptProperties()
-          .getProperty('LINE_CHANNEL_ACCESS_TOKEN');
-        if (token) {
-          sendOneLinePush_(token, userId,
-            '💬 เคส ' + referralId + ' มีข้อความตอบกลับจากทีมโลหิตวิทยา\n' +
-            '“' + preview + '”\n' +
-            'อ่าน/ตอบต่อ: ' + SITE_URL + '/case/' + caseToken);
-        }
+    const userId = findLineUserByPhone_(row['referrer_phone']);
+    if (userId) {
+      const token = PropertiesService.getScriptProperties()
+        .getProperty('LINE_CHANNEL_ACCESS_TOKEN');
+      if (token) {
+        sendOneLinePush_(token, userId,
+          '💬 เคส ' + referralId + ' มีข้อความตอบกลับจากทีมโลหิตวิทยา\n' +
+          '“' + preview + '”\n' +
+          'อ่าน/ตอบต่อ: ' + SITE_URL + '/case/' + caseToken);
       }
     }
   }

@@ -227,7 +227,10 @@ export async function verifiedCasesAction(): Promise<
   | {
       ok: true;
       verified: boolean;
-      cases: (BotCaseStatus & { answerUrl: string | null })[];
+      cases: (BotCaseStatus & {
+        answerUrl: string | null;
+        caseUrl: string | null;
+      })[];
     }
   | { ok: false; error: string }
 > {
@@ -254,6 +257,9 @@ export async function verifiedCasesAction(): Promise<
         row["advice_record"]?.trim() && row["answer_token"]?.trim()
           ? `/answer/${row["answer_token"]}`
           : null,
+      caseUrl: row["case_token"]?.trim()
+        ? `/case/${row["case_token"]}`
+        : null,
     })),
   };
 }

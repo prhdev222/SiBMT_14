@@ -416,6 +416,8 @@ function toDemoRawRow(referral: Referral): Record<string, string> {
     answer_token: referral.adviceRecord
       ? demoAnswerToken(referral.referralId)
       : "",
+    // ทุกเคสมีห้องคุยได้ — บอทเป็นประตูเปิดห้องแชท /case
+    case_token: demoCaseToken(referral.referralId),
   };
 }
 
