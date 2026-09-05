@@ -219,9 +219,20 @@ function sendOneLinePush_(token, to, message) {
     if (code !== 200) {
       console.error('ส่ง LINE ไม่สำเร็จ (' + code + ') ปลายทาง ' + to + ': ' +
         response.getContentText());
+      return null;
     }
+    // คืน id ของข้อความที่เพิ่งส่ง (ใช้ผูกกับเคสสำหรับ quote-reply)
+    // ผู้เรียกเดิมไม่สนใจค่านี้ จึงไม่กระทบพฤติกรรมเดิม
+    try {
+      const body = JSON.parse(response.getContentText() || '{}');
+      if (body.sentMessages && body.sentMessages.length) {
+        return String(body.sentMessages[0].id || '') || null;
+      }
+    } catch (e) { /* response ว่าง/ไม่ใช่ JSON — ไม่มี id ให้คืน */ }
+    return null;
   } catch (err) {
     console.error('ส่ง LINE ไม่สำเร็จ ปลายทาง ' + to + ': ' + err);
+    return null;
   }
 }
 

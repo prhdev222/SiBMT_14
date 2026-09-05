@@ -238,7 +238,11 @@ function handleLineEvent_(event) {
   // และเฉพาะกลุ่มที่อยู่ใน LINE_TARGET_* (ดู GroupQuery.gs)
   if (handleGroupQuery_(event, text, id)) return;
 
-  // dent ตอบแพทย์ต้นทางจากในกลุ่ม: พิมพ์  ตอบ HEM-xxxx: <ข้อความ>
+  // dent กด "ตอบกลับ" (quote) ข้อความแจ้งเตือนของบอท แล้วพิมพ์คำตอบ — ง่ายสุด
+  // ไม่ต้องพิมพ์รหัสหรือคำสั่ง บอทรู้เคสจาก quotedMessageId (ดู Messages.gs)
+  if (handleDentQuoteReply_(event, text, id)) return;
+
+  // dent ตอบแพทย์ต้นทางจากในกลุ่ม: พิมพ์  ตอบ HEM-xxxx: <ข้อความ> (ทางสำรอง)
   // (reply ในกลุ่มฟรี ไม่กิน push — ดู Messages.gs)
   if (handleDentReply_(event, text, id)) return;
 

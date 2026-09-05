@@ -86,13 +86,13 @@ function notifyCounterparty_(sheet, map, row, senderRole, text) {
     setCell_(sheet, map2, row._row, 'dent_unread', 'yes');
     if (!wasPending) {
       const audience = caseAudience_(row['referral_type']);
-      pushLineMessage_(
+      pushDentNudgeWithQuote_(audience, referralId,
         '💬 ' + referralId + ' มีข้อความจากแพทย์ต้นทาง\n' +
         '“' + preview + '”\n' +
-        'ตอบในกลุ่มนี้ได้: พิมพ์  ตอบ ' + referralId + ': <ข้อความ>\n' +
-        'หรือเปิด ' + SITE_URL + '/dashboard',
-        audience
-      );
+        '─────────\n' +
+        '↩️ ตอบง่าย ๆ: แตะค้างข้อความนี้ → "ตอบกลับ" แล้วพิมพ์คำตอบได้เลย\n' +
+        '(หรือพิมพ์  ตอบ ' + referralId + ': <ข้อความ>  · หรือเปิด ' +
+        SITE_URL + '/dashboard)');
     }
   } else {
     // แจ้งแพทย์ต้นทาง: อีเมลเสมอ (ฟรี) + push เตือนแบบรวบ
@@ -251,21 +251,7 @@ function handleDentReply_(event, text, sourceId) {
   const body = String(m[2] || '').trim();
   if (!body) return false;
 
-  const sheet = getSheet_(SHEETS.referrals);
-  const map = headerMap_(sheet);
-  const row = readRows_(sheet).filter(function (r) {
-    return String(r['referral_id'] || '').trim() === referralId;
-  })[0];
-  if (!row) {
-    replyLineMessage_(event.replyToken, 'ไม่พบเคส ' + referralId + ' ในระบบ');
-    return true;
-  }
-
-  appendMessage_(referralId, 'resident', 'ทีมโลหิตวิทยา', 'line', body);
-  markCaughtUp_(sheet, map, row, 'dent');
-  notifyCounterparty_(sheet, map, row, 'resident', body);
-  replyLineMessage_(event.replyToken,
-    '✅ บันทึกและส่งถึงแพทย์ต้นทางแล้ว (เคส ' + referralId + ')');
+  appendDentLineReply_(event, referralId, body);
   return true;
 }
 
@@ -364,4 +350,95 @@ function handlePickCaseForMessage_(event, flow, text, userId) {
     return;
   }
   routeReferrerMessageToCase_(event, row, flow.pendingText || '');
+}
+
+/* ================================================================== */
+/* Quote-reply — dent แค่กด "ตอบกลับ" ข้อความแจ้งเตือนแล้วพิมพ์ ก็พอ     */
+/* ไม่ต้องพิมพ์รหัสหรือคำสั่ง (fallback: ตอบ HEM-xxxx: ยังใช้ได้)         */
+/* ================================================================== */
+
+/**
+ * push แจ้ง dent เข้ากลุ่ม แล้วจำ message id ไว้ผูกกับเคส
+ * เพื่อให้การ "quote-reply" ข้อความนี้รู้ว่าเป็นเคสไหนโดยไม่ต้องพิมพ์รหัส
+ */
+function pushDentNudgeWithQuote_(audience, referralId, text) {
+  const props = PropertiesService.getScriptProperties();
+  const token = props.getProperty('LINE_CHANNEL_ACCESS_TOKEN');
+
+  const targetKey = LINE_TARGET_BY_AUDIENCE[audience] || LINE_TARGET_FALLBACK;
+  let target = props.getProperty(targetKey);
+  let message = text;
+  if (!target && targetKey !== LINE_TARGET_FALLBACK) {
+    target = props.getProperty(LINE_TARGET_FALLBACK);
+    if (target) {
+      message = '(ส่งถึงคุณเพราะยังไม่ได้ตั้ง ' + targetKey + ')\n' +
+        '──────────\n' + text;
+    }
+  }
+
+  const targets = parseLineTargets_(target);
+  if (!token || targets.length === 0) {
+    console.log('[LINE ยังไม่ได้ตั้งค่า: ' + targetKey + '] ' + text);
+    return;
+  }
+
+  targets.forEach(function (to) {
+    const id = sendOneLinePush_(token, to, message);
+    if (id) rememberQuoteTarget_(id, referralId);
+  });
+}
+
+/** จำ (message id ที่บอทส่ง → referral_id) ไว้ 6 ชม. สำหรับ quote-reply */
+function rememberQuoteTarget_(messageId, referralId) {
+  try {
+    CacheService.getScriptCache().put('quote_' + messageId, referralId, 21600);
+  } catch (err) {
+    console.warn('เก็บ quote map ไม่สำเร็จ: ' + err);
+  }
+}
+
+function lookupQuoteTarget_(messageId) {
+  if (!messageId) return '';
+  try {
+    return CacheService.getScriptCache().get('quote_' + messageId) || '';
+  } catch (err) {
+    return '';
+  }
+}
+
+/**
+ * dent กด "ตอบกลับ" (quote) ข้อความแจ้งเตือนของบอทในกลุ่ม แล้วพิมพ์คำตอบ
+ * คืน true ถ้าจัดการแล้ว — ต้องเป็นกลุ่มเจ้าหน้าที่ และ quote ตรงกับเคสที่จำไว้
+ */
+function handleDentQuoteReply_(event, text, sourceId) {
+  const quotedId = event.message && event.message.quotedMessageId;
+  if (!quotedId) return false;
+  if (!isStaffGroup_(sourceId)) return false;
+
+  const referralId = lookupQuoteTarget_(quotedId);
+  if (!referralId) return false;
+
+  const body = String(text || '').trim();
+  if (!body) return false;
+
+  appendDentLineReply_(event, referralId, body);
+  return true;
+}
+
+/** เขียนคำตอบ dent จาก LINE ลงเคส + แจ้งแพทย์ต้นทาง + ตอบรับในกลุ่ม (reply ฟรี) */
+function appendDentLineReply_(event, referralId, body) {
+  const sheet = getSheet_(SHEETS.referrals);
+  const map = headerMap_(sheet);
+  const row = readRows_(sheet).filter(function (r) {
+    return String(r['referral_id'] || '').trim() === referralId;
+  })[0];
+  if (!row) {
+    replyLineMessage_(event.replyToken, 'ไม่พบเคส ' + referralId + ' ในระบบ');
+    return;
+  }
+  appendMessage_(referralId, 'resident', 'ทีมโลหิตวิทยา', 'line', body);
+  markCaughtUp_(sheet, map, row, 'dent');
+  notifyCounterparty_(sheet, map, row, 'resident', body);
+  replyLineMessage_(event.replyToken,
+    '✅ บันทึกและส่งถึงแพทย์ต้นทางแล้ว (เคส ' + referralId + ')');
 }
