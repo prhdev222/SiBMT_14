@@ -73,11 +73,17 @@ function sendRedAlert() {
 
   pending.forEach(function (r) {
     const groupNo = GROUP_NUMBER[String(r['referral_type'])] || '-';
+    // แปลงชั่วโมงทำการเป็น "วันทำการ" — เลข 24 ชม.ทำการเคยถูกอ่านผิดว่า
+    // แจ้งช้า/เร็วเกินจริง (feedback 5 ก.ย. 2569) ทั้งที่คือ 3 วันทำการพอดี
+    const elapsed = parseFloat(r['elapsed_business_hours']) || 0;
+    const hoursPerDay = BUSINESS.endHour - BUSINESS.startHour;
+    const days = Math.round((elapsed / hoursPerDay) * 10) / 10;
     const message =
-      '🚨 RED ALERT — เคสค้างเกินกรอบเวลา\n' +
+      '🚨 RED ALERT — ครบกำหนดตอบ ' + (ESCALATION.redHours / hoursPerDay) +
+      ' วันทำการแล้ว\n' +
       'Referral ID: ' + r['referral_id'] + '\n' +
       'กลุ่มที่: ' + groupNo + '\n' +
-      'ค้างมาแล้ว: ' + r['elapsed_business_hours'] + ' ชั่วโมงทำการ\n' +
+      'ค้างมาแล้ว ' + days + ' วันทำการ\n' +
       'กรุณาเข้าตรวจสอบโดยด่วน\n' +
       DASHBOARD_URL;
 
