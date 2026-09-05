@@ -35,7 +35,7 @@ export async function checkStructureAction(): Promise<{
   }
 }
 
-/** ล็อกหัวคอลัมน์ทุกแท็บ — กันแอดมินใหม่แก้หัวคอลัมน์แล้วระบบพัง */
+/** ล็อกหัวคอลัมน์ทุกแท็บ — กันการแก้หัวคอลัมน์โดยไม่ตั้งใจ ให้ระบบอ่านข้อมูลถูก */
 export async function protectHeadersAction(): Promise<{
   ok: boolean;
   locked?: string[];

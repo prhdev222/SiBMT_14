@@ -9,7 +9,7 @@ import {
 
 /**
  * ปุ่มตรวจโครงสร้างชีต — แอดมินกดหลังแก้ตาราง เพื่อรู้ทันทีว่ายังถูกต้องไหม
- * ก่อนที่ dashboard จะพังเงียบ ๆ (ป้องกันแอดมินใหม่แก้หัวคอลัมน์แล้วไม่รู้ตัว)
+ * ก่อนที่ dashboard จะพังเงียบ ๆ (ให้รู้ทันทีถ้าหัวคอลัมน์ถูกแก้โดยไม่ตั้งใจ)
  */
 export function StructureCheck() {
   const [state, setState] = useState<
@@ -78,8 +78,8 @@ export function StructureCheck() {
     <div className="space-y-3">
       <div className="rounded-lg bg-zinc-50 border border-zinc-200 p-3 space-y-2">
         <p className="text-sm text-zinc-700">
-          กดล็อกหัวคอลัมน์ครั้งเดียว — กันแอดมินใหม่เผลอแก้หัวคอลัมน์แล้วระบบพัง
-          (แถวข้อมูลยังแก้ได้ตามปกติ)
+          ล็อกหัวคอลัมน์ไว้ครั้งเดียว — กันการแก้แถวหัวโดยไม่ตั้งใจ ระบบจะได้
+          อ่านข้อมูลถูกต้องเสมอ (แถวข้อมูลด้านล่างยังพิมพ์/แก้ได้ตามปกติ)
         </p>
         <div className="flex flex-wrap gap-2">
           <button
