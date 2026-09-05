@@ -33,29 +33,67 @@ export default async function SlipPage({
 }) {
   const { id, t } = await searchParams;
 
+  // ลิงก์ไม่ครบ = เสียจริง (ไม่ต้องเรียก Apps Script) / ครบ = ลองเรียก
+  const hasLink = Boolean(id && t && isBookingConfigured());
+
   let booking: BookingDetail | null = null;
-  if (id && t && isBookingConfigured()) {
-    try {
-      booking = await lookupBooking({ referralId: id.trim(), token: t.trim() });
-    } catch {
-      booking = null;
+  let transientError = false;
+  if (hasLink) {
+    // Apps Script คอลด์สตาร์ทช้า/พลาดรอบแรกได้ (1–10 วินาที) — ลองซ้ำหนึ่งครั้ง
+    // ก่อนยอมแพ้ กันหน้าเด้ง error ทั้งที่จริงแค่ช้า (feedback 5 ก.ย. 2569)
+    for (let attempt = 0; attempt < 2 && !booking; attempt++) {
+      try {
+        booking = await lookupBooking({
+          referralId: (id as string).trim(),
+          token: (t as string).trim(),
+        });
+      } catch {
+        transientError = true;
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 1200));
+      }
     }
   }
 
   if (!booking) {
+    // แยกสองกรณี: เรียกไม่สำเร็จ (ลิงก์อาจดีอยู่ แค่ระบบช้า) → ชวนโหลดใหม่
+    // กับลิงก์ไม่ครบจริง → บอกให้เปิดจากอีเมล/หน้าจัดการนัด
+    const slipHref =
+      id && t
+        ? `/booking/slip?id=${encodeURIComponent(id)}&t=${encodeURIComponent(t)}`
+        : null;
     return (
       <div className="flex-1 bg-zinc-50 px-4 py-10">
         <div className="mx-auto max-w-md rounded-xl border border-zinc-200 bg-white p-6 text-sm text-zinc-700 space-y-3">
-          <h1 className="text-base font-semibold text-zinc-900">
-            เปิดใบนัดไม่ได้
-          </h1>
-          <p>
-            ลิงก์ไม่ถูกต้องหรือหมดอายุ — เปิดจากปุ่ม &ldquo;พิมพ์ใบนัด&rdquo;
-            ในอีเมลยืนยันนัด หรือจากหน้าจัดการนัดอีกครั้ง
-          </p>
-          <Link href="/booking" className="inline-block font-medium text-blue-600 hover:underline">
-            ไปหน้าจัดการนัด →
-          </Link>
+          {transientError && slipHref ? (
+            <>
+              <h1 className="text-base font-semibold text-zinc-900">
+                ระบบตอบช้ากว่าปกติ
+              </h1>
+              <p>
+                โหลดใบนัดไม่ทันในครั้งนี้ ลิงก์ยังใช้ได้อยู่ —
+                กดโหลดใหม่อีกครั้งได้เลย
+              </p>
+              <a
+                href={slipHref}
+                className="inline-flex rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"
+              >
+                🔄 โหลดใบนัดอีกครั้ง
+              </a>
+            </>
+          ) : (
+            <>
+              <h1 className="text-base font-semibold text-zinc-900">
+                เปิดใบนัดไม่ได้
+              </h1>
+              <p>
+                ลิงก์ไม่ถูกต้องหรือหมดอายุ — เปิดจากปุ่ม &ldquo;พิมพ์ใบนัด&rdquo;
+                ในอีเมลยืนยันนัด หรือจากหน้าจัดการนัดอีกครั้ง
+              </p>
+              <Link href="/booking" className="inline-block font-medium text-blue-600 hover:underline">
+                ไปหน้าจัดการนัด →
+              </Link>
+            </>
+          )}
         </div>
       </div>
     );
