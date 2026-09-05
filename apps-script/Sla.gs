@@ -54,6 +54,17 @@ function recalculateSla() {
  *
  * ส่งครั้งเดียวต่อเคส โดยบันทึกไว้ที่ red_alert_sent_at
  */
+/** ชื่อผู้รับผิดชอบที่ต้องไปเตือน — assigned_to หรือ fellow_assigned (กลุ่ม 1) */
+function responsibleName_(r) {
+  const assigned = String(r['assigned_to'] || '').trim();
+  if (assigned) return assigned;
+  if (String(r['referral_type']).trim() === TYPES.transplant) {
+    const fellow = String(r['fellow_assigned'] || '').trim();
+    if (fellow) return fellow;
+  }
+  return 'ยังไม่มอบหมาย';
+}
+
 function sendRedAlert() {
   const holidays = loadHolidays_();
   const now = new Date();
@@ -91,7 +102,8 @@ function sendRedAlert() {
       const elapsed = parseFloat(r['elapsed_business_hours']) || 0;
       const days = Math.round((elapsed / hoursPerDay) * 10) / 10;
       message += '• ' + r['referral_id'] + ' · กลุ่ม ' + groupNo +
-        ' · ค้าง ' + days + ' วันทำการ\n';
+        ' · ค้าง ' + days + ' วันทำการ\n' +
+        '   ผู้รับผิดชอบ: ' + responsibleName_(r) + '\n';
       setCell_(sheet, map, r._row, 'red_alert_sent_at', now);
       logStatusChange_(r['referral_id'], r['status'], r['status'], 'system', 'ส่ง Red Alert');
     });
@@ -104,7 +116,8 @@ function sendRedAlert() {
       const elapsed = parseFloat(r['elapsed_business_hours']) || 0;
       const left = Math.round((ESCALATION.redHours - elapsed) * 10) / 10;
       message += '• ' + r['referral_id'] + ' · กลุ่ม ' + groupNo +
-        ' · เหลือ ' + (left > 0 ? left : 0) + ' ชม.ทำการ\n';
+        ' · เหลือ ' + (left > 0 ? left : 0) + ' ชม.ทำการ\n' +
+        '   ผู้รับผิดชอบ: ' + responsibleName_(r) + '\n';
     });
   }
 
