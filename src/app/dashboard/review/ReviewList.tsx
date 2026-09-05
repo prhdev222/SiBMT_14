@@ -72,6 +72,8 @@ export interface ReviewTools {
   attendings: string[];
   /** รายชื่อ resident สำหรับ dropdown ชื่อผู้ตอบ — พิมพ์ชื่ออื่นเองได้เสมอ */
   residents: string[];
+  /** รายชื่อ fellow — รวมกับ resident เป็นตัวเลือกช่องนัดพบแพทย์ */
+  fellows: string[];
 }
 
 export function ReviewList({
@@ -99,12 +101,17 @@ function ReviewCard({
   regimenLibraryUrl,
   attendings,
   residents,
+  fellows,
 }: { item: ReviewCase } & ReviewTools) {
   const [state, formAction, pending] = useActionState(
     saveAdviceAction,
     INITIAL,
   );
   const [open, setOpen] = useState(false);
+
+  // ตัวเลือกช่องนัดพบแพทย์ — เคสกลุ่ม 3 มาประเมินที่ OPD 700 พบได้ทั้ง
+  // resident และ fellow จึงรวมสองบัญชีรายชื่อ (พิมพ์ชื่ออื่นเองได้เสมอ)
+  const visitDoctors = [...new Set([...residents, ...fellows])];
   const [status, setStatus] = useState<Status>("Advice Sent");
   const [adviceLength, setAdviceLength] = useState(0);
   /**
@@ -437,7 +444,9 @@ function ReviewCard({
                   </select>
                 </label>
 
-                {status === "Readiness Visit Scheduled" && <OpdVisitFields />}
+                {status === "Readiness Visit Scheduled" && (
+                  <OpdVisitFields doctors={visitDoctors} />
+                )}
               </fieldset>
 
               {state.message && (
@@ -583,7 +592,7 @@ function AttendingApproval({ attendings }: { attendings: string[] }) {
  * ไปเขียนบนหัวกระดาษใบ refer — ธุรการ OPD 700 คัดกรองจากหัวกระดาษ ไม่ได้เปิดอีเมลดู
  * ขาดข้อใดข้อหนึ่งแล้วผู้ป่วยจะถือใบที่ไม่มีใครรู้ว่านัดกับใครมา
  */
-function OpdVisitFields() {
+function OpdVisitFields({ doctors }: { doctors: string[] }) {
   return (
     <div className="rounded-lg border border-green-200 bg-green-50/60 p-3 space-y-3">
       <div>
@@ -627,12 +636,20 @@ function OpdVisitFields() {
         <span className="block font-medium text-zinc-700 mb-1">
           นัดพบแพทย์ <span className="text-red-600">*</span>
         </span>
+        {/* datalist = คลิกเลือกจากรายชื่อ resident+fellow หรือพิมพ์ชื่ออื่นเองได้
+            (แบบเดียวกับช่องชื่อผู้ตอบ — feedback 5 ก.ย. 2569) */}
         <input
           name="visitDoctor"
           required
-          placeholder="เช่น พญ. … (OPD 700 โลหิตวิทยา)"
+          list="visit-doctor-list"
+          placeholder="เลือกจากรายชื่อ หรือพิมพ์ชื่อเอง"
           className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 bg-white"
         />
+        <datalist id="visit-doctor-list">
+          {doctors.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
       </label>
 
       <p className="text-xs text-zinc-600">
