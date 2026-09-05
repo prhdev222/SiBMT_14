@@ -54,6 +54,16 @@ function recalculateSla() {
  *
  * ส่งครั้งเดียวต่อเคส โดยบันทึกไว้ที่ red_alert_sent_at
  */
+/**
+ * ดูตัวอย่างข้อความเตือน admin โดยไม่ส่งเข้า LINE — กดจาก editor เพื่อพรีวิว
+ * ผลออกใน Execution log (Ctrl+Enter แล้วดู log) ปลอดภัย ไม่รบกวนกลุ่มจริง
+ */
+function previewAdminAlert() {
+  const text = buildAdminAlertMessage_(new Date(), false);
+  Logger.log(text || '(ไม่มีเคสแดง/เหลือง — จะไม่ส่งข้อความ)');
+  return text;
+}
+
 /** ชื่อผู้รับผิดชอบที่ต้องไปเตือน — assigned_to หรือ fellow_assigned (กลุ่ม 1) */
 function responsibleName_(r) {
   const assigned = String(r['assigned_to'] || '').trim();
@@ -70,10 +80,19 @@ function sendRedAlert() {
   const now = new Date();
   if (!isWithinBusinessHours_(now, holidays)) return;
 
+  // markSent = true → ประทับ red_alert_sent_at จริง (โหมดส่งจริง)
+  const message = buildAdminAlertMessage_(now, true);
+  if (message) pushLineMessage_(message, 'red');
+}
+
+/**
+ * ประกอบข้อความเตือน admin — คืน '' เมื่อไม่มีเคสแดง/เหลือง
+ * markSent=false ใช้ตอนพรีวิว (ไม่แตะ red_alert_sent_at ไม่เขียน log)
+ */
+function buildAdminAlertMessage_(now, markSent) {
   const sheet = getSheet_(SHEETS.referrals);
   const map = headerMap_(sheet);
   const rows = readRows_(sheet);
-
   const hoursPerDay = BUSINESS.endHour - BUSINESS.startHour;
 
   // เคสเกินกำหนด (แดง) ที่ยังไม่เคยแจ้ง — แจ้งครั้งเดียวต่อเคส
@@ -89,10 +108,8 @@ function sendRedAlert() {
     return !isTerminal_(r['status']) && String(r['alert_level']) === 'yellow';
   });
 
-  if (overdue.length === 0 && nearDue.length === 0) return;
+  if (overdue.length === 0 && nearDue.length === 0) return '';
 
-  // รวมเป็นข้อความเดียว ส่งพร้อมรอบ 10:00 ไปกลุ่มแอดมิน (ไม่ยิงระหว่างวัน
-  // กัน toxic ต้องคอยเฝ้า LINE — feedback 5 ก.ย. 2569)
   let message = '📋 สรุปเคสที่ต้องเร่ง (สำหรับแอดมิน) ' + formatThaiDate_(now) + '\n';
 
   if (overdue.length > 0) {
@@ -104,8 +121,10 @@ function sendRedAlert() {
       message += '• ' + r['referral_id'] + ' · กลุ่ม ' + groupNo +
         ' · ค้าง ' + days + ' วันทำการ\n' +
         '   ผู้รับผิดชอบ: ' + responsibleName_(r) + '\n';
-      setCell_(sheet, map, r._row, 'red_alert_sent_at', now);
-      logStatusChange_(r['referral_id'], r['status'], r['status'], 'system', 'ส่ง Red Alert');
+      if (markSent) {
+        setCell_(sheet, map, r._row, 'red_alert_sent_at', now);
+        logStatusChange_(r['referral_id'], r['status'], r['status'], 'system', 'ส่ง Red Alert');
+      }
     });
   }
 
@@ -122,7 +141,7 @@ function sendRedAlert() {
   }
 
   message += '\nกระทุ้ง resident ที่รับผิดชอบก่อนเลยกำหนด — เปิดดู:\n' + DASHBOARD_URL;
-  pushLineMessage_(message, 'red');
+  return message;
 }
 
 function isWithinBusinessHours_(date, holidays) {
