@@ -158,8 +158,14 @@ function handleGroupQuery_(event, text, sourceId) {
         matchedFellow.map(function (n) { return '• ' + n; }).join('\n'));
       return true;
     }
+    // แสดงรายละเอียดผู้ป่วย (เพศ/อายุ/โรค/ข้อบ่งชี้) เฉพาะในกลุ่ม fellow —
+    // เป็นข้อยกเว้น PDPA-003 เดียวที่อาจารย์อนุมัติ (แจ้ง fellow กลุ่ม 1)
+    // กลุ่มอื่นได้แค่ วันนัด·เลขเคส·กลุ่มโรค
+    const inFellowGroup = parseLineTargets_(
+      PropertiesService.getScriptProperties().getProperty('LINE_TARGET_FELLOW')
+    ).indexOf(sourceId) !== -1;
     replyOrReport_(event.replyToken, function () {
-      return buildFellowOwnReply_(matchedFellow);
+      return buildFellowOwnReply_(matchedFellow, inFellowGroup);
     });
     return true;
   }
@@ -578,7 +584,7 @@ function matchFellowByName_(text) {
  * นัดข้างหน้าทั้งหมดของ fellow คนเดียว — เรียงตามวัน
  * ในแชทมีแค่ วันนัด·เลขเคส·กลุ่มโรค (PDPA-003) รายละเอียดเต็มดูใน dashboard
  */
-function buildFellowOwnReply_(fellowName) {
+function buildFellowOwnReply_(fellowName, detailed) {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
 
@@ -589,11 +595,7 @@ function buildFellowOwnReply_(fellowName) {
     if (String(r['fellow_assigned'] || '').trim() !== fellowName) return;
     const when = toDate_(r['appointment_date']);
     if (!when || when < start) return;
-    list.push({
-      when: when,
-      id: String(r['referral_id'] || '').trim(),
-      disease: String(r['disease_group'] || '').trim(),
-    });
+    list.push({ when: when, row: r });
   });
 
   if (list.length === 0) {
@@ -603,11 +605,31 @@ function buildFellowOwnReply_(fellowName) {
   list.sort(function (a, b) { return a.when - b.when; });
   let text = '📅 นัดของ ' + fellowName + ' — ' + list.length + ' เคส\n' +
     '────────────────\n';
+
   list.forEach(function (item) {
-    text += '• ' + formatThaiDate_(item.when) + ' · ' + item.id +
-      (item.disease ? ' · ' + item.disease : '') + '\n';
+    const r = item.row;
+    const id = String(r['referral_id'] || '').trim();
+    if (detailed) {
+      // รูปแบบเต็ม (เฉพาะกลุ่ม fellow) — เพศ/อายุ/โรค/ข้อบ่งชี้ ตาม PDPA-003 ข้อยกเว้น
+      // เวลาจาก appointment_note ที่บันทึกไว้ (เช่น "08:00 น. พบ ...")
+      const timeNote = String(r['appointment_note'] || '').trim();
+      text +=
+        '🗓️ ' + formatThaiDate_(item.when) +
+          (timeNote ? ' · ' + timeNote.split(' พบ')[0] : '') + '\n' +
+        '   เลขที่อ้างอิง: ' + id + '\n' +
+        '   ส่งมาจาก: ' + (r['referrer_org'] || '-') + '\n' +
+        '   ผู้ป่วย: ' + (r['patient_sex'] || '-') +
+          ' อายุ ' + (r['patient_age'] || '-') + ' ปี\n' +
+        '   การวินิจฉัย: ' + (r['diagnosis'] || '-') + '\n' +
+        '   ข้อบ่งชี้ (I/C): ' + (r['transplant_indication'] || '-') + '\n\n';
+    } else {
+      const disease = String(r['disease_group'] || '').trim();
+      text += '• ' + formatThaiDate_(item.when) + ' · ' + id +
+        (disease ? ' · ' + disease : '') + '\n';
+    }
   });
-  text += '\nเปิดดูรายละเอียด (ต้องล็อกอิน):\n' +
+
+  text += '\nเปิดดูรายละเอียดเต็ม (ต้องล็อกอิน):\n' +
     SITE_URL + '/dashboard/schedule';
   return text;
 }
