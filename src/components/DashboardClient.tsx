@@ -15,6 +15,7 @@ import {
   STATUS_COLOR,
   STATUS_LABEL_TH,
   alertLevelFor,
+  isTerminal,
   businessDaysText,
   needsEmailFlag,
   type AlertLevel,
@@ -196,7 +197,10 @@ export function DashboardClient({
     const counts = {} as Record<ReferralType, number>;
     for (const type of REFERRAL_TYPES_ORDERED) counts[type] = 0;
     for (const r of referrals) {
-      if (r.status !== "Closed") counts[r.referralType] += 1;
+      // "ยังไม่ปิด" = ยังไม่ถึงสถานะจบ — ต้องใช้ isTerminal ไม่ใช่เทียบ "Closed"
+      // เพราะ "ส่งคำแนะนำกลับแล้ว"/"นัด OPD"/"ปฏิเสธ" ก็คือจบแล้วเช่นกัน
+      // (บั๊ก 5 ก.ย. 2569: การ์ดนับเคสที่ตอบไปแล้วเป็น "ยังไม่ปิด")
+      if (!isTerminal(r.status)) counts[r.referralType] += 1;
     }
     return counts;
   }, [referrals]);
