@@ -381,6 +381,34 @@ export async function loadAttendings(): Promise<string[]> {
   }
 }
 
+export interface AttendingRow {
+  name: string;
+  active: boolean;
+}
+
+/**
+ * รายชื่ออาจารย์ทั้งหมด (รวมที่ปิดใช้งาน) พร้อมสถานะ — สำหรับหน้าตั้งค่าเท่านั้น
+ * ต่างจาก loadAttendings() ที่กรองเฉพาะ active ไว้ให้ dropdown ตอนตอบคำปรึกษา
+ */
+export async function loadAttendingRows(): Promise<AttendingRow[]> {
+  if (!readCredentials()) {
+    return [
+      { name: "อ. สมชาย (เดโม่)", active: true },
+      { name: "อ. สุนีย์ (เดโม่)", active: true },
+      { name: "อ. วิชัย (เดโม่ — ปิดใช้งาน)", active: false },
+    ];
+  }
+
+  try {
+    const rows = await readSheetRows(ATTENDINGS_SHEET);
+    return rows
+      .filter((row) => text(row["name"]))
+      .map((row) => ({ name: text(row["name"]), active: isActive(row) }));
+  } catch {
+    return [];
+  }
+}
+
 const RESIDENTS_SHEET = "residents";
 const RESIDENT_SCHEDULE_SHEET = "resident_schedule";
 const DOCUMENTS_SHEET = "documents";
@@ -468,6 +496,35 @@ export async function loadDocuments(): Promise<SystemDocument[]> {
         groups: text(row["groups"]),
         url: text(row["url"]),
         description: text(row["description"]),
+      }));
+  } catch {
+    return [];
+  }
+}
+
+export interface DocumentRow extends SystemDocument {
+  active: boolean;
+}
+
+/**
+ * เอกสารทั้งหมด (รวมที่ซ่อนไว้) พร้อมสถานะ — สำหรับหน้าตั้งค่าเท่านั้น
+ * ต่างจาก loadDocuments() ที่กรองเฉพาะ active ไว้ให้แพทย์ต้นทาง
+ */
+export async function loadDocumentRows(): Promise<DocumentRow[]> {
+  if (!readCredentials()) {
+    return (await loadDocuments()).map((d) => ({ ...d, active: true }));
+  }
+
+  try {
+    const rows = await readSheetRows(DOCUMENTS_SHEET);
+    return rows
+      .filter((row) => text(row["title"]) && text(row["url"]))
+      .map((row) => ({
+        title: text(row["title"]),
+        groups: text(row["groups"]),
+        url: text(row["url"]),
+        description: text(row["description"]),
+        active: isActive(row),
       }));
   } catch {
     return [];

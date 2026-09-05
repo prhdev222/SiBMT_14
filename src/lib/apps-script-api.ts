@@ -395,3 +395,56 @@ export async function protectHeaders(): Promise<{
 export async function unprotectHeaders(): Promise<{ unlocked: string[] }> {
   return callAppsScript("unprotectHeaders", {});
 }
+
+/* ------------------------------------------------------------------ */
+/* จัดการรายชื่ออาจารย์ที่ปรึกษา (ชีต attendings) จากหน้าตั้งค่า           */
+/* ------------------------------------------------------------------ */
+
+/** เพิ่มอาจารย์ใหม่ หรือแก้ชื่อเดิม — originalName ว่าง = เพิ่มใหม่ */
+export async function saveAttending(payload: {
+  name: string;
+  originalName: string;
+}): Promise<{ ok: boolean }> {
+  return callAppsScript("saveAttending", payload);
+}
+
+/** เปิด/ปิดใช้งานอาจารย์ (ไม่ลบแถว) */
+export async function setAttendingActive(payload: {
+  name: string;
+  active: boolean;
+}): Promise<{ ok: boolean }> {
+  return callAppsScript("setAttendingActive", payload);
+}
+
+/* ------------------------------------------------------------------ */
+/* จัดการคลังเอกสาร/ลิงก์ไฟล์ (ชีต documents) จากหน้าตั้งค่า              */
+/* ------------------------------------------------------------------ */
+
+/** เพิ่มเอกสารใหม่ หรือแก้เดิม — originalTitle+originalUrl ว่าง = เพิ่มใหม่ */
+export async function saveDocument(payload: {
+  title: string;
+  url: string;
+  groups: string;
+  description: string;
+  originalTitle: string;
+  originalUrl: string;
+}): Promise<{ ok: boolean }> {
+  return callAppsScript("saveDocument", payload);
+}
+
+/** ซ่อน/แสดงเอกสาร (ไม่ลบแถว) */
+export async function setDocumentActive(payload: {
+  title: string;
+  url: string;
+  active: boolean;
+}): Promise<{ ok: boolean }> {
+  return callAppsScript("setDocumentActive", payload);
+}
+
+/** ลบเอกสารถาวร */
+export async function deleteDocument(payload: {
+  title: string;
+  url: string;
+}): Promise<{ ok: boolean }> {
+  return callAppsScript("deleteDocument", payload);
+}

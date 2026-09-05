@@ -3,10 +3,41 @@
 import { requireSession } from "@/lib/session";
 import {
   checkStructure,
+  deleteDocument,
   isBookingConfigured,
   protectHeaders,
+  saveAttending,
+  saveDocument,
+  setAttendingActive,
+  setDocumentActive,
   unprotectHeaders,
 } from "@/lib/apps-script-api";
+import {
+  loadAttendingRows,
+  loadDocumentRows,
+  type AttendingRow,
+  type DocumentRow,
+} from "@/lib/referral-repository";
+
+type ActionResult = { ok: boolean; error?: string };
+
+/** ห่อ action ที่เขียนชีต — กันไม่ให้ error ดิบหลุดไปหน้าจอ และบังคับ login */
+async function runWrite(fn: () => Promise<unknown>): Promise<ActionResult> {
+  await requireSession();
+  if (!isBookingConfigured()) {
+    return { ok: false, error: "โหมดสาธิต — ยังไม่ได้เชื่อม Apps Script" };
+  }
+  try {
+    await fn();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "บันทึกไม่สำเร็จ กรุณาลองใหม่",
+    };
+  }
+}
 
 /**
  * ตรวจโครงสร้างชีต — ให้แอดมินกดหลังแก้ตารางในชีต เพื่อรู้ทันทีว่าหัวคอลัมน์/
@@ -77,4 +108,60 @@ export async function unprotectHeadersAction(): Promise<{
         error instanceof Error ? error.message : "ปลดล็อกไม่สำเร็จ กรุณาลองใหม่",
     };
   }
+}
+
+/* ---------------- อาจารย์ที่ปรึกษา ---------------- */
+
+/** โหลดรายชื่ออาจารย์ล่าสุด (รวมที่ปิดใช้งาน) — เรียกหลังบันทึกเพื่อรีเฟรช */
+export async function refreshAttendingsAction(): Promise<AttendingRow[]> {
+  await requireSession();
+  return loadAttendingRows();
+}
+
+export async function saveAttendingAction(
+  name: string,
+  originalName: string,
+): Promise<ActionResult> {
+  return runWrite(() => saveAttending({ name, originalName }));
+}
+
+export async function setAttendingActiveAction(
+  name: string,
+  active: boolean,
+): Promise<ActionResult> {
+  return runWrite(() => setAttendingActive({ name, active }));
+}
+
+/* ---------------- คลังเอกสาร ---------------- */
+
+/** โหลดเอกสารล่าสุด (รวมที่ซ่อน) — เรียกหลังบันทึกเพื่อรีเฟรช */
+export async function refreshDocumentsAction(): Promise<DocumentRow[]> {
+  await requireSession();
+  return loadDocumentRows();
+}
+
+export async function saveDocumentAction(payload: {
+  title: string;
+  url: string;
+  groups: string;
+  description: string;
+  originalTitle: string;
+  originalUrl: string;
+}): Promise<ActionResult> {
+  return runWrite(() => saveDocument(payload));
+}
+
+export async function setDocumentActiveAction(
+  title: string,
+  url: string,
+  active: boolean,
+): Promise<ActionResult> {
+  return runWrite(() => setDocumentActive({ title, url, active }));
+}
+
+export async function deleteDocumentAction(
+  title: string,
+  url: string,
+): Promise<ActionResult> {
+  return runWrite(() => deleteDocument({ title, url }));
 }

@@ -205,6 +205,26 @@ function doPost(e) {
       return jsonResponse_({ ok: true, data: deleteResidentShift_(body.payload || {}) });
     }
 
+    if (body.action === 'saveAttending') {
+      return jsonResponse_({ ok: true, data: saveAttending_(body.payload || {}) });
+    }
+
+    if (body.action === 'setAttendingActive') {
+      return jsonResponse_({ ok: true, data: setAttendingActive_(body.payload || {}) });
+    }
+
+    if (body.action === 'saveDocument') {
+      return jsonResponse_({ ok: true, data: saveDocument_(body.payload || {}) });
+    }
+
+    if (body.action === 'setDocumentActive') {
+      return jsonResponse_({ ok: true, data: setDocumentActive_(body.payload || {}) });
+    }
+
+    if (body.action === 'deleteDocument') {
+      return jsonResponse_({ ok: true, data: deleteDocument_(body.payload || {}) });
+    }
+
     // ติดเวอร์ชันไปกับข้อความ error ด้วย เพราะสาเหตุที่พบเกือบทุกครั้งของคำสั่ง
     // ที่ "หายไป" คือ deploy ค้างเวอร์ชันเก่า — บอกไปเลยว่าโค้ดตัวไหนเป็นคนตอบ
     return jsonResponse_({
@@ -608,6 +628,148 @@ function deleteResidentShift_(payload) {
   if (!match) {
     throw new Error('ไม่พบช่วงเวรนี้ — อาจถูกลบไปแล้ว กรุณาโหลดหน้าใหม่');
   }
+
+  sheet.deleteRow(match._row);
+  return { ok: true };
+}
+
+/* ------------------------------------------------------------------ */
+/* จัดการรายชื่ออาจารย์ที่ปรึกษา (ชีต attendings) จากเว็บ                 */
+/*                                                                    */
+/* สคริปต์รันในฐานะเจ้าของไฟล์ จึงข้ามการล็อกหัวคอลัมน์ได้ ปลอดภัยกว่า  */
+/* ให้แอดมินเปิดชีตแก้เอง เพราะจำกัดรูปแบบ + ไม่แตะแถวหัว                 */
+/* ------------------------------------------------------------------ */
+
+const ATTENDING_COLUMNS = ['name', 'active'];
+
+/** เพิ่มอาจารย์ใหม่ หรือแก้ชื่อเดิม (ระบุ originalName เพื่อแก้) */
+function saveAttending_(payload) {
+  const name = String(payload.name || '').trim();
+  const originalName = String(payload.originalName || '').trim();
+  if (!name) throw new Error('ยังไม่ได้กรอกชื่ออาจารย์');
+  if (name.length > 100) throw new Error('ชื่อยาวผิดปกติ');
+
+  const sheet = getSheet_(SHEETS.attendings);
+  const map = ensureColumns_(sheet, ATTENDING_COLUMNS);
+  const rows = readRows_(sheet);
+
+  // กันชื่อซ้ำ (ยกเว้นแถวที่กำลังแก้อยู่)
+  const dup = rows.filter(function (r) {
+    const n = String(r['name'] || '').trim();
+    return n === name && n !== originalName;
+  })[0];
+  if (dup) throw new Error('มีชื่อ "' + name + '" อยู่แล้ว');
+
+  if (!originalName) {
+    const row = new Array(sheet.getLastColumn()).fill('');
+    row[map['name']] = name;
+    row[map['active']] = 'yes';
+    sheet.appendRow(row);
+    return { ok: true };
+  }
+
+  const match = rows.filter(function (r) {
+    return String(r['name'] || '').trim() === originalName;
+  })[0];
+  if (!match) throw new Error('ไม่พบชื่อเดิม — อาจถูกแก้ไปแล้ว กรุณาโหลดหน้าใหม่');
+  setCell_(sheet, map, match._row, 'name', name);
+  return { ok: true };
+}
+
+/** เปิด/ปิดใช้งานอาจารย์ (ไม่ลบแถว เก็บประวัติไว้) */
+function setAttendingActive_(payload) {
+  const name = String(payload.name || '').trim();
+  const active = payload.active === true || String(payload.active) === 'true';
+  if (!name) throw new Error('ไม่ได้ระบุชื่ออาจารย์');
+
+  const sheet = getSheet_(SHEETS.attendings);
+  const map = ensureColumns_(sheet, ATTENDING_COLUMNS);
+  const match = readRows_(sheet).filter(function (r) {
+    return String(r['name'] || '').trim() === name;
+  })[0];
+  if (!match) throw new Error('ไม่พบชื่อ "' + name + '" — กรุณาโหลดหน้าใหม่');
+
+  setCell_(sheet, map, match._row, 'active', active ? 'yes' : 'no');
+  return { ok: true };
+}
+
+/* ------------------------------------------------------------------ */
+/* จัดการคลังเอกสาร/ลิงก์ไฟล์ (ชีต documents) จากเว็บ                    */
+/* ระบุแถวเดิมด้วยคู่ (title,url) เดิม แบบเดียวกับเวร resident            */
+/* ------------------------------------------------------------------ */
+
+const DOCUMENT_COLUMNS = ['title', 'url', 'groups', 'description', 'active'];
+
+function findDocumentRow_(sheet, title, url) {
+  const t = String(title || '').trim();
+  const u = String(url || '').trim();
+  return readRows_(sheet).filter(function (r) {
+    return String(r['title'] || '').trim() === t &&
+      String(r['url'] || '').trim() === u;
+  })[0] || null;
+}
+
+/** เพิ่มเอกสารใหม่ หรือแก้เอกสารเดิม (ระบุ originalTitle+originalUrl เพื่อแก้) */
+function saveDocument_(payload) {
+  const title = String(payload.title || '').trim();
+  const url = String(payload.url || '').trim();
+  const groups = String(payload.groups || '').trim();
+  const description = String(payload.description || '').trim();
+
+  if (!title) throw new Error('ยังไม่ได้กรอกชื่อเอกสาร');
+  if (!url) throw new Error('ยังไม่ได้วางลิงก์เอกสาร');
+  if (!/^https?:\/\//i.test(url)) throw new Error('ลิงก์ต้องขึ้นต้นด้วย http:// หรือ https://');
+  if (title.length > 200) throw new Error('ชื่อเอกสารยาวผิดปกติ');
+
+  const sheet = getSheet_(SHEETS.documents);
+  const map = ensureColumns_(sheet, DOCUMENT_COLUMNS);
+
+  const originalTitle = String(payload.originalTitle || '').trim();
+  const originalUrl = String(payload.originalUrl || '').trim();
+
+  if (!originalTitle && !originalUrl) {
+    const row = new Array(sheet.getLastColumn()).fill('');
+    row[map['title']] = title;
+    row[map['url']] = url;
+    row[map['groups']] = groups;
+    row[map['description']] = description;
+    row[map['active']] = 'yes';
+    sheet.appendRow(row);
+    return { ok: true };
+  }
+
+  const match = findDocumentRow_(sheet, originalTitle, originalUrl);
+  if (!match) throw new Error('ไม่พบเอกสารเดิม — อาจถูกแก้ไปแล้ว กรุณาโหลดหน้าใหม่');
+  setCell_(sheet, map, match._row, 'title', title);
+  setCell_(sheet, map, match._row, 'url', url);
+  setCell_(sheet, map, match._row, 'groups', groups);
+  setCell_(sheet, map, match._row, 'description', description);
+  return { ok: true };
+}
+
+/** ซ่อน/แสดงเอกสาร (active) โดยไม่ลบแถว */
+function setDocumentActive_(payload) {
+  const title = String(payload.title || '').trim();
+  const url = String(payload.url || '').trim();
+  const active = payload.active === true || String(payload.active) === 'true';
+
+  const sheet = getSheet_(SHEETS.documents);
+  const map = ensureColumns_(sheet, DOCUMENT_COLUMNS);
+  const match = findDocumentRow_(sheet, title, url);
+  if (!match) throw new Error('ไม่พบเอกสารนี้ — กรุณาโหลดหน้าใหม่');
+
+  setCell_(sheet, map, match._row, 'active', active ? 'yes' : 'no');
+  return { ok: true };
+}
+
+/** ลบเอกสารถาวร (ลบทั้งแถว) */
+function deleteDocument_(payload) {
+  const title = String(payload.title || '').trim();
+  const url = String(payload.url || '').trim();
+
+  const sheet = getSheet_(SHEETS.documents);
+  const match = findDocumentRow_(sheet, title, url);
+  if (!match) throw new Error('ไม่พบเอกสารนี้ — อาจถูกลบไปแล้ว กรุณาโหลดหน้าใหม่');
 
   sheet.deleteRow(match._row);
   return { ok: true };

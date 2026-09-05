@@ -5,6 +5,9 @@ import { mainSheetUrl, scheduleSheetUrl } from "@/lib/google-sheets";
 import { SessionBar } from "@/components/SessionBar";
 import { PageHeader } from "@/components/PageHeader";
 import { StructureCheck } from "./StructureCheck";
+import { AttendingsEditor } from "./AttendingsEditor";
+import { DocumentsEditor } from "./DocumentsEditor";
+import { loadAttendingRows, loadDocumentRows } from "@/lib/referral-repository";
 
 export const dynamic = "force-dynamic";
 
@@ -33,14 +36,6 @@ const CARDS = [
     warn: "ไฟล์นี้แยกจากข้อมูลผู้ป่วย · แก้เฉพาะค่าในเซลล์ ห้ามแตะแถวหัวคอลัมน์ และคงรูปแบบวันที่ (ปี-เดือน-วัน) ไว้ ไม่งั้นการนับคิวเพี้ยน",
   },
   {
-    emoji: "🎓",
-    title: "รายชื่ออาจารย์ผู้ให้คำปรึกษา",
-    tab: "attendings",
-    which: "main" as const,
-    desc: "เพิ่ม/แก้ชื่ออาจารย์ที่ resident เลือกตอนตอบคำปรึกษา",
-    warn: 'เพิ่มชื่อ = พิมพ์แถวใหม่ · เลิกใช้ = พิมพ์ "no" ในคอลัมน์ active (ไม่ต้องลบแถว)',
-  },
-  {
     emoji: "🩺",
     title: "รายชื่อ Resident",
     tab: "residents",
@@ -54,6 +49,10 @@ export default async function SettingsPage() {
   const session = await requireSession("/dashboard/settings");
   const mainUrl = mainSheetUrl();
   const schedUrl = scheduleSheetUrl();
+  const [attendings, documents] = await Promise.all([
+    loadAttendingRows(),
+    loadDocumentRows(),
+  ]);
 
   const urlFor = (which: "main" | "schedule") =>
     which === "main" ? mainUrl : schedUrl;
@@ -157,6 +156,40 @@ export default async function SettingsPage() {
               </Link>
             </div>
           </div>
+        </section>
+
+        {/* อาจารย์ที่ปรึกษา — แก้บนเว็บ ไม่ต้องเปิดชีต */}
+        <section className="rounded-xl bg-white border border-zinc-200 p-5 space-y-3">
+          <div>
+            <h2 className="font-semibold text-zinc-900">
+              <span className="mr-1.5" aria-hidden>
+                🎓
+              </span>
+              อาจารย์ที่ปรึกษา
+            </h2>
+            <p className="text-sm text-zinc-500 mt-0.5">
+              เพิ่ม/แก้ชื่อ และเปิด-ปิดใช้งาน — คนที่เปิดใช้งานจะโผล่ใน dropdown
+              ตอน resident ตอบคำปรึกษา
+            </p>
+          </div>
+          <AttendingsEditor initial={attendings} />
+        </section>
+
+        {/* คลังเอกสาร/ลิงก์ไฟล์ — แก้บนเว็บ ไม่ต้องเปิดชีต */}
+        <section className="rounded-xl bg-white border border-zinc-200 p-5 space-y-3">
+          <div>
+            <h2 className="font-semibold text-zinc-900">
+              <span className="mr-1.5" aria-hidden>
+                📚
+              </span>
+              คลังเอกสาร / ลิงก์ไฟล์
+            </h2>
+            <p className="text-sm text-zinc-500 mt-0.5">
+              เพิ่มลิงก์ไฟล์ที่อยากแนบให้แพทย์ต้นทาง — โผล่บนหน้ากลุ่มและเมนู 📚
+              ใน Hemato Bot ทันที
+            </p>
+          </div>
+          <DocumentsEditor initial={documents} />
         </section>
 
         <section className="rounded-xl bg-white border border-zinc-200 p-5 space-y-3">
