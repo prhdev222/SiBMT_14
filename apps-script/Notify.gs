@@ -761,10 +761,16 @@ function notifyReferrerOnLine_(row, answerToken) {
     if (!token) return false;
 
     const referralId = String(row['referral_id'] || '').trim();
+    // ข้อความต่างตามสถานะ — เคส "ขอข้อมูลเพิ่ม" ไม่ใช่คำตอบสุดท้าย
+    // (ให้ตรงกับอีเมล — feedback 5 ก.ย. 2569)
+    const isIncomplete = String(row['status'] || '') === 'Incomplete';
+    const notice = isIncomplete
+      ? 'ทีมโลหิตวิทยาขอข้อมูลเพิ่มเติมสำหรับเคส ' + referralId
+      : 'ทีมโลหิตวิทยาตอบคำปรึกษา ' + referralId + ' แล้ว';
     return sendOneLineMessage_(token, userId, [
       linkButtonMessage_(
-        'ทีมโลหิตวิทยาตอบคำปรึกษา ' + referralId + ' แล้ว',
-        'เปิดคำตอบ',
+        notice,
+        isIncomplete ? 'ดูรายละเอียด' : 'เปิดคำตอบ',
         SITE_URL + '/answer/' + answerToken
       ),
     ]);

@@ -51,6 +51,8 @@ export default async function AnswerPage({
   }
 
   const meta = REFERRAL_TYPE_META[referral.referralType];
+  // เคส "ขอข้อมูลเพิ่ม" ไม่ใช่คำตอบสุดท้าย — กรอบข้อความคนละแบบ ให้ตรงกับอีเมล
+  const isIncomplete = referral.status === "Incomplete";
 
   return (
     <div className="flex flex-col flex-1 bg-zinc-50">
@@ -60,7 +62,7 @@ export default async function AnswerPage({
             กลุ่มที่ {meta.groupNumber} · {STATUS_LABEL_TH[referral.status]}
           </p>
           <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 mt-1">
-            คำตอบการปรึกษา
+            {isIncomplete ? "ขอข้อมูลเพิ่มเติม" : "คำตอบการปรึกษา"}
           </h1>
           <p className="font-mono text-sm text-zinc-500 mt-1">
             {referral.referralId}
@@ -85,11 +87,20 @@ export default async function AnswerPage({
           </section>
         )}
 
-        <section className="rounded-xl bg-white border-2 border-blue-200 p-5">
-          <h2 className="font-semibold text-zinc-900 mb-2">คำตอบ</h2>
+        <section className={`rounded-xl bg-white border-2 p-5 ${isIncomplete ? "border-amber-300" : "border-blue-200"}`}>
+          <h2 className="font-semibold text-zinc-900 mb-2">
+            {isIncomplete ? "ข้อมูลที่ทีมขอเพิ่ม" : "คำตอบ"}
+          </h2>
           <p className="text-zinc-900 whitespace-pre-wrap leading-relaxed">
             {referral.adviceRecord}
           </p>
+          {isIncomplete && (
+            <p className="mt-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900">
+              กรุณาส่งข้อมูลเพิ่มทางอีเมลแพทย์-ถึง-แพทย์ โดยอ้างเลข{" "}
+              {referral.referralId} แทนชื่อผู้ป่วย เมื่อได้ข้อมูลครบ
+              ทีมจะดำเนินการต่อและตอบกลับให้
+            </p>
+          )}
         </section>
 
         {referral.appointmentDate && (
