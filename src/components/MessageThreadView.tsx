@@ -1,7 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { CaseMessage } from "@/lib/referral-repository";
+
+type SendResult = {
+  ok: boolean;
+  error?: string;
+  fileUrl?: string;
+  fileName?: string;
+};
 
 /**
  * มุมมองบทสนทนาต่อเคส — ใช้ทั้งหน้า /case (แพทย์ต้นทาง) และ dashboard (dent)
@@ -15,25 +22,30 @@ export function MessageThreadView({
   myName,
   onSend,
   locked = false,
+  allowAttach = false,
 }: {
   initialMessages: CaseMessage[];
   mySide: "referrer" | "resident";
   myName: string;
-  onSend: (text: string) => Promise<{ ok: boolean; error?: string }>;
+  onSend: (text: string, file: File | null) => Promise<SendResult>;
   /** true = ล็อกช่องพิมพ์ (เช่น เคสปิดแล้ว) — โชว์เฉพาะประวัติสนทนา */
   locked?: boolean;
+  /** true = แสดงปุ่มแนบไฟล์ (PDF/Word/รูป) */
+  allowAttach?: boolean;
 }) {
   const [messages, setMessages] = useState<CaseMessage[]>(initialMessages);
   const [draft, setDraft] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   async function send() {
     const t = draft.trim();
-    if (!t || sending) return;
+    if ((!t && !file) || sending) return;
     setSending(true);
     setError(null);
-    const result = await onSend(t);
+    const result = await onSend(t, file);
     if (result.ok) {
       setMessages((prev) => [
         ...prev,
@@ -43,17 +55,29 @@ export function MessageThreadView({
           senderName: myName,
           channel: "web",
           text: t,
-          createdAt: new Date()
-            .toISOString()
-            .slice(0, 16)
-            .replace("T", " "),
+          createdAt: new Date().toISOString().slice(0, 16).replace("T", " "),
+          fileName: result.fileName ?? (file ? file.name : undefined),
+          fileUrl: result.fileUrl,
         },
       ]);
       setDraft("");
+      setFile(null);
+      if (fileInput.current) fileInput.current.value = "";
     } else {
       setError(result.error ?? "ส่งไม่สำเร็จ กรุณาลองใหม่");
     }
     setSending(false);
+  }
+
+  function pickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0] ?? null;
+    if (f && f.size > 10 * 1024 * 1024) {
+      setError("ไฟล์ใหญ่เกิน 10 MB");
+      if (fileInput.current) fileInput.current.value = "";
+      return;
+    }
+    setError(null);
+    setFile(f);
   }
 
   return (
@@ -90,7 +114,24 @@ export function MessageThreadView({
                     </span>
                     {m.channel === "line" && <span title="ทาง LINE">· LINE</span>}
                   </div>
-                  <p className="whitespace-pre-wrap break-words">{m.text}</p>
+                  {m.text && (
+                    <p className="whitespace-pre-wrap break-words">{m.text}</p>
+                  )}
+                  {m.fileUrl && (
+                    <a
+                      href={m.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={
+                        "mt-1 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium " +
+                        (mine
+                          ? "bg-white/20 hover:bg-white/30"
+                          : "bg-white border border-zinc-200 hover:bg-zinc-50 text-blue-700")
+                      }
+                    >
+                      📎 <span className="truncate">{m.fileName || "ไฟล์แนบ"}</span>
+                    </a>
+                  )}
                   <div
                     className={
                       "mt-0.5 text-[11px] " +
@@ -108,7 +149,45 @@ export function MessageThreadView({
 
       {locked ? null : (
         <>
+          {file && (
+            <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-1.5 text-xs text-blue-800">
+              📎 <span className="flex-1 min-w-0 truncate">{file.name}</span>
+              <span className="text-blue-400">
+                {(file.size / 1024 / 1024).toFixed(1)} MB
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setFile(null);
+                  if (fileInput.current) fileInput.current.value = "";
+                }}
+                className="text-blue-500 hover:text-blue-700"
+                aria-label="เอาไฟล์ออก"
+              >
+                ✕
+              </button>
+            </div>
+          )}
           <div className="flex items-end gap-2 border-t border-zinc-100 pt-3">
+            {allowAttach && (
+              <>
+                <input
+                  ref={fileInput}
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,image/jpeg,image/png"
+                  onChange={pickFile}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInput.current?.click()}
+                  title="แนบไฟล์ (PDF/Word/รูป)"
+                  className="shrink-0 rounded-lg border border-zinc-300 px-3 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50"
+                >
+                  📎
+                </button>
+              </>
+            )}
             <textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -116,22 +195,29 @@ export function MessageThreadView({
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
               }}
               rows={2}
-              placeholder="พิมพ์ข้อความ… (แนบลิงก์ไฟล์ได้)"
+              placeholder="พิมพ์ข้อความ…"
               className="flex-1 min-w-0 resize-y rounded-lg border border-zinc-300 px-3 py-2 text-sm"
             />
             <button
               type="button"
               onClick={send}
-              disabled={sending || !draft.trim()}
+              disabled={sending || (!draft.trim() && !file)}
               className="shrink-0 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-blue-300"
             >
               {sending ? "กำลังส่ง…" : "ส่ง"}
             </button>
           </div>
           {error && <p className="text-xs text-red-600">{error}</p>}
-          <p className="text-[11px] text-zinc-400">
-            กด Ctrl/⌘ + Enter เพื่อส่งเร็ว · ทุกข้อความถูกบันทึกเป็นบันทึกการปรึกษา
-          </p>
+          {allowAttach ? (
+            <p className="text-[11px] text-amber-700">
+              ⚠️ แนบ PDF/Word/รูปได้ (≤10 MB) · อ้างอิงด้วยเลข HEM- เท่านั้น —{" "}
+              <b>ห้ามใส่ชื่อ-สกุล / HN / เลขบัตร</b> ของผู้ป่วยในไฟล์หรือข้อความ
+            </p>
+          ) : (
+            <p className="text-[11px] text-zinc-400">
+              กด Ctrl/⌘ + Enter เพื่อส่งเร็ว · ทุกข้อความถูกบันทึกเป็นบันทึกการปรึกษา
+            </p>
+          )}
         </>
       )}
     </div>

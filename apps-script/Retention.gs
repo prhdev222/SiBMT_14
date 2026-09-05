@@ -71,9 +71,15 @@ function deleteMessagesForReferrals_(referralIds) {
     return; // ยังไม่มีชีต messages (ระบบเก่า) — ไม่มีอะไรต้องลบ
   }
 
-  readRows_(sheet)
-    .filter(function (r) { return target[String(r['referral_id'] || '').trim()]; })
-    .map(function (r) { return r._row; })
+  const rows = readRows_(sheet)
+    .filter(function (r) { return target[String(r['referral_id'] || '').trim()]; });
+
+  // ไฟล์แนบในบทสนทนาต้องทิ้งลง Drive ด้วย ไม่ใช่ค้างหลังลบแถว
+  trashAttachments_(rows.map(function (r) {
+    return { advice_file_url: String(r['file_url'] || '') };
+  }));
+
+  rows.map(function (r) { return r._row; })
     .sort(function (a, b) { return b - a; })
     .forEach(function (rowNumber) { sheet.deleteRow(rowNumber); });
 }

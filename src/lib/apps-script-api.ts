@@ -461,11 +461,14 @@ export async function updateStatus(payload: {
 /* บทสนทนาต่อเนื่องต่อเคส (Case Conversation)                          */
 /* ------------------------------------------------------------------ */
 
-/** แพทย์ต้นทางส่งข้อความจากหน้า /case/[token] */
+/** แพทย์ต้นทางส่งข้อความ (+ ไฟล์แนบ ถ้ามี) จากหน้า /case/[token] */
 export async function postReferrerMessage(payload: {
   caseToken: string;
   text: string;
-}): Promise<{ ok: boolean }> {
+  fileBase64?: string;
+  fileName?: string;
+  fileMimeType?: string;
+}): Promise<{ ok: boolean; fileUrl?: string; fileName?: string }> {
   return callAppsScript("postReferrerMessage", payload);
 }
 

@@ -276,6 +276,9 @@ export interface CaseMessage {
   channel: string;
   text: string;
   createdAt: string;
+  /** ไฟล์แนบ (ถ้ามี) — ลิงก์เปิดจาก Drive */
+  fileName?: string;
+  fileUrl?: string;
 }
 
 export interface CaseThread {
@@ -295,7 +298,11 @@ export async function loadMessages(referralId: string): Promise<CaseMessage[]> {
   try {
     const rows = await readSheetRows(MESSAGES_SHEET);
     return rows
-      .filter((r) => text(r["referral_id"]) === referralId && text(r["text"]))
+      .filter(
+        (r) =>
+          text(r["referral_id"]) === referralId &&
+          (text(r["text"]) || text(r["file_url"])),
+      )
       .map((r) => ({
         id: text(r["message_id"]),
         senderRole: (text(r["sender_role"]) || "system") as
@@ -306,6 +313,8 @@ export async function loadMessages(referralId: string): Promise<CaseMessage[]> {
         channel: text(r["channel"]),
         text: text(r["text"]),
         createdAt: text(r["created_at"]),
+        fileName: text(r["file_name"]) || undefined,
+        fileUrl: text(r["file_url"]) || undefined,
       }))
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   } catch {

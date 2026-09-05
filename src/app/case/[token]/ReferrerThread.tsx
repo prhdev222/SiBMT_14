@@ -75,8 +75,11 @@ export function ReferrerThread({
         initialMessages={initialMessages}
         mySide="referrer"
         myName={referrerOrg || "แพทย์ต้นทาง"}
-        onSend={(text) => sendReferrerMessageAction(caseToken, text)}
+        onSend={(text, file) =>
+          sendReferrerMessageAction(caseToken, text, file)
+        }
         locked={closed}
+        allowAttach
       />
 
       {closed ? (

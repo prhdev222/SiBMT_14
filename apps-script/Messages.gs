@@ -10,7 +10,7 @@
 
 const MESSAGE_COLUMNS = [
   'message_id', 'referral_id', 'sender_role', 'sender_name',
-  'channel', 'text', 'created_at',
+  'channel', 'text', 'created_at', 'file_name', 'file_url',
 ];
 
 // คอลัมน์ที่เพิ่มในชีต referrals เพื่อรองรับ thread
@@ -38,8 +38,8 @@ function ensureMessagesSheet_() {
   return sheet;
 }
 
-/** เขียนหนึ่งข้อความลงชีต messages */
-function appendMessage_(referralId, role, name, channel, text) {
+/** เขียนหนึ่งข้อความลงชีต messages (fileName/fileUrl เว้นว่างได้) */
+function appendMessage_(referralId, role, name, channel, text, fileName, fileUrl) {
   const sheet = ensureMessagesSheet_();
   const map = ensureColumns_(sheet, MESSAGE_COLUMNS);
   const rowArr = new Array(sheet.getLastColumn()).fill('');
@@ -50,6 +50,8 @@ function appendMessage_(referralId, role, name, channel, text) {
   rowArr[map['channel']] = channel;
   rowArr[map['text']] = text;
   rowArr[map['created_at']] = new Date();
+  rowArr[map['file_name']] = fileName || '';
+  rowArr[map['file_url']] = fileUrl || '';
   sheet.appendRow(rowArr);
 }
 
@@ -160,12 +162,13 @@ function buildCaseActionsBlock_(caseToken, includeClose) {
 /* doPost actions (เรียกจากเว็บ)                                       */
 /* ------------------------------------------------------------------ */
 
-/** แพทย์ต้นทางส่งข้อความจากหน้า /case/[token] */
+/** แพทย์ต้นทางส่งข้อความ (+ ไฟล์แนบ ถ้ามี) จากหน้า /case/[token] */
 function postReferrerMessage_(payload) {
   const caseToken = String(payload.caseToken || '').trim();
   const text = String(payload.text || '').trim();
+  const hasFile = !!String(payload.fileBase64 || '');
   if (!caseToken) throw new Error('ลิงก์ไม่ถูกต้อง');
-  if (!text) throw new Error('ยังไม่ได้พิมพ์ข้อความ');
+  if (!text && !hasFile) throw new Error('ยังไม่ได้พิมพ์ข้อความหรือแนบไฟล์');
   if (text.length > 5000) throw new Error('ข้อความยาวเกินไป');
 
   const sheet = getSheet_(SHEETS.referrals);
@@ -180,11 +183,23 @@ function postReferrerMessage_(payload) {
     throw new Error('เคสนี้ปิดแล้ว — กรุณากด "เปิดเคสใหม่เพื่อถามเพิ่ม" ก่อน');
   }
 
+  const referralId = String(row['referral_id'] || '').trim();
+  // อัปไฟล์ขึ้น Drive (ใช้ตัวเดียวกับไฟล์แนบคำตอบ — ตรวจชนิด/ขนาดให้แล้ว)
+  const attachment = hasFile
+    ? uploadAdviceAttachment_(payload, referralId) : null;
+
   const name = String(row['referrer_org'] || 'แพทย์ต้นทาง').trim();
-  appendMessage_(row['referral_id'], 'referrer', name, 'web', text);
+  appendMessage_(referralId, 'referrer', name, 'web', text,
+    attachment ? attachment.name : '', attachment ? attachment.url : '');
   markCaughtUp_(sheet, map, row, 'referrer');
-  notifyCounterparty_(sheet, map, row, 'referrer', text);
-  return { ok: true };
+  // ข้อความแจ้งเตือน: ถ้าไม่มีข้อความ ใช้ชื่อไฟล์เป็นตัวอย่าง
+  const notice = text || ('📎 ' + (attachment ? attachment.name : 'ไฟล์แนบ'));
+  notifyCounterparty_(sheet, map, row, 'referrer', notice);
+  return {
+    ok: true,
+    fileUrl: attachment ? attachment.url : '',
+    fileName: attachment ? attachment.name : '',
+  };
 }
 
 /** เปิดเคสที่ปิดไปแล้วกลับมาถามเพิ่ม (จากหน้า /case) — ยืนยันด้วย case_token */
