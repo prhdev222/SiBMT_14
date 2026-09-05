@@ -382,3 +382,11 @@ export async function deleteResidentShift(payload: {
 export async function checkStructure(): Promise<{ problems: string[] }> {
   return callAppsScript("checkStructure", {});
 }
+
+/** ล็อกหัวคอลัมน์ทุกแท็บ (กันแก้พลาด) — คืนรายชื่อที่ล็อก/ข้าม */
+export async function protectHeaders(): Promise<{
+  locked: string[];
+  skipped: string[];
+}> {
+  return callAppsScript("protectHeaders", {});
+}

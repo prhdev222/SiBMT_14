@@ -27,6 +27,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('SiBMT')
     .addItem('🔄 Sync เวรจาก HSOS ตอนนี้', 'syncFromMenu_')
+    .addItem('🔒 ล็อกหัวคอลัมน์ (กันแก้พลาด)', 'protectHeadersFromMenu_')
     .addToUi();
 }
 
@@ -166,4 +167,20 @@ function mergeHsosResidents_() {
     added++;
   });
   return added;
+}
+
+/** ล็อกหัวคอลัมน์จากเมนู — รายงานผลเป็น popup */
+function protectHeadersFromMenu_() {
+  try {
+    const r = protectHeaderRows();
+    SpreadsheetApp.getUi().alert(
+      'ล็อกหัวคอลัมน์เรียบร้อยแล้ว 🔒\n\n' +
+      'ล็อกแล้ว: ' + r.locked.join(', ') + '\n' +
+      (r.skipped.length ? '\nข้าม: ' + r.skipped.join(', ') : '') +
+      '\n\nตั้งแต่นี้ แถวหัวคอลัมน์แก้ได้เฉพาะเจ้าของไฟล์ ' +
+      'แถวข้อมูลด้านล่างยังแก้ได้ตามปกติ'
+    );
+  } catch (error) {
+    SpreadsheetApp.getUi().alert('ล็อกไม่สำเร็จ: ' + error);
+  }
 }

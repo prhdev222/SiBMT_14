@@ -189,6 +189,10 @@ function doPost(e) {
       return jsonResponse_({ ok: true, data: { problems: runSelfTest() } });
     }
 
+    if (body.action === 'protectHeaders') {
+      return jsonResponse_({ ok: true, data: protectHeaderRows() });
+    }
+
     if (body.action === 'saveResidentShift') {
       return jsonResponse_({ ok: true, data: saveResidentShift_(body.payload || {}) });
     }

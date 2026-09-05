@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { checkStructureAction } from "./actions";
+import { checkStructureAction, protectHeadersAction } from "./actions";
 
 /**
  * ปุ่มตรวจโครงสร้างชีต — แอดมินกดหลังแก้ตาราง เพื่อรู้ทันทีว่ายังถูกต้องไหม
@@ -13,6 +13,13 @@ export function StructureCheck() {
     | { kind: "loading" }
     | { kind: "ok" }
     | { kind: "problems"; items: string[] }
+    | { kind: "error"; message: string }
+  >({ kind: "idle" });
+
+  const [lock, setLock] = useState<
+    | { kind: "idle" }
+    | { kind: "loading" }
+    | { kind: "done"; locked: string[] }
     | { kind: "error"; message: string }
   >({ kind: "idle" });
 
@@ -28,8 +35,48 @@ export function StructureCheck() {
     }
   }
 
+  async function runLock() {
+    if (
+      !window.confirm(
+        "ล็อกแถวหัวคอลัมน์ทุกแท็บ?\n\nหลังล็อก แถวหัว (แถวบนสุด) จะแก้ได้เฉพาะ" +
+          "เจ้าของไฟล์ ส่วนแถวข้อมูลด้านล่างยังแก้ได้ตามปกติ — ทำครั้งเดียวก็พอ",
+      )
+    )
+      return;
+    setLock({ kind: "loading" });
+    const result = await protectHeadersAction();
+    if (result.ok) {
+      setLock({ kind: "done", locked: result.locked ?? [] });
+    } else {
+      setLock({ kind: "error", message: result.error ?? "ล็อกไม่สำเร็จ" });
+    }
+  }
+
   return (
     <div className="space-y-3">
+      <div className="rounded-lg bg-zinc-50 border border-zinc-200 p-3 space-y-2">
+        <p className="text-sm text-zinc-700">
+          กดล็อกหัวคอลัมน์ครั้งเดียว — กันแอดมินใหม่เผลอแก้หัวคอลัมน์แล้วระบบพัง
+          (แถวข้อมูลยังแก้ได้ตามปกติ)
+        </p>
+        <button
+          type="button"
+          onClick={runLock}
+          disabled={lock.kind === "loading"}
+          className="rounded-lg border-2 border-zinc-800 px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-100 disabled:opacity-50"
+        >
+          {lock.kind === "loading" ? "กำลังล็อก…" : "🔒 ล็อกหัวคอลัมน์ทุกแท็บ"}
+        </button>
+        {lock.kind === "done" && (
+          <p className="text-sm text-green-800">
+            ล็อกแล้ว 🔒 — {lock.locked.length} แท็บ ({lock.locked.join(", ")})
+          </p>
+        )}
+        {lock.kind === "error" && (
+          <p className="text-sm text-amber-800">{lock.message}</p>
+        )}
+      </div>
+
       <button
         type="button"
         onClick={run}

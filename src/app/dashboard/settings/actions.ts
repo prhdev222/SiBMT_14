@@ -1,7 +1,11 @@
 "use server";
 
 import { requireSession } from "@/lib/session";
-import { checkStructure, isBookingConfigured } from "@/lib/apps-script-api";
+import {
+  checkStructure,
+  isBookingConfigured,
+  protectHeaders,
+} from "@/lib/apps-script-api";
 
 /**
  * ตรวจโครงสร้างชีต — ให้แอดมินกดหลังแก้ตารางในชีต เพื่อรู้ทันทีว่าหัวคอลัมน์/
@@ -26,6 +30,28 @@ export async function checkStructureAction(): Promise<{
         error instanceof Error
           ? error.message
           : "ตรวจไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
+    };
+  }
+}
+
+/** ล็อกหัวคอลัมน์ทุกแท็บ — กันแอดมินใหม่แก้หัวคอลัมน์แล้วระบบพัง */
+export async function protectHeadersAction(): Promise<{
+  ok: boolean;
+  locked?: string[];
+  error?: string;
+}> {
+  await requireSession();
+  if (!isBookingConfigured()) {
+    return { ok: false, error: "โหมดสาธิต — ยังไม่ได้เชื่อม Apps Script" };
+  }
+  try {
+    const r = await protectHeaders();
+    return { ok: true, locked: r.locked ?? [] };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "ล็อกไม่สำเร็จ กรุณาลองใหม่",
     };
   }
 }

@@ -562,6 +562,65 @@ function setupAttachmentFolder() {
     RETENTION_MONTHS + ' เดือน (ดู Retention.gs)');
 }
 
+/**
+ * ล็อกแถวหัวคอลัมน์ทุกแท็บที่คนแก้ด้วยมือ — กันแอดมินใหม่เผลอแก้หัวคอลัมน์
+ * แล้วระบบอ่านข้อมูลไม่เจอ (dashboard ว่าง) กดครั้งเดียวตั้งค้างถาวร
+ *
+ * ล็อกเฉพาะ "แถวหัว" (แถว 1) — แถวข้อมูลด้านล่างยังพิมพ์/แก้/ลบได้ตามปกติ
+ * เจ้าของไฟล์ (และคนที่รันฟังก์ชันนี้) ยังแก้หัวได้ คนอื่นแก้ไม่ได้
+ *
+ * ไม่ล็อกแท็บ referrals — เป็นชีตปลายทางของ Google Form การล็อกหัวอาจไปขวาง
+ * การ sync ของฟอร์ม ระบบมี restoreFormHeadersQuiet_ ดูแลหัวของแท็บนั้นแทนอยู่แล้ว
+ *
+ * รันซ้ำได้ไม่พัง — ลบ protection เดิมที่ตัวเองเคยตั้ง (ดูจาก description) ก่อนตั้งใหม่
+ */
+const PROTECT_TABS = [
+  'residents', 'resident_schedule', 'attendings', 'documents',
+  'config', 'holidays', 'chemo_regimens', 'transplant_indications',
+];
+const HEADER_PROTECTION_DESC = 'SiBMT: หัวคอลัมน์ล็อก ห้ามแก้ (ตั้งจากเมนู SiBMT)';
+
+function protectHeaderRows() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const done = [];
+  const skipped = [];
+
+  PROTECT_TABS.forEach(function (name) {
+    const sheet = ss.getSheetByName(name);
+    if (!sheet) { skipped.push(name); return; }
+    protectOneHeader_(sheet);
+    done.push(name);
+  });
+
+  // แท็บ fellow_schedule อยู่คนละไฟล์ — ล็อกให้ด้วยถ้าเปิดได้
+  try {
+    const schedId = PropertiesService.getScriptProperties()
+      .getProperty('SCHEDULE_SHEET_ID');
+    if (schedId) {
+      const fs = SpreadsheetApp.openById(schedId).getSheetByName('fellow_schedule');
+      if (fs) { protectOneHeader_(fs); done.push('fellow_schedule (ไฟล์ตารางเวร)'); }
+    }
+  } catch (err) {
+    skipped.push('fellow_schedule — เปิดไฟล์ตารางเวรไม่ได้: ' + err);
+  }
+
+  return { locked: done, skipped: skipped };
+}
+
+/** ล็อกหัวคอลัมน์ของชีตเดียว — ลบ protection เดิมของเราก่อน กันซ้ำ */
+function protectOneHeader_(sheet) {
+  sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE).forEach(function (p) {
+    if (p.getDescription() === HEADER_PROTECTION_DESC) p.remove();
+  });
+  const header = sheet.getRange(1, 1, 1, sheet.getMaxColumns());
+  const protection = header.protect().setDescription(HEADER_PROTECTION_DESC);
+  // เหลือให้แก้ได้เฉพาะเจ้าของ — ลบ editor คนอื่นออกหมด
+  protection.removeEditors(protection.getEditors());
+  if (protection.canDomainEdit && protection.canDomainEdit()) {
+    protection.setDomainEdit(false);
+  }
+}
+
 function runSelfTest() {
   const problems = [];
 
