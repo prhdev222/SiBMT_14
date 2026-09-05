@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-09-01 lineNotify';
+const API_VERSION = '2026-09-05 lineChat24';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -71,6 +71,7 @@ function doGet() {
     'Retention.gs': 'isExpired_',
     'Setup.gs': 'checkCodeFiles',
     'Util.gs': 'readRows_',
+    'Messages.gs': 'appendMessage_',
   };
 
   Object.keys(required).forEach(function (file) {
@@ -99,6 +100,8 @@ function doGet() {
   const wiring = [
     ['LineWebhook.gs เรียก handleGroupQuery_', 'handleLineEvent_', 'handleGroupQuery_'],
     ['GroupQuery.gs เรียก dashboardLineGroups_', 'isStaffGroup_', 'dashboardLineGroups_'],
+    ['LineWebhook.gs เรียก บทสนทนาต่อเคส (quote-reply)', 'handleLineEvent_', 'handleDentQuoteReply_'],
+    ['doPost รับคำสั่งบทสนทนา (postReferrerMessage)', 'doPost', 'postReferrerMessage'],
   ];
 
   wiring.forEach(function (row) {

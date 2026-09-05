@@ -283,16 +283,8 @@ function markThreadRead_(payload) {
 const LINE_DENT_REPLY_PATTERN =
   /^ตอบ\s+(HEM-\d{8}-\d{4})\s*[:：]\s*([\s\S]+)$/i;
 
-/** กลุ่ม LINE ของเจ้าหน้าที่ (fellow/resident/admin) ที่ตั้งค่าไว้ */
-function isStaffGroup_(sourceId) {
-  const props = PropertiesService.getScriptProperties();
-  const inTarget = function (key) {
-    return parseLineTargets_(props.getProperty(key)).indexOf(sourceId) !== -1;
-  };
-  return inTarget('LINE_TARGET_FELLOW') ||
-    inTarget('LINE_TARGET_RESIDENT') ||
-    inTarget('LINE_TARGET_ADMIN');
-}
+// isStaffGroup_(sourceId) นิยามไว้แล้วใน GroupQuery.gs (ใช้ dashboardLineGroups_
+// เป็นแหล่งข้อมูลเดียว) — ใช้ตัวนั้นร่วมกัน ไม่ประกาศซ้ำที่นี่เพื่อกันฟังก์ชันชนกัน
 
 /** เคสที่ยังไม่จบของแพทย์ต้นทางเบอร์นี้ */
 function openCasesForPhone_(phone) {
