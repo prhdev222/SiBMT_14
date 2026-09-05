@@ -412,21 +412,21 @@ function sendDailyBatch() {
   });
 
   let message = '☀️ สรุปเคสรอดำเนินการ ' + formatThaiDate_(now) + '\n';
+  message += '────────────────\n';
 
-  // ระบุชื่อเวรตอบคำปรึกษาจากตาราง — resident ทุกคนอยู่ในกลุ่ม LINE ถาวร
+  // ชื่อเวรตอบคำปรึกษาจากตารางเวร — วางบรรทัดแรกใต้เส้นคั่นตามรูปแบบ
+  // ที่ผู้ใช้ร่างมา (5 ก.ย. 2569); resident ทุกคนอยู่ในกลุ่ม LINE ถาวร
   // (API ของ LINE ดึงคนเข้า/ออกจากกลุ่มไม่ได้) ตารางเวรจึงเป็นตัวชี้ตัวแทน
   const duty = onDutyResidents_(now);
   if (duty.length > 0) {
-    message += '🩺 เวรตอบคำปรึกษา: ' + duty.map(function (d) {
-      return d.name + ' (ถึง ' + formatThaiDate_(d.until) + ')';
-    }).join(', ') + '\n';
+    message += 'ผู้รับผิดชอบ: ' + duty.map(function (d) {
+      return d.name;
+    }).join(', ') + '\n\n';
   } else {
     // เตือนในข้อความรายวันจนกว่าจะเติม — แอดมินเห็นเองไม่ต้องมีใครไปตาม
     message += '⚠️ ยังไม่มีชื่อเวรในตาราง ' + SHEETS.residentSchedule +
-      ' — รบกวนแอดมินเติมตารางเวรด้วย\n';
+      ' — เคสใหม่จะไม่ถูกมอบหมายอัตโนมัติ\n\n';
   }
-
-  message += '────────────────\n';
   [1, 2, 3].forEach(function (g) {
     if (countByGroup[g]) message += 'กลุ่มที่ ' + g + ': ' + countByGroup[g] + ' เคส\n';
   });
