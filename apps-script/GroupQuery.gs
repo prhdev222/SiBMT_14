@@ -26,6 +26,16 @@ const GROUP_QUERY_PENDING = /^(เคสค้าง|งานค้าง|ค�
 /** คำที่ขอการ์ดปุ่มกด — ตัวที่ทำให้ไม่ต้องจำคำสั่งอีกเลย */
 const GROUP_QUERY_MENU = /^(เมนู|menu|คำสั่ง)\s*$/i;
 
+/**
+ * นัดของ fellow ช่วงข้างหน้า — "นัด fellow" (7 วัน) หรือ "นัด fellow 14"
+ * ⚠️ ต้องตรวจก่อน GROUP_QUERY_APPOINTMENT เพราะ "นัด fellow" เข้าแพตเทิร์น
+ * "นัด <อะไรก็ได้>" ด้วย แล้วจะถูกตีความเป็นวันที่ที่อ่านไม่ออก
+ */
+const GROUP_QUERY_FELLOW_UPCOMING = /^นัด\s*fellow\s*(\d{1,2})?\s*$/i;
+
+/** เวรตอบคำปรึกษากลุ่ม 2/3 — "เวร" "เวร resident" "เวรตอนนี้" */
+const GROUP_QUERY_DUTY = /^เวร(\s*resident|ตอนนี้)?\s*$/i;
+
 
 /**
  * ปุ่มทั้งหมดที่มี — ⚠️ template แบบปุ่มรับได้มากสุด 4 ปุ่ม ป้ายยาวได้ 20 ตัวอักษร
@@ -36,6 +46,10 @@ const GROUP_QUERY_APPOINTMENT_ACTIONS = [
 ];
 const GROUP_QUERY_PENDING_ACTIONS = [
   { label: 'เคสค้าง', text: 'เคสค้าง' },
+  { label: 'เวร resident', text: 'เวร resident' },
+];
+const GROUP_QUERY_FELLOW_ACTIONS = [
+  { label: 'นัด fellow', text: 'นัด fellow' },
 ];
 
 /**
@@ -61,10 +75,15 @@ function groupActionsFor_(sourceId) {
   const fellow = inTarget('LINE_TARGET_FELLOW');
   const resident = inTarget('LINE_TARGET_RESIDENT');
 
-  if (fellow && !resident) return GROUP_QUERY_APPOINTMENT_ACTIONS;
+  if (fellow && !resident) {
+    return GROUP_QUERY_APPOINTMENT_ACTIONS.concat(GROUP_QUERY_FELLOW_ACTIONS);
+  }
   if (resident && !fellow) return GROUP_QUERY_PENDING_ACTIONS;
 
-  return GROUP_QUERY_APPOINTMENT_ACTIONS.concat(GROUP_QUERY_PENDING_ACTIONS);
+  // กลุ่มแอดมิน (หรือแยกไม่ออก) เห็นครบทุกคำสั่ง
+  return GROUP_QUERY_APPOINTMENT_ACTIONS
+    .concat(GROUP_QUERY_FELLOW_ACTIONS)
+    .concat(GROUP_QUERY_PENDING_ACTIONS);
 }
 
 /** แสดง fellow มากสุดกี่คนในข้อความเดียว ก่อนยุบเป็น "และอีก N คน" */
@@ -110,6 +129,20 @@ function handleGroupQuery_(event, text, sourceId) {
 
   if (GROUP_QUERY_PENDING.test(text)) {
     replyOrReport_(event.replyToken, buildPendingReply_);
+    return true;
+  }
+
+  const upcoming = text.match(GROUP_QUERY_FELLOW_UPCOMING);
+  if (upcoming) {
+    const days = parseInt(upcoming[1], 10) || 7;
+    replyOrReport_(event.replyToken, function () {
+      return buildFellowUpcomingReply_(days);
+    });
+    return true;
+  }
+
+  if (GROUP_QUERY_DUTY.test(text)) {
+    replyOrReport_(event.replyToken, buildDutyReply_);
     return true;
   }
 
@@ -383,4 +416,105 @@ function diagnoseGroupQuery() {
     console.log('✅ เอา ID ที่บอทตอบตอนพิมพ์ #id มาเทียบกับรายการด้านบน');
     console.log('   ตรงกันเป๊ะ = บอทต้องตอบ / ไม่ตรง = ใส่ผิดกลุ่ม');
   }
+}
+
+/**
+ * นัดพบ fellow ช่วง N วันข้างหน้า จัดกลุ่มตามชื่อ fellow — ให้แอดมินกวาดตา
+ * แล้วรู้ว่าต้องไปเตือนใคร (คำขอผู้ใช้ 5 ก.ย. 2569)
+ *
+ * ข้อมูลต่อแถว: วันนัด · เลขเคส · กลุ่มโรค เท่านั้น — กติกาเดียวกับข้อความ
+ * แจ้ง fellow (PDPA-003) ไม่มีชื่อ/อายุผู้ป่วยในข้อความกลุ่ม
+ */
+function buildFellowUpcomingReply_(days) {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + days - 1);
+  end.setHours(23, 59, 59, 999);
+
+  const byFellow = {};
+  let total = 0;
+
+  readRows_(getSheet_(SHEETS.referrals)).forEach(function (r) {
+    if (String(r['referral_type']).trim() !== TYPES.transplant) return;
+    if (String(r['status']).trim() !== 'Appointment Confirmed') return;
+    const when = toDate_(r['appointment_date']);
+    if (!when || when < start || when > end) return;
+
+    const fellow = String(r['fellow_assigned'] || '').trim() || '(ไม่ระบุ fellow)';
+    (byFellow[fellow] = byFellow[fellow] || []).push({
+      when: when,
+      id: String(r['referral_id'] || '').trim(),
+      disease: String(r['disease_group'] || '').trim(),
+    });
+    total++;
+  });
+
+  let text = '📅 นัดพบ fellow ' + days + ' วันข้างหน้า\n' +
+    '(' + formatThaiDate_(start) + ' – ' + formatThaiDate_(end) + ')\n' +
+    '────────────────\n';
+
+  const names = Object.keys(byFellow).sort();
+  if (names.length === 0) {
+    return text + 'ไม่มีนัดในช่วงนี้\n\nดูช่วงอื่น: พิมพ์ "นัด fellow 14"';
+  }
+
+  names.forEach(function (name) {
+    const list = byFellow[name].sort(function (a, b) { return a.when - b.when; });
+    text += '\n' + name + ' — ' + list.length + ' นัด\n';
+    list.forEach(function (item) {
+      text += '• ' + formatThaiDate_(item.when) + ' · ' + item.id +
+        (item.disease ? ' · ' + item.disease : '') + '\n';
+    });
+  });
+
+  text += '\nรวม ' + total + ' นัด · ดูตาราง:\n' + SITE_URL + '/dashboard/schedule';
+  return text;
+}
+
+/**
+ * เวรตอบคำปรึกษากลุ่ม 2/3 — ตอนนี้ใครประจำการ และรอบถัดไปคือใคร
+ * อ่านจากชีต resident_schedule ตัวเดียวกับการมอบหมายเคสอัตโนมัติ
+ */
+function buildDutyReply_() {
+  const now = new Date();
+  const current = onDutyResidents_(now);
+
+  let text = '🩺 เวรตอบคำปรึกษากลุ่ม 2/3\n────────────────\n';
+
+  if (current.length === 0) {
+    text += '⚠️ ตอนนี้ไม่มีชื่อเวรในตาราง — เคสใหม่จะไม่ถูกมอบหมายอัตโนมัติ\n';
+  } else {
+    text += 'ตอนนี้ (' + current.length + ' คน):\n';
+    current.forEach(function (d) {
+      text += '• ' + d.name + ' (ถึง ' + formatThaiDate_(toDate_(d.until)) + ')\n';
+    });
+  }
+
+  // รอบถัดไป — ช่วงเวรอนาคตที่เริ่มเร็วที่สุด (อาจมีหลายคนช่วงเดียวกัน)
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  const future = [];
+  readRows_(getSheet_(SHEETS.residentSchedule)).forEach(function (r) {
+    const from = toDate_(r['from_date']);
+    const to = toDate_(r['to_date']);
+    const name = String(r['resident_name'] || '').trim();
+    if (!from || !to || !name || from <= today) return;
+    future.push({ from: from, to: to, name: name });
+  });
+
+  if (future.length > 0) {
+    future.sort(function (a, b) { return a.from - b.from; });
+    const nextFrom = future[0].from.getTime();
+    const nextTeam = future.filter(function (f) {
+      return f.from.getTime() === nextFrom;
+    });
+    text += '\nรอบถัดไป (' + formatThaiDate_(nextTeam[0].from) + ' – ' +
+      formatThaiDate_(nextTeam[0].to) + '):\n';
+    nextTeam.forEach(function (f) { text += '• ' + f.name + '\n'; });
+  }
+
+  text += '\nเคสใหม่ถูกมอบหมายให้เวรตอนนี้อัตโนมัติ (วนตามลำดับ)\n' +
+    'แก้/แลกเวร: ' + SITE_URL + '/dashboard/duty';
+  return text;
 }
