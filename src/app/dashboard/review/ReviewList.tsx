@@ -299,7 +299,10 @@ function ReviewCard({
 
                 <label className="block text-sm">
                   <span className="block font-medium text-zinc-700 mb-1">
-                    คำตอบถึงแพทย์ต้นทาง <span className="text-red-600">*</span>
+                    {status === "Incomplete"
+                      ? "ระบุข้อมูลที่ต้องการเพิ่ม"
+                      : "คำตอบถึงแพทย์ต้นทาง"}{" "}
+                    <span className="text-red-600">*</span>
                   </span>
                   <textarea
                     ref={adviceRef}
@@ -308,11 +311,17 @@ function ReviewCard({
                     rows={6}
                     maxLength={MAX_ADVICE_CHARS}
                     onChange={(e) => setAdviceLength(e.target.value.length)}
-                    placeholder="เช่น แนะนำให้ R-CHOP ครบ 6 cycles ก่อน แล้วประเมินซ้ำด้วย PET-CT หากยังมี residual disease จึงส่งปรึกษาการปลูกถ่าย"
+                    placeholder={
+                      status === "Incomplete"
+                        ? "เช่น ขอผล bone marrow biopsy และ cytogenetics เพิ่ม เพื่อประเมินว่าเข้าเกณฑ์ปลูกถ่ายหรือไม่"
+                        : "เช่น แนะนำให้ R-CHOP ครบ 6 cycles ก่อน แล้วประเมินซ้ำด้วย PET-CT หากยังมี residual disease จึงส่งปรึกษาการปลูกถ่าย"
+                    }
                     className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 leading-relaxed"
                   />
                   <span className="block text-xs text-zinc-500 mt-1">
-                    ข้อความนี้จะถูกส่งอีเมลกลับแพทย์ต้นทางตามที่กรอกไว้
+                    {status === "Incomplete"
+                      ? "อีเมลจะแจ้งแพทย์ต้นทางว่าขอข้อมูลนี้เพิ่ม พร้อมวิธีส่งกลับ (อ้างเลข HEM- ทางอีเมล)"
+                      : "ข้อความนี้จะถูกส่งอีเมลกลับแพทย์ต้นทางตามที่กรอกไว้"}
                   </span>
                   {/*
                     โผล่เฉพาะตอนใกล้เพดาน — ตัวนับที่ขึ้นตลอดเวลาเป็นเสียงรบกวน

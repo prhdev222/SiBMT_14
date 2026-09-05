@@ -734,6 +734,7 @@ function saveAdvice_(payload) {
     if (email) {
       emailed = sendAdviceEmail_(email, {
         referralId: referralId,
+        status: status,
         advice: advice,
         answeredBy: String(payload.answeredBy || '').trim(),
         wardPhone: String(payload.wardPhone || '').trim(),
@@ -826,33 +827,58 @@ function sendAdviceCopyEmail_(row) {
 }
 
 function sendAdviceEmail_(email, data) {
-  const body =
-    'ทีมโลหิตวิทยา ศิริราช ได้ตอบคำปรึกษาของท่านแล้ว\n\n' +
-    'เลขที่อ้างอิง: ' + data.referralId + '\n\n' +
-    (data.question ? '--- คำถามของท่าน ---\n' + data.question + '\n\n' : '') +
-    '--- คำตอบ ---\n' + data.advice + '\n\n' +
-    buildVisitBlock_(data.visit) +
-    buildAttachmentBlock_(data) +
-    buildAdviceContactBlock_(data) +
-    (data.answerUrl
-      ? '--- เปิดคำตอบนี้บนเว็บ ---\n' + data.answerUrl + '\n' +
-        '(ลิงก์นี้เปิดได้เฉพาะผู้ที่มีลิงก์ ส่งต่อให้ทีมดูได้)\n\n'
-      : '') +
-    buildLineLinkInvite_() +
-    'กรุณาอย่าส่งชื่อ-สกุล หรือเลข HN ของผู้ป่วยทางอีเมลนี้\n\n' +
-    '--\n' +
-    'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช\n' +
-    'อีเมลนี้ส่งจากระบบอัตโนมัติ กรุณาอย่าตอบกลับ';
+  // สถานะ "ขอข้อมูลเพิ่ม" ใช้แม่แบบคนละแบบ — กรอบเป็น "คำขอข้อมูล" ไม่ใช่
+  // "คำตอบสุดท้าย" และบอกวิธีส่งข้อมูลกลับให้ชัด ไม่งั้นเคสตัน (feedback 5 ก.ย.)
+  const isIncomplete = String(data.status || '') === 'Incomplete';
+
+  const wardPhone = String(data.wardPhone || '').trim();
+  const requestReply =
+    '--- วิธีส่งข้อมูลเพิ่มเติม ---\n' +
+    'ตอบกลับทางอีเมลแพทย์-ถึง-แพทย์ โดยอ้างเลข ' + data.referralId +
+    ' แทนการระบุชื่อผู้ป่วย\n' +
+    (wardPhone ? 'หรือสอบถามที่วอร์ดเคมีบำบัด โทร ' + wardPhone + '\n' : '') +
+    'เมื่อได้ข้อมูลครบ ทีมจะดำเนินการต่อและตอบกลับให้\n\n';
+
+  const body = isIncomplete
+    ? 'ทีมโลหิตวิทยา ศิริราช ขอข้อมูลเพิ่มเติมก่อนให้คำแนะนำ\n\n' +
+      'เลขที่อ้างอิง: ' + data.referralId + '\n\n' +
+      (data.question ? '--- คำถามของท่าน ---\n' + data.question + '\n\n' : '') +
+      '--- ข้อมูลที่ขอเพิ่ม ---\n' + data.advice + '\n\n' +
+      requestReply +
+      buildAttachmentBlock_(data) +
+      buildAdviceContactBlock_(data) +
+      buildLineLinkInvite_() +
+      'กรุณาอย่าส่งชื่อ-สกุล หรือเลข HN ของผู้ป่วยทางอีเมลนี้\n\n' +
+      '--\n' +
+      'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช\n' +
+      'อีเมลนี้ส่งจากระบบอัตโนมัติ กรุณาอย่าตอบกลับ'
+    : 'ทีมโลหิตวิทยา ศิริราช ได้ตอบคำปรึกษาของท่านแล้ว\n\n' +
+      'เลขที่อ้างอิง: ' + data.referralId + '\n\n' +
+      (data.question ? '--- คำถามของท่าน ---\n' + data.question + '\n\n' : '') +
+      '--- คำตอบ ---\n' + data.advice + '\n\n' +
+      buildVisitBlock_(data.visit) +
+      buildAttachmentBlock_(data) +
+      buildAdviceContactBlock_(data) +
+      (data.answerUrl
+        ? '--- เปิดคำตอบนี้บนเว็บ ---\n' + data.answerUrl + '\n' +
+          '(ลิงก์นี้เปิดได้เฉพาะผู้ที่มีลิงก์ ส่งต่อให้ทีมดูได้)\n\n'
+        : '') +
+      buildLineLinkInvite_() +
+      'กรุณาอย่าส่งชื่อ-สกุล หรือเลข HN ของผู้ป่วยทางอีเมลนี้\n\n' +
+      '--\n' +
+      'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช\n' +
+      'อีเมลนี้ส่งจากระบบอัตโนมัติ กรุณาอย่าตอบกลับ';
 
   try {
     MailApp.sendEmail({
       to: email,
-      subject: 'คำตอบการปรึกษา ' + data.referralId,
+      subject: (isIncomplete ? 'ขอข้อมูลเพิ่ม ' : 'คำตอบการปรึกษา ') +
+        data.referralId,
       body: body,
     });
     return true;
   } catch (err) {
-    console.error('ส่งคำตอบไม่สำเร็จ (' + data.referralId + '): ' + err);
+    console.error('ส่งอีเมลไม่สำเร็จ (' + data.referralId + '): ' + err);
     return false;
   }
 }
