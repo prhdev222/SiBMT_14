@@ -93,6 +93,7 @@ export function DashboardClient({
   const [diseaseGroup, setDiseaseGroup] = useState<DiseaseGroup | "all">("all");
   const [assignedTo, setAssignedTo] = useState<string>("all");
   const [alertOnly, setAlertOnly] = useState(false);
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [showClosed, setShowClosed] = useState(false);
   const [selected, setSelected] = useState<Referral | null>(null);
 
@@ -179,6 +180,7 @@ export function DashboardClient({
           return false;
       }
       if (alertOnly && alertOf(r) === "none") return false;
+      if (unreadOnly && !r.dentUnread) return false;
       return true;
     });
   }, [
@@ -189,6 +191,7 @@ export function DashboardClient({
     diseaseGroup,
     assignedTo,
     alertOnly,
+    unreadOnly,
     showClosed,
     statusOverrides,
   ]);
@@ -397,6 +400,16 @@ export function DashboardClient({
         <label className="flex items-center gap-2 text-sm text-zinc-700">
           <input
             type="checkbox"
+            checked={unreadOnly}
+            onChange={(e) => setUnreadOnly(e.target.checked)}
+            className="rounded border-zinc-300"
+          />
+          💬 เฉพาะเคสที่มีข้อความใหม่
+        </label>
+
+        <label className="flex items-center gap-2 text-sm text-zinc-700">
+          <input
+            type="checkbox"
             checked={showClosed}
             onChange={(e) => setShowClosed(e.target.checked)}
             className="rounded border-zinc-300"
@@ -479,14 +492,22 @@ export function DashboardClient({
                     {assignedOf(r) ?? "—"}
                   </td>
                   <td className="px-4 py-3">
-                    {alert === "none" ? (
-                      <span className="text-zinc-400">—</span>
-                    ) : (
-                      <Badge
-                        label={ALERT_LABEL_TH[alert]}
-                        colorClass={ALERT_COLOR[alert]}
-                      />
-                    )}
+                    <div className="flex flex-col items-start gap-1">
+                      {r.dentUnread && (
+                        <Badge
+                          label="💬 ข้อความใหม่"
+                          colorClass="bg-blue-100 text-blue-800"
+                        />
+                      )}
+                      {alert === "none" ? (
+                        !r.dentUnread && <span className="text-zinc-400">—</span>
+                      ) : (
+                        <Badge
+                          label={ALERT_LABEL_TH[alert]}
+                          colorClass={ALERT_COLOR[alert]}
+                        />
+                      )}
+                    </div>
                   </td>
                 </tr>
               );

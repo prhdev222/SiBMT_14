@@ -751,6 +751,7 @@ function toReferral(row: Record<string, string>): Referral | null {
     urgency: parseUrgency(row["urgency"]),
     status,
     assignedTo: text(row["assigned_to"]) || null,
+    dentUnread: text(row["dent_unread"]).toLowerCase() === "yes",
     elapsedBusinessHours: number(row["elapsed_business_hours"]),
     followUpDate: text(row["follow_up_date"]) || null,
     possibleDuplicateOf: text(row["possible_duplicate_of"]) || null,

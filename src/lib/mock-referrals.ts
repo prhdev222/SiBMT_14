@@ -180,6 +180,7 @@ export const MOCK_REFERRALS: Referral[] = [
     referralType: "REGIMEN_CONSULT",
     diseaseGroup: "Lymphoma",
     submittedAt: "2026-07-28 13:02",
+    dentUnread: true,
     referrerOrg: "โรงพยาบาลเพชรบุรี",
     referrerName: "",
     referrerPhone: "084-321-7788",

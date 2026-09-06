@@ -383,6 +383,8 @@ export interface Referral {
   urgency: Urgency;
   status: Status;
   assignedTo: string | null;
+  /** มีข้อความจากแพทย์ต้นทางที่ dent ยังไม่อ่าน (จากคอลัมน์ dent_unread) */
+  dentUnread?: boolean;
   /** ชั่วโมงทำการที่ผ่านไปนับจากส่งฟอร์ม (ไม่นับวันหยุด — ดู SRS FR-013) */
   elapsedBusinessHours: number;
   followUpDate: string | null;
