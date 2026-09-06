@@ -103,8 +103,15 @@ function handleTelegramUpdate_(update) {
   const text = String(msg.text || '').trim();
 
   // รับเฉพาะกลุ่มที่ตั้งไว้ (Apps Script อ่าน header ไม่ได้ จึงยืนยันด้วย chat_id)
+  // ถ้า id ยังไม่ตรง → บอกเลขที่ถูกในกลุ่มเลย เพื่อให้ตั้งค่าได้ง่าย (ไม่ต้องอ่าน log)
   if (telegramKnownChats_().indexOf(chatId) === -1) {
-    console.log('Telegram: ข้าม chat ' + chatId + ' (ไม่อยู่ในกลุ่มที่ตั้งไว้)');
+    console.log('Telegram: chat ' + chatId + ' ยังไม่อยู่ในกลุ่มที่ตั้งไว้');
+    telegramReply_(chatId,
+      'ℹ️ ตั้งค่ากลุ่มนี้\n' +
+      'chat_id = ' + chatId + '\n\n' +
+      'เอาเลขนี้ไปใส่ Script Property ให้ตรงกลุ่ม:\n' +
+      'TELEGRAM_CHAT_ADMIN / _RESIDENT / _FELLOW\n' +
+      'แล้ว Save (ไม่ต้อง deploy) → บอทจะตอบคำสั่งได้');
     return jsonResponse_({ ok: true });
   }
   if (!text) return jsonResponse_({ ok: true });
@@ -219,8 +226,10 @@ function setTelegramWebhook() {
     Logger.log('   (Deploy → Manage deployments → Web app → คัดลอก URL)');
     return;
   }
+  // drop_pending_updates=true → ทิ้งคิวข้อความค้างเก่า (กันวนส่งซ้ำไม่หยุด)
   const res = UrlFetchApp.fetch(
-    TELEGRAM_API + token + '/setWebhook?url=' + encodeURIComponent(url),
+    TELEGRAM_API + token + '/setWebhook?url=' + encodeURIComponent(url) +
+    '&drop_pending_updates=true',
     { muteHttpExceptions: true });
   Logger.log('setWebhook → ' + res.getContentText());
   Logger.log('URL ที่ผูก: ' + url);
