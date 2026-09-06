@@ -895,7 +895,7 @@ function sendContactToAdmin_(event, flow, userId) {
   const who = lineDisplayName_(userId);
   const ticket = issueLineTicket_(userId);
 
-  pushLineMessage_(
+  sendTeamNotify_(
     '📨 มีเรื่องแจ้งจากแพทย์ต้นทาง\n\n' +
     'เรื่อง: ' + (LINE_CONTACT_TOPICS[flow.topic] || 'ไม่ระบุ') + '\n' +
     (flow.referralId ? 'เคส: ' + flow.referralId + '\n' : '') +
@@ -1053,7 +1053,7 @@ function relayToAdmin_(event, text, userId) {
     return;
   }
 
-  pushLineMessage_(
+  sendTeamNotify_(
     '💬 #' + ticket + ' ตอบกลับมา\n\n' +
     'จาก: ' + lineDisplayName_(userId) + '\n\n' +
     text.slice(0, 1200) + '\n\n' +

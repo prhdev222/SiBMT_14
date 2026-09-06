@@ -107,11 +107,20 @@ function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl, urgent,
       String(readCell_(sheet, map2, row._row, 'dent_unread') || '')
         .toLowerCase() === 'yes';
     setCell_(sheet, map2, row._row, 'dent_unread', 'yes');
-    // ป้าย 💬 บน dashboard ขึ้นเสมอ (ฟรี) · push เมื่อ "แพทย์กดด่วน" หรือเปิดสวิตช์
-    // ไม่ด่วน + สวิตช์ปิด = ไม่ push ทันที แต่ไปโผล่รอบ 10:00 ในกลุ่ม dent (ฟรี)
+    const audience = caseAudience_(row['referral_type']);
+    // Telegram เด้งเตือน dent ทันที (ฟรี) — coalesce ต่อชุดข้อความที่ยังไม่อ่าน
+    if (!wasPending) {
+      sendTelegram_(
+        '💬 ' + referralId + ' มีข้อความจากแพทย์ต้นทาง\n' +
+        '“' + preview + '”' + fileLine + '\n' +
+        '─────────\n' +
+        'ตอบ: พิมพ์  ตอบ ' + referralId + ': <ข้อความ>\n' +
+        'หรือเปิด ' + SITE_URL + '/dashboard',
+        audience);
+    }
+    // ป้าย 💬 บน dashboard ขึ้นเสมอ (ฟรี) · LINE push เมื่อ "แพทย์กดด่วน" หรือเปิดสวิตช์
     if (!wasPending && linePushEnabled_() &&
         (urgent || chatPushOn_('chat_push_dent', false))) {
-      const audience = caseAudience_(row['referral_type']);
       pushDentNudgeWithQuote_(audience, referralId,
         '💬 ' + referralId + ' มีข้อความจากแพทย์ต้นทาง\n' +
         '“' + preview + '”' + fileLine + '\n' +

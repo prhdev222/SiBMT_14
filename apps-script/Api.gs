@@ -30,7 +30,7 @@
  *
  * ⚠️ แก้ค่านี้ทุกครั้งที่แก้ไฟล์นี้ ไม่งั้นมันโกหก
  */
-const API_VERSION = '2026-09-06 lineChat25';
+const API_VERSION = '2026-09-06 telegram26';
 
 /**
  * ตอบเมื่อมีคนเปิด URL นี้ในเบราว์เซอร์
@@ -72,6 +72,7 @@ function doGet() {
     'Setup.gs': 'checkCodeFiles',
     'Util.gs': 'readRows_',
     'Messages.gs': 'appendMessage_',
+    'Telegram.gs': 'handleTelegramUpdate_',
   };
 
   Object.keys(required).forEach(function (file) {
@@ -102,6 +103,8 @@ function doGet() {
     ['GroupQuery.gs เรียก dashboardLineGroups_', 'isStaffGroup_', 'dashboardLineGroups_'],
     ['LineWebhook.gs เรียก บทสนทนาต่อเคส (quote-reply)', 'handleLineEvent_', 'handleDentQuoteReply_'],
     ['doPost รับคำสั่งบทสนทนา (postReferrerMessage)', 'doPost', 'postReferrerMessage'],
+    ['doPost รับ Telegram webhook', 'doPost', 'handleTelegramUpdate_'],
+    ['แจ้งเตือนทีมผ่าน Telegram (sendTeamNotify_)', 'sendTeamNotify_', 'sendTelegram_'],
   ];
 
   wiring.forEach(function (row) {
@@ -128,6 +131,13 @@ function doPost(e) {
     // ตัวจัดการอยู่ใน LineWebhook.gs — doPost รู้แค่ว่าต้องส่งต่อให้ใคร
     if (body.events && body.destination) {
       return handleLineWebhook_(body);
+    }
+
+    // Telegram ส่ง update มาในรูป { update_id, message: {...} } และไม่มี token
+    // ตัวจัดการอยู่ใน Telegram.gs — ยืนยันด้วย chat_id ว่ามาจากกลุ่มที่ตั้งไว้
+    if (body.update_id || (body.message && body.message.chat) ||
+        (body.edited_message && body.edited_message.chat)) {
+      return handleTelegramUpdate_(body);
     }
 
     if (!isAuthorized_(body.token)) {
@@ -1300,7 +1310,7 @@ function contactAdmin_(payload) {
   // ถ้าโยน error หน้าเว็บจะบอกว่าส่งไม่สำเร็จทั้งที่อาจส่งไปแล้วทางหนึ่ง
   let delivered = false;
   try {
-    pushLineMessage_(body, 'red');
+    sendTeamNotify_(body, 'red');
     delivered = true;
   } catch (err) {
     console.error('ส่ง LINE ถึงแอดมินไม่สำเร็จ: ' + err);

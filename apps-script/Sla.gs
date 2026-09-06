@@ -75,7 +75,7 @@ function sendRedAlertTest() {
     Logger.log('(ไม่มีเคสแดง/เหลือง — ไม่มีอะไรจะส่ง)');
     return;
   }
-  pushLineMessage_(message, 'red');
+  sendTeamNotify_(message, 'red');
   Logger.log('ส่งข้อความทดสอบเข้ากลุ่มแล้ว (ไม่ได้ประทับสถานะ)');
 }
 
@@ -97,7 +97,7 @@ function sendRedAlert() {
 
   // markSent = true → ประทับ red_alert_sent_at จริง (โหมดส่งจริง)
   const message = buildAdminAlertMessage_(now, true);
-  if (message) pushLineMessage_(message, 'red');
+  if (message) sendTeamNotify_(message, 'red');
 }
 
 /**

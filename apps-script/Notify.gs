@@ -412,7 +412,7 @@ function sendDailyBatch() {
   });
 
   if (open.length === 0) {
-    pushLineMessage_(
+    sendTeamNotify_(
       '☀️ สรุปเคสประจำวันที่ ' + formatThaiDate_(now) + '\nไม่มีเคสค้างดำเนินการ',
       'batch'
     );
@@ -504,7 +504,7 @@ function sendDailyBatch() {
   // ข้อความที่ทุกคนอ่านอยู่แล้ว (คำขอผู้ใช้ 5 ก.ย. 2569)
   message += '\n\n💬 พิมพ์ "เมนู" เพื่อดูคำสั่งที่ถามบอทได้';
 
-  pushLineMessage_(message, 'batch');
+  sendTeamNotify_(message, 'batch');
 
   // บันทึกว่าแจ้ง Yellow ไปแล้ว เพื่อใช้ดูย้อนหลังว่าเคสถูกเตือนกี่รอบ
   const nowTs = new Date();
@@ -602,7 +602,7 @@ function sendFellowDailyBatch() {
 
   message += 'เบอร์แพทย์ต้นทางและรายละเอียดโรค ดูที่\n' + SITE_URL + '/dashboard/appointments';
 
-  pushLineMessage_(message, 'fellow');
+  sendTeamNotify_(message, 'fellow');
 
   // ประทับเวลาหลังส่งสำเร็จเท่านั้น — ถ้า push ล้ม ให้รอบถัดไปลองใหม่
   fresh.forEach(function (r) {
@@ -633,7 +633,7 @@ function notifyFellowOfBooking_(booking) {
       (booking.indication ? 'ข้อบ่งชี้ (I/C): ' + booking.indication + '\n' : '') +
       '\nรายละเอียดเพิ่มเติม: ' + DASHBOARD_URL;
 
-    pushLineMessage_(message, 'fellow');
+    sendTeamNotify_(message, 'fellow');
 
     // ประทับว่าแจ้งแล้ว ไม่งั้นรอบ 10:00 น. จะหยิบนัดนี้ไปแจ้งซ้ำอีกครั้ง
     markFellowNotified_(booking.referralId);
@@ -679,7 +679,7 @@ function markFellowNotified_(referralId) {
  * ไม่รอรอบ 10:00 น. เพราะเป็นความผิดพลาดของระบบ ไม่ใช่ภาระงานปกติ
  */
 function notifyConfigProblem_(detail) {
-  pushLineMessage_(
+  sendTeamNotify_(
     '🛠️ ระบบตั้งค่าไม่ตรงกัน\n' +
       detail.split('\n').slice(0, 2).join('\n') +
       '\nดูรายละเอียดใน Apps Script → Executions',
@@ -700,7 +700,7 @@ function notifyConfigProblem_(detail) {
  */
 function notifyFellowOfCancellation_(booking) {
   try {
-    pushLineMessage_(
+    sendTeamNotify_(
       '❌ นัดถูกยกเลิก\n' +
       '────────────────\n' +
       'แพทย์ผู้ตรวจ: ' + (booking.fellowName || '-') + '\n' +
@@ -723,7 +723,7 @@ function notifyFellowOfCancellation_(booking) {
  */
 function notifyFellowOfReschedule_(booking) {
   try {
-    pushLineMessage_(
+    sendTeamNotify_(
       '🔄 เลื่อนนัด\n' +
       '────────────────\n' +
       'เลขที่อ้างอิง: ' + (booking.referralId || '-') + '\n' +
