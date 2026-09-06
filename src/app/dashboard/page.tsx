@@ -5,6 +5,7 @@ import {
   loadConfigValues,
   loadFellows,
   loadReferrals,
+  loadReferralIdsWithFiles,
   loadResidents,
 } from "@/lib/referral-repository";
 import { requireSession } from "@/lib/session";
@@ -19,13 +20,19 @@ export default async function DashboardPage() {
   // ตรวจก่อนโหลดข้อมูล — ไม่มี proxy.ts แล้ว ด่านนี้คือด่านเดียว
   const session = await requireSession("/dashboard");
 
-  const [{ referrals, isSampleData, error }, config, residents, fellows] =
-    await Promise.all([
-      loadReferrals(),
-      loadConfigValues(),
-      loadResidents(),
-      loadFellows(),
-    ]);
+  const [
+    { referrals, isSampleData, error },
+    config,
+    residents,
+    fellows,
+    filesCaseIds,
+  ] = await Promise.all([
+    loadReferrals(),
+    loadConfigValues(),
+    loadResidents(),
+    loadFellows(),
+    loadReferralIdsWithFiles(),
+  ]);
 
   return (
     <div className="flex flex-col flex-1 bg-zinc-50">
@@ -74,6 +81,7 @@ export default async function DashboardPage() {
           residents={residents}
           fellows={fellows}
           username={session.username}
+          filesCaseIds={filesCaseIds}
         />
 
         <ResponsibleContacts config={config} />

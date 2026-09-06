@@ -79,6 +79,7 @@ export function DashboardClient({
   residents,
   fellows,
   username,
+  filesCaseIds = [],
 }: {
   referrals: Referral[];
   residents: string[];
@@ -86,7 +87,10 @@ export function DashboardClient({
   fellows: string[];
   /** ชื่อผู้ล็อกอิน — ใช้เป็นชื่อผู้ส่งในบทสนทนา */
   username: string;
+  /** referral_id ที่มีไฟล์แนบในบทสนทนา — ขึ้นป้าย 📎 ถาวร */
+  filesCaseIds?: string[];
 }) {
+  const hasFile = useMemo(() => new Set(filesCaseIds), [filesCaseIds]);
   const [search, setSearch] = useState("");
   const [referralType, setReferralType] = useState<ReferralType | "all">("all");
   const [status, setStatus] = useState<Status | "all">("all");
@@ -94,6 +98,7 @@ export function DashboardClient({
   const [assignedTo, setAssignedTo] = useState<string>("all");
   const [alertOnly, setAlertOnly] = useState(false);
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [filesOnly, setFilesOnly] = useState(false);
   const [showClosed, setShowClosed] = useState(false);
   const [selected, setSelected] = useState<Referral | null>(null);
 
@@ -181,6 +186,7 @@ export function DashboardClient({
       }
       if (alertOnly && alertOf(r) === "none") return false;
       if (unreadOnly && !r.dentUnread) return false;
+      if (filesOnly && !hasFile.has(r.referralId)) return false;
       return true;
     });
   }, [
@@ -192,6 +198,8 @@ export function DashboardClient({
     assignedTo,
     alertOnly,
     unreadOnly,
+    filesOnly,
+    hasFile,
     showClosed,
     statusOverrides,
   ]);
@@ -410,6 +418,16 @@ export function DashboardClient({
         <label className="flex items-center gap-2 text-sm text-zinc-700">
           <input
             type="checkbox"
+            checked={filesOnly}
+            onChange={(e) => setFilesOnly(e.target.checked)}
+            className="rounded border-zinc-300"
+          />
+          📎 เฉพาะเคสที่มีไฟล์แนบ
+        </label>
+
+        <label className="flex items-center gap-2 text-sm text-zinc-700">
+          <input
+            type="checkbox"
             checked={showClosed}
             onChange={(e) => setShowClosed(e.target.checked)}
             className="rounded border-zinc-300"
@@ -499,8 +517,17 @@ export function DashboardClient({
                           colorClass="bg-blue-100 text-blue-800"
                         />
                       )}
+                      {hasFile.has(r.referralId) && (
+                        <Badge
+                          label="📎 มีไฟล์แนบ"
+                          colorClass="bg-violet-100 text-violet-800"
+                        />
+                      )}
                       {alert === "none" ? (
-                        !r.dentUnread && <span className="text-zinc-400">—</span>
+                        !r.dentUnread &&
+                        !hasFile.has(r.referralId) && (
+                          <span className="text-zinc-400">—</span>
+                        )
                       ) : (
                         <Badge
                           label={ALERT_LABEL_TH[alert]}

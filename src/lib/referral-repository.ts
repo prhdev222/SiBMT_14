@@ -322,6 +322,29 @@ export async function loadMessages(referralId: string): Promise<CaseMessage[]> {
   }
 }
 
+/**
+ * รายการ referral_id ที่มีไฟล์แนบในบทสนทนา — ให้ dashboard ขึ้นป้าย 📎 ถาวร
+ * (เห็นตลอด ไม่ใช่แค่ตอนยังไม่อ่าน) หาเคสที่มีไฟล์ได้ง่ายโดยไม่ต้องเปิดทีละเคส
+ */
+export async function loadReferralIdsWithFiles(): Promise<string[]> {
+  if (!readCredentials()) {
+    // โหมดสาธิต: เคสตัวอย่างที่ตั้งธง dentUnread ไว้ถือว่ามีไฟล์แนบด้วย
+    return ["HEM-20260728-0005"];
+  }
+  try {
+    const rows = await readSheetRows(MESSAGES_SHEET);
+    const ids = new Set<string>();
+    for (const r of rows) {
+      if (text(r["file_url"]) && text(r["referral_id"])) {
+        ids.add(text(r["referral_id"]));
+      }
+    }
+    return [...ids];
+  } catch {
+    return [];
+  }
+}
+
 /** โหลดเคส + ข้อความจาก case_token — สำหรับหน้า /case/[token] (ไม่ต้องล็อกอิน) */
 export async function loadCaseByToken(
   token: string,
