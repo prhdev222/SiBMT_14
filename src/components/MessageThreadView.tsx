@@ -10,6 +10,12 @@ type SendResult = {
   fileName?: string;
 };
 
+/** ตัวเลือกเสริมตอนส่ง — urgent (ฝั่งแพทย์) / channel (ฝั่ง dent เลือกช่องแจ้ง) */
+export type SendOpts = { urgent: boolean; channel: DentChannel };
+
+/** ช่องที่ dent เลือกส่งคำตอบให้แพทย์ต้นทาง */
+export type DentChannel = "chat" | "email" | "line";
+
 /**
  * มุมมองบทสนทนาต่อเคส — ใช้ทั้งหน้า /case (แพทย์ต้นทาง) และ dashboard (dent)
  *
@@ -24,6 +30,7 @@ export function MessageThreadView({
   locked = false,
   allowAttach = false,
   showUrgent = false,
+  showChannelPicker = false,
 }: {
   initialMessages: CaseMessage[];
   mySide: "referrer" | "resident";
@@ -31,19 +38,22 @@ export function MessageThreadView({
   onSend: (
     text: string,
     file: File | null,
-    urgent: boolean,
+    opts: SendOpts,
   ) => Promise<SendResult>;
   /** true = ล็อกช่องพิมพ์ (เช่น เคสปิดแล้ว) — โชว์เฉพาะประวัติสนทนา */
   locked?: boolean;
   /** true = แสดงปุ่มแนบไฟล์ (PDF/Word/รูป) */
   allowAttach?: boolean;
-  /** true = แสดงตัวเลือก "ด่วน" (แจ้งทีมทันที) — ฝั่งแพทย์ต้นทาง */
+  /** true = แสดงตัวเลือก "จำเป็นต้องส่งเลย" — ฝั่งแพทย์ต้นทาง */
   showUrgent?: boolean;
+  /** true = แสดงตัวเลือกช่องแจ้ง (แชท/อีเมล/LINE) — ฝั่ง dent */
+  showChannelPicker?: boolean;
 }) {
   const [messages, setMessages] = useState<CaseMessage[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [urgent, setUrgent] = useState(false);
+  const [channel, setChannel] = useState<DentChannel>("email");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -53,7 +63,7 @@ export function MessageThreadView({
     if ((!t && !file) || sending) return;
     setSending(true);
     setError(null);
-    const result = await onSend(t, file, urgent);
+    const result = await onSend(t, file, { urgent, channel });
     if (result.ok) {
       setMessages((prev) => [
         ...prev,
@@ -217,24 +227,52 @@ export function MessageThreadView({
             </button>
           </div>
           {showUrgent && (
-            <label className="flex items-center gap-2 text-xs text-zinc-600">
+            <label className="flex items-start gap-2 text-xs text-zinc-600">
               <input
                 type="checkbox"
                 checked={urgent}
                 onChange={(e) => setUrgent(e.target.checked)}
-                className="rounded border-zinc-300"
+                className="mt-0.5 rounded border-zinc-300"
               />
               <span>
-                🔴 <b>ด่วน</b> — แจ้งทีมทาง LINE ทันที ·{" "}
-                {urgent ? (
-                  "ทีมจะได้รับแจ้งเดี๋ยวนี้"
-                ) : (
-                  <span className="text-zinc-400">
-                    ไม่ติ๊ก = ส่งเข้ากลุ่มทีมรอบเช้า 10:00 (ทีมเห็นบน dashboard ได้ตลอด)
-                  </span>
-                )}
+                <b>จำเป็นต้องให้ทีมเห็นเดี๋ยวนี้</b> (แจ้งทีมทาง LINE ทันที)
+                <span className="block text-zinc-400">
+                  ปกติทีมจะได้รับข้อความรอบ 10:00 น. ของวันทำการอยู่แล้ว และเห็นบน
+                  dashboard ได้ตลอด — ติ๊กช่องนี้เฉพาะเมื่อรอถึงรอบเช้าไม่ได้จริง ๆ
+                </span>
               </span>
             </label>
+          )}
+          {showChannelPicker && (
+            <div className="text-xs text-zinc-600">
+              <span className="mr-2">แจ้งแพทย์ต้นทางทาง:</span>
+              <span className="inline-flex flex-wrap gap-x-3 gap-y-1">
+                {(
+                  [
+                    ["chat", "แชทเท่านั้น"],
+                    ["email", "อีเมล"],
+                    ["line", "LINE"],
+                  ] as [DentChannel, string][]
+                ).map(([value, label]) => (
+                  <label key={value} className="inline-flex items-center gap-1">
+                    <input
+                      type="radio"
+                      name="dent-channel"
+                      checked={channel === value}
+                      onChange={() => setChannel(value)}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </span>
+              <span className="block text-zinc-400 mt-0.5">
+                {channel === "chat"
+                  ? "แพทย์เห็นเมื่อเปิดหน้าเคส — ไม่ส่งอีเมล/LINE (เหมาะเมื่อกำลังคุยกันสด)"
+                  : channel === "email"
+                    ? "ส่งอีเมลแจ้ง (ฟรี) — แพทย์เปิดหน้าเคสอ่านต่อได้"
+                    : "แจ้งทาง LINE ทันที (ใช้โควตา push) — เหมาะเมื่ออยากให้เห็นเลย"}
+              </span>
+            </div>
           )}
           {error && <p className="text-xs text-red-600">{error}</p>}
           {allowAttach ? (

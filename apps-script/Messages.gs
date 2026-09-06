@@ -93,7 +93,7 @@ function chatPushOn_(key, defaultOn) {
   return defaultOn;
 }
 
-function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl, urgent) {
+function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl, urgent, dentChannel) {
   const referralId = String(row['referral_id'] || '').trim();
   const caseToken = ensureCaseToken_(sheet, map, row);
   const map2 = ensureColumns_(sheet, CASE_THREAD_COLUMNS);
@@ -127,15 +127,20 @@ function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl, urgent)
     // (มติผู้ใช้ 5 ก.ย. 2569)
     setCell_(sheet, map2, row._row, 'referrer_unread', 'yes');
 
+    // dent เลือกช่องแจ้งเองต่อข้อความ (chat=ไม่แจ้ง / email / line=LINE เท่านั้น)
+    // ค่าว่าง (ข้อความ dent จาก LINE) = ค่าเดิม: อีเมล + push ตามสวิตช์ config
+    const ch = String(dentChannel || '').toLowerCase();
+    const wantEmail = ch === 'email' || ch === '';
+    const wantLine = ch === 'line' ||
+      (ch === '' && chatPushOn_('chat_push_referrer', true));
+
     const email = String(row['referrer_email'] || '').trim();
-    if (email) {
+    if (email && wantEmail) {
       sendMessageEmailToReferrer_(email, referralId, caseToken,
         preview + (fileUrl ? '\n📎 ไฟล์แนบ: ' + fileUrl : ''),
         String(row['sender_name'] || 'ทีมโลหิตวิทยา'));
     }
-    // อีเมลส่งเสมอ (ฟรี) · push เฉพาะเมื่อเปิดสวิตช์ (ไม่ตั้ง = on เพราะแพทย์ไม่มี dashboard เฝ้า)
-    const userId = chatPushOn_('chat_push_referrer', true)
-      ? findLineUserByPhone_(row['referrer_phone']) : '';
+    const userId = wantLine ? findLineUserByPhone_(row['referrer_phone']) : '';
     if (userId) {
       const token = PropertiesService.getScriptProperties()
         .getProperty('LINE_CHANNEL_ACCESS_TOKEN');
@@ -271,7 +276,8 @@ function postDentMessage_(payload) {
 
   appendMessage_(referralId, 'resident', senderName || 'ทีมโลหิตวิทยา', 'web', text);
   markCaughtUp_(sheet, map, row, 'dent');
-  notifyCounterparty_(sheet, map, row, 'resident', text);
+  notifyCounterparty_(sheet, map, row, 'resident', text, '', false,
+    payload.notifyChannel);
   return { ok: true };
 }
 

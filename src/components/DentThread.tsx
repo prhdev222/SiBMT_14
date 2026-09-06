@@ -43,7 +43,10 @@ export function DentThread({
       initialMessages={messages}
       mySide="resident"
       myName={senderName || "ทีมโลหิตวิทยา"}
-      onSend={(text) => postDentMessageAction(referralId, text, senderName)}
+      onSend={(text, _file, opts) =>
+        postDentMessageAction(referralId, text, senderName, opts.channel)
+      }
+      showChannelPicker
     />
   );
 }

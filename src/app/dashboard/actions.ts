@@ -109,6 +109,7 @@ export async function postDentMessageAction(
   referralId: string,
   text: string,
   senderName: string,
+  notifyChannel: "chat" | "email" | "line" = "email",
 ): Promise<{ ok: boolean; error?: string }> {
   await requireSession();
   const id = referralId.trim();
@@ -122,6 +123,7 @@ export async function postDentMessageAction(
       referralId: id,
       text: text.trim(),
       senderName: senderName.trim(),
+      notifyChannel,
     });
     return { ok: true };
   } catch (error) {

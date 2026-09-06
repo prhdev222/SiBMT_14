@@ -485,6 +485,8 @@ export async function postDentMessage(payload: {
   referralId: string;
   text: string;
   senderName: string;
+  /** ช่องที่ dent เลือกแจ้งแพทย์ต้นทาง: chat (ไม่แจ้ง) / email / line */
+  notifyChannel?: "chat" | "email" | "line";
 }): Promise<{ ok: boolean }> {
   return callAppsScript("postDentMessage", payload);
 }
