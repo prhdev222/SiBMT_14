@@ -41,6 +41,7 @@ export async function sendReferrerMessageAction(
   caseToken: string,
   text: string,
   file: File | null,
+  urgent = false,
 ): Promise<{
   ok: boolean;
   error?: string;
@@ -79,6 +80,7 @@ export async function sendReferrerMessageAction(
       fileBase64,
       fileName,
       fileMimeType,
+      urgent,
     });
     return { ok: true, fileUrl: r.fileUrl, fileName: r.fileName };
   } catch (error) {

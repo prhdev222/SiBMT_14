@@ -23,19 +23,27 @@ export function MessageThreadView({
   onSend,
   locked = false,
   allowAttach = false,
+  showUrgent = false,
 }: {
   initialMessages: CaseMessage[];
   mySide: "referrer" | "resident";
   myName: string;
-  onSend: (text: string, file: File | null) => Promise<SendResult>;
+  onSend: (
+    text: string,
+    file: File | null,
+    urgent: boolean,
+  ) => Promise<SendResult>;
   /** true = ล็อกช่องพิมพ์ (เช่น เคสปิดแล้ว) — โชว์เฉพาะประวัติสนทนา */
   locked?: boolean;
   /** true = แสดงปุ่มแนบไฟล์ (PDF/Word/รูป) */
   allowAttach?: boolean;
+  /** true = แสดงตัวเลือก "ด่วน" (แจ้งทีมทันที) — ฝั่งแพทย์ต้นทาง */
+  showUrgent?: boolean;
 }) {
   const [messages, setMessages] = useState<CaseMessage[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [urgent, setUrgent] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -45,7 +53,7 @@ export function MessageThreadView({
     if ((!t && !file) || sending) return;
     setSending(true);
     setError(null);
-    const result = await onSend(t, file);
+    const result = await onSend(t, file, urgent);
     if (result.ok) {
       setMessages((prev) => [
         ...prev,
@@ -62,6 +70,7 @@ export function MessageThreadView({
       ]);
       setDraft("");
       setFile(null);
+      setUrgent(false);
       if (fileInput.current) fileInput.current.value = "";
     } else {
       setError(result.error ?? "ส่งไม่สำเร็จ กรุณาลองใหม่");
@@ -207,6 +216,26 @@ export function MessageThreadView({
               {sending ? "กำลังส่ง…" : "ส่ง"}
             </button>
           </div>
+          {showUrgent && (
+            <label className="flex items-center gap-2 text-xs text-zinc-600">
+              <input
+                type="checkbox"
+                checked={urgent}
+                onChange={(e) => setUrgent(e.target.checked)}
+                className="rounded border-zinc-300"
+              />
+              <span>
+                🔴 <b>ด่วน</b> — แจ้งทีมทาง LINE ทันที ·{" "}
+                {urgent ? (
+                  "ทีมจะได้รับแจ้งเดี๋ยวนี้"
+                ) : (
+                  <span className="text-zinc-400">
+                    ไม่ติ๊ก = ส่งเข้ากลุ่มทีมรอบเช้า 10:00 (ทีมเห็นบน dashboard ได้ตลอด)
+                  </span>
+                )}
+              </span>
+            </label>
+          )}
           {error && <p className="text-xs text-red-600">{error}</p>}
           {allowAttach ? (
             <p className="text-[11px] text-amber-700">

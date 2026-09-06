@@ -474,6 +474,8 @@ export async function postReferrerMessage(payload: {
   fileBase64?: string;
   fileName?: string;
   fileMimeType?: string;
+  /** แพทย์กดว่าด่วน → แจ้งทีมทันที (ไม่ด่วน = รอรอบ 10:00 ไม่ push) */
+  urgent?: boolean;
 }): Promise<{ ok: boolean; fileUrl?: string; fileName?: string }> {
   return callAppsScript("postReferrerMessage", payload);
 }

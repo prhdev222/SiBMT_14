@@ -93,7 +93,7 @@ function chatPushOn_(key, defaultOn) {
   return defaultOn;
 }
 
-function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl) {
+function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl, urgent) {
   const referralId = String(row['referral_id'] || '').trim();
   const caseToken = ensureCaseToken_(sheet, map, row);
   const map2 = ensureColumns_(sheet, CASE_THREAD_COLUMNS);
@@ -107,8 +107,9 @@ function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl) {
       String(readCell_(sheet, map2, row._row, 'dent_unread') || '')
         .toLowerCase() === 'yes';
     setCell_(sheet, map2, row._row, 'dent_unread', 'yes');
-    // ป้าย 💬 บน dashboard ขึ้นเสมอ (ฟรี) · push เฉพาะเมื่อเปิดสวิตช์ (ไม่ตั้ง = off)
-    if (!wasPending && chatPushOn_('chat_push_dent', false)) {
+    // ป้าย 💬 บน dashboard ขึ้นเสมอ (ฟรี) · push เมื่อ "แพทย์กดด่วน" หรือเปิดสวิตช์
+    // ไม่ด่วน + สวิตช์ปิด = ไม่ push ทันที แต่ไปโผล่รอบ 10:00 ในกลุ่ม dent (ฟรี)
+    if (!wasPending && (urgent || chatPushOn_('chat_push_dent', false))) {
       const audience = caseAudience_(row['referral_type']);
       pushDentNudgeWithQuote_(audience, referralId,
         '💬 ' + referralId + ' มีข้อความจากแพทย์ต้นทาง\n' +
@@ -219,8 +220,9 @@ function postReferrerMessage_(payload) {
   markCaughtUp_(sheet, map, row, 'referrer');
   // ข้อความแจ้งเตือน: ถ้าไม่มีข้อความ ใช้ชื่อไฟล์เป็นตัวอย่าง
   const notice = text || ('📎 ' + (attachment ? attachment.name : 'ไฟล์แนบ'));
+  const urgent = payload.urgent === true || String(payload.urgent) === 'true';
   notifyCounterparty_(sheet, map, row, 'referrer', notice,
-    attachment ? attachment.url : '');
+    attachment ? attachment.url : '', urgent);
   return {
     ok: true,
     fileUrl: attachment ? attachment.url : '',
