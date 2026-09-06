@@ -6,6 +6,7 @@ import {
   type BookingDetail,
 } from "@/lib/apps-script-api";
 import { PrintButton } from "@/components/PrintButton";
+import { SaveImageButton } from "@/components/SaveImageButton";
 import { formatThaiDate } from "@/lib/thai-date";
 
 export const dynamic = "force-dynamic";
@@ -102,16 +103,25 @@ export default async function SlipPage({
   return (
     <div className="flex-1 bg-zinc-50 print:bg-white px-4 py-8 print:p-0">
       <div className="mx-auto max-w-lg space-y-4">
-        <div className="print:hidden flex items-center justify-between gap-3">
+        <div className="print:hidden flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <p className="text-sm text-zinc-600">
-            พิมพ์ใบนี้ให้ผู้ป่วยถือมาในวันนัด พร้อมใบ refer และเอกสารตาม
-            checklist
+            พิมพ์ หรือบันทึกเป็นรูปส่งให้ผู้ป่วยถือมาในวันนัด พร้อมใบ refer และ
+            เอกสารตาม checklist
           </p>
-          <PrintButton label="🖨️ พิมพ์ใบนัด" />
+          <div className="flex items-start gap-2 shrink-0">
+            <PrintButton label="🖨️ พิมพ์ใบนัด" />
+            <SaveImageButton
+              targetId="slip-card"
+              fileName={`ใบนัด-${booking.referralId}.png`}
+            />
+          </div>
         </div>
 
-        {/* ตัวใบนัด — ทุกอย่างในกรอบนี้คือสิ่งที่ออกกระดาษ */}
-        <div className="rounded-xl border-2 border-zinc-800 bg-white p-6 space-y-4 print:rounded-none print:border-2">
+        {/* ตัวใบนัด — ทุกอย่างในกรอบนี้คือสิ่งที่ออกกระดาษ/บันทึกเป็นรูป */}
+        <div
+          id="slip-card"
+          className="rounded-xl border-2 border-zinc-800 bg-white p-6 space-y-4 print:rounded-none print:border-2"
+        >
           <header className="text-center border-b-2 border-zinc-800 pb-3">
             <h1 className="text-lg font-bold text-zinc-900">
               ใบนัดหมาย — คลินิกโลหิตวิทยา
