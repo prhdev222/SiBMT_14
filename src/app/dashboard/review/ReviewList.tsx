@@ -83,7 +83,7 @@ export function ReviewList({
   return (
     <ul className="space-y-3">
       {cases.map((item) => (
-        <li key={item.referralId}>
+        <li key={item.referralId} id={item.referralId} className="scroll-mt-4">
           <ReviewCard item={item} {...tools} />
         </li>
       ))}

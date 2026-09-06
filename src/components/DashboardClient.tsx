@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/Badge";
 import {
   updateAssignedToAction,
@@ -586,8 +587,18 @@ export function DashboardClient({
             <Detail label="วันติดตาม" value={selected.followUpDate ?? "—"} />
           </dl>
 
-          {/* ปิดเคส / เปิดกลับ — ปิดแล้วเคสจะหายจากลิสต์หลัก ดูได้ที่ "แสดงเคสที่ปิดแล้ว" */}
+          {/* ขั้นตอนต่อไป: ยังไม่ตอบ → ไปตอบ · ตอบแล้ว → ปิดเคส */}
           <div className="flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-3">
+            {!isTerminal(statusOf(selected)) &&
+              (selected.referralType === "REGIMEN_CONSULT" ||
+                selected.referralType === "CHEMO_ADMISSION") && (
+                <Link
+                  href={`/dashboard/review#${selected.referralId}`}
+                  className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  ✍️ ไปตอบคำปรึกษา
+                </Link>
+              )}
             {statusOf(selected) === "Closed" ? (
               <>
                 <button
