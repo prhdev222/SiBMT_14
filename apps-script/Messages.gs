@@ -28,10 +28,17 @@ function ensureCaseToken_(sheet, map, row) {
 
 /** ชีต messages — สร้างให้อัตโนมัติถ้ายังไม่มี (ไม่ต้องรัน setupSheets ก่อน) */
 function ensureMessagesSheet_() {
+  // ⚠️ ใช้ชื่อ 'messages' ตายตัว ไม่พึ่ง SHEETS.messages
+  //
+  // ถ้า Config.gs ที่ deploy เป็นฉบับเก่าที่ยังไม่มี messages ใน SHEETS
+  // ค่าจะเป็น undefined แล้ว insertSheet(undefined) จะสร้างแท็บชื่อ "SheetN"
+  // ใหม่ทุกครั้ง (หาแท็บเดิมไม่เจอเพราะชื่อ undefined) — บั๊กนี้ทำให้ทุกข้อความ
+  // แตกไปคนละแท็บ และ loadMessages ฝั่งเว็บอ่านแท็บ 'messages' ที่ว่างเปล่า
+  const name = SHEETS.messages || 'messages';
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(SHEETS.messages);
+  let sheet = ss.getSheetByName(name);
   if (!sheet) {
-    sheet = ss.insertSheet(SHEETS.messages);
+    sheet = ss.insertSheet(name);
     sheet.getRange(1, 1, 1, MESSAGE_COLUMNS.length).setValues([MESSAGE_COLUMNS]);
     sheet.setFrozenRows(1);
   }
