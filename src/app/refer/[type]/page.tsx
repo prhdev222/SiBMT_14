@@ -316,6 +316,28 @@ export default async function ReferTypePage({
           </section>
         )}
 
+        {/* กลุ่มที่ 3 มีนัดประเมินความพร้อมที่ OPD 700 (ทีมเป็นผู้จัดนัด) —
+            ให้แพทย์ต้นทางเช็กวันนัด/เปิดใบนัดซ้ำได้ แต่ไม่โชว์เลื่อน/ยกเลิก
+            (เป็นสิทธิ์ของทีม) และไม่ใส่เบอร์ธุรการ (เหตุผลเดียวกับกลุ่ม 1) */}
+        {type === "CHEMO_ADMISSION" && (
+          <section className="rounded-xl bg-white border border-zinc-200 p-5 text-sm text-zinc-600">
+            <h2 className="font-semibold text-zinc-900 mb-2">
+              เช็กวันนัด / ใบนัด
+            </h2>
+            <p className="mb-3">
+              หลังทีมนัดผู้ป่วยมาประเมินความพร้อมที่ OPD 700 แล้ว
+              เช็กวันนัดหรือเปิด/บันทึกรูปใบนัดซ้ำได้ที่นี่ — กรอกเลขอ้างอิง
+              และเบอร์ที่ลงทะเบียนไว้
+            </p>
+            <Link
+              href="/booking"
+              className="inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-5 py-3 font-medium text-blue-800 hover:bg-blue-100 transition-colors"
+            >
+              📅 เช็กวันนัด / เปิดใบนัด
+            </Link>
+          </section>
+        )}
+
         <DocumentLibrary documents={documents} groupNumber={meta.groupNumber} />
       </main>
     </div>
