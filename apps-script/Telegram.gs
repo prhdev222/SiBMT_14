@@ -19,6 +19,17 @@ const TELEGRAM_CHAT_BY_AUDIENCE = {
   fellow: 'TELEGRAM_CHAT_FELLOW',
 };
 
+// ปุ่มลัด "/" ใน Telegram (ต้องเป็นอังกฤษ) → คำสั่งไทยที่ answerGroupQuery_ เข้าใจ
+// ตั้งเมนูปุ่มใน @BotFather → /setcommands (ดูคู่มือที่ผมส่งให้)
+const TELEGRAM_SLASH_COMMANDS = {
+  menu: 'เมนู',
+  pending: 'เคสค้าง',
+  unread: 'ข้อความใหม่',
+  today: 'นัดวันนี้',
+  tomorrow: 'นัดพรุ่งนี้',
+  duty: 'เวร',
+};
+
 function telegramToken_() {
   return PropertiesService.getScriptProperties()
     .getProperty('TELEGRAM_BOT_TOKEN') || '';
@@ -105,10 +116,18 @@ function handleTelegramUpdate_(update) {
     return jsonResponse_({ ok: true });
   }
 
+  // ปุ่มลัด /command (เมนูพิมพ์ "/" ใน Telegram) → แปลงเป็นคำสั่งไทยแล้วใช้ตัวตอบกลาง
+  // Telegram ส่งมาเป็น "/pending" หรือ "/pending@BotName" — ตัด @ชื่อบอทออก
+  let query = text;
+  if (query.charAt(0) === '/') {
+    const cmd = query.slice(1).split(/[@\s]/)[0].toLowerCase();
+    if (TELEGRAM_SLASH_COMMANDS[cmd]) query = TELEGRAM_SLASH_COMMANDS[cmd];
+  }
+
   // คำสั่งถาม-ตอบ (ฟรี) — ใช้ตัวตอบกลางร่วมกับ LINE: เมนู, เคสค้าง, ข้อความใหม่,
   // นัดวันนี้/พรุ่งนี้, นัด 15/9, เวร, นัด fellow, พิมพ์ชื่อ fellow ดูนัดตัวเอง
   try {
-    const reply = answerGroupQuery_(text, {
+    const reply = answerGroupQuery_(query, {
       inFellowGroup: chatId === String(telegramChatId_('fellow')),
     });
     if (reply) telegramReply_(chatId, reply);
