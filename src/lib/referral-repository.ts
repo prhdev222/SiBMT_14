@@ -427,6 +427,12 @@ function toDemoRawRow(referral: Referral): Record<string, string> {
       : "",
     // ทุกเคสมีห้องคุยได้ — บอทเป็นประตูเปิดห้องแชท /case
     case_token: demoCaseToken(referral.referralId),
+    // เคสที่มีนัด — ให้บอทโชว์ปุ่ม "เปิดใบนัด" ในโหมดสาธิต
+    appointment_date: referral.appointmentDate ?? "",
+    appointment_note: referral.appointmentNote ?? "",
+    manage_token: referral.appointmentDate
+      ? `demo-${referral.referralId}`.padEnd(32, "0")
+      : "",
   };
 }
 

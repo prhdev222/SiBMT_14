@@ -183,6 +183,11 @@ function lookupBooking_(payload) {
     diagnosis: String(row['diagnosis'] || '').trim(),
     canChange: canStillChange_(clinicDate, payload) &&
       String(row['status'] || '').trim() === 'Appointment Confirmed',
+    // แยกใบนัด fellow (กลุ่ม 1) กับนัดประเมิน OPD (กลุ่ม 3)
+    referralType: String(row['referral_type'] || '').trim(),
+    appointmentNote: String(row['appointment_note'] || '').trim(),
+    // คืน token ให้หลังยืนยันเจ้าของแล้ว — ใช้เปิดใบนัดซ้ำแม้ค้นด้วยเบอร์
+    manageToken: String(row['manage_token'] || '').trim(),
   };
 }
 

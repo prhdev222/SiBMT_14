@@ -247,6 +247,12 @@ export interface BookingDetail {
   diagnosis: string;
   /** ยังแก้ไขได้ไหม — false เมื่อถึงวันนัดแล้วหรือสถานะไม่ใช่ยืนยันนัด */
   canChange: boolean;
+  /** กลุ่มงาน — ใช้แยกใบนัด fellow (กลุ่ม 1) กับนัดประเมิน OPD (กลุ่ม 3) */
+  referralType?: string;
+  /** รายละเอียดนัด OPD (เวลา/แพทย์) สำหรับกลุ่ม 3 */
+  appointmentNote?: string;
+  /** token สำหรับเปิดใบนัดซ้ำ — คืนหลังยืนยันเจ้าของแล้ว (ค้นด้วยเบอร์ก็ได้) */
+  manageToken?: string;
 }
 
 export async function lookupBooking(

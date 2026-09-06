@@ -373,10 +373,15 @@ interface AnswerCaseFields extends StatusFields {
   answerUrl: string | null;
   /** ลิงก์ห้องคุยกับทีมของเคสนี้ (/case/[token]) — null ถ้ายังไม่มี token */
   caseUrl: string | null;
+  /** ลิงก์ใบนัดของเคสนี้ (/booking/slip) — null ถ้าเคสนี้ไม่มีนัด */
+  slipUrl: string | null;
 }
 
 /** ปุ่มลิงก์ "คุยกับทีม" — เปิดห้องแชท /case ของเคสนั้น */
 export const OPEN_CHAT_LABEL = "💬 คุยกับทีม";
+
+/** ปุ่มลิงก์ "เปิดใบนัด" — เปิด/บันทึกรูปใบนัดซ้ำ กรณีใบนัดหาย */
+export const OPEN_SLIP_LABEL = "🎫 เปิดใบนัด";
 
 /** บรรทัดผลลัพธ์ต่อ 1 เคสของ flow อ่านคำตอบ (ไม่รวมท้าย "ยังไม่มีคำตอบ" —
  * ใส่แยกใน answerCaseMessage เพื่อให้ formatAnswerCaseLine ใช้ซ้ำได้เฉย ๆ)
@@ -400,6 +405,8 @@ export function answerCaseMessage(c: AnswerCaseFields): BotMessage {
     : `${formatAnswerCaseLine(c)}\n${NO_ANSWER_YET_TEXT}`;
   const links: BotLink[] = [];
   if (c.answerUrl) links.push({ label: OPEN_ANSWER_LABEL, href: c.answerUrl });
+  // เปิด/บันทึกใบนัดซ้ำได้ กรณีใบนัดหาย (เคสที่มีนัดเท่านั้น)
+  if (c.slipUrl) links.push({ label: OPEN_SLIP_LABEL, href: c.slipUrl });
   // คุยกับทีมได้แม้ยังไม่มีคำตอบ — บอทคือประตูเปิดห้องแชทของเคส
   if (c.caseUrl) links.push({ label: OPEN_CHAT_LABEL, href: c.caseUrl });
   return {

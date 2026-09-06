@@ -230,6 +230,7 @@ export async function verifiedCasesAction(): Promise<
       cases: (BotCaseStatus & {
         answerUrl: string | null;
         caseUrl: string | null;
+        slipUrl: string | null;
       })[];
     }
   | { ok: false; error: string }
@@ -251,16 +252,30 @@ export async function verifiedCasesAction(): Promise<
   return {
     ok: true,
     verified: true,
-    cases: rows.map((row) => ({
-      ...shapeStatus(row),
-      answerUrl:
-        row["advice_record"]?.trim() && row["answer_token"]?.trim()
-          ? `/answer/${row["answer_token"]}`
+    cases: rows.map((row) => {
+      // เคสที่มีนัด (กลุ่ม 1 ยืนยันนัด / กลุ่ม 3 นัด OPD) เปิดใบนัดซ้ำได้
+      const status = row["status"]?.trim();
+      const hasAppointment =
+        (status === "Appointment Confirmed" ||
+          status === "Readiness Visit Scheduled") &&
+        row["appointment_date"]?.trim() &&
+        row["manage_token"]?.trim();
+      return {
+        ...shapeStatus(row),
+        answerUrl:
+          row["advice_record"]?.trim() && row["answer_token"]?.trim()
+            ? `/answer/${row["answer_token"]}`
+            : null,
+        caseUrl: row["case_token"]?.trim()
+          ? `/case/${row["case_token"]}`
           : null,
-      caseUrl: row["case_token"]?.trim()
-        ? `/case/${row["case_token"]}`
-        : null,
-    })),
+        slipUrl: hasAppointment
+          ? `/booking/slip?id=${encodeURIComponent(
+              row["referral_id"],
+            )}&t=${encodeURIComponent(row["manage_token"])}`
+          : null,
+      };
+    }),
   };
 }
 

@@ -100,6 +100,11 @@ export default async function SlipPage({
     );
   }
 
+  // กลุ่ม 3 = นัดมาประเมินความพร้อมที่ OPD 700 (ไม่ใช่นัดพบ fellow แบบกลุ่ม 1)
+  const isReadinessVisit =
+    booking.referralType === "CHEMO_ADMISSION" ||
+    booking.status === "Readiness Visit Scheduled";
+
   return (
     <div className="flex-1 bg-zinc-50 print:bg-white px-4 py-8 print:p-0">
       <div className="mx-auto max-w-lg space-y-4">
@@ -124,7 +129,9 @@ export default async function SlipPage({
         >
           <header className="text-center border-b-2 border-zinc-800 pb-3">
             <h1 className="text-lg font-bold text-zinc-900">
-              ใบนัดหมาย — คลินิกโลหิตวิทยา
+              {isReadinessVisit
+                ? "ใบนัดประเมินความพร้อม — คลินิกโลหิตวิทยา"
+                : "ใบนัดหมาย — คลินิกโลหิตวิทยา"}
             </h1>
             <p className="text-sm text-zinc-600">
               โรงพยาบาลศิริราช · ระบบส่งต่อผู้ป่วยนอก
@@ -142,34 +149,62 @@ export default async function SlipPage({
               </dd>
             </div>
             <div className="flex items-baseline gap-3">
-              <dt className="w-24 shrink-0 text-sm text-zinc-500">เวลา</dt>
-              <dd className="font-semibold text-zinc-900">08:00 น.</dd>
-            </div>
-            <div className="flex items-baseline gap-3">
               <dt className="w-24 shrink-0 text-sm text-zinc-500">สถานที่</dt>
               <dd className="font-semibold text-zinc-900">
                 OPD 700 โรงพยาบาลศิริราช
               </dd>
             </div>
-            <div className="flex items-baseline gap-3">
-              <dt className="w-24 shrink-0 text-sm text-zinc-500">พบแพทย์</dt>
-              <dd className="font-semibold text-zinc-900">
-                {booking.fellowName}{" "}
-                <span className="font-normal text-zinc-500">
-                  (fellow transplant)
-                </span>
-              </dd>
-            </div>
+            {isReadinessVisit ? (
+              <div className="flex items-baseline gap-3">
+                <dt className="w-24 shrink-0 text-sm text-zinc-500">
+                  รายละเอียด
+                </dt>
+                <dd className="font-semibold text-zinc-900">
+                  {booking.appointmentNote || "พบแพทย์ที่ OPD 700 โลหิตวิทยา"}
+                </dd>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-baseline gap-3">
+                  <dt className="w-24 shrink-0 text-sm text-zinc-500">เวลา</dt>
+                  <dd className="font-semibold text-zinc-900">08:00 น.</dd>
+                </div>
+                <div className="flex items-baseline gap-3">
+                  <dt className="w-24 shrink-0 text-sm text-zinc-500">
+                    พบแพทย์
+                  </dt>
+                  <dd className="font-semibold text-zinc-900">
+                    {booking.fellowName}{" "}
+                    <span className="font-normal text-zinc-500">
+                      (fellow transplant)
+                    </span>
+                  </dd>
+                </div>
+              </>
+            )}
           </dl>
 
           <div className="rounded-lg border border-blue-300 bg-blue-50 print:bg-white p-4 text-sm text-blue-950">
-            {/* ถ้อยคำเกลาโดยผู้ใช้ 4 ก.ย. 2569 — ห้ามแก้โดยไม่ถาม */}
-            <p className="font-semibold">หมายเหตุสำคัญ:</p>
-            <p className="mt-1">
-              หากวันนัดมีการสับเปลี่ยนแพทย์ผู้ออกตรวจ (แพทย์แลกเวรกัน)
-              ชื่อแพทย์ที่ออกตรวจจริงอาจไม่ตรงกับชื่อในใบนัดนี้ —
-              ผู้ป่วยเข้าตรวจกับแพทย์ที่ออกตรวจในวันนั้นได้
-            </p>
+            {isReadinessVisit ? (
+              <>
+                <p className="font-semibold">หมายเหตุสำคัญ:</p>
+                <p className="mt-1">
+                  วันนัดนี้เป็นการมาประเมินความพร้อมก่อน ยังไม่ใช่วัน admit ·
+                  หากมีการสับเปลี่ยนแพทย์ผู้ออกตรวจ ผู้ป่วยเข้าตรวจกับแพทย์ที่
+                  ออกตรวจในวันนั้นได้
+                </p>
+              </>
+            ) : (
+              <>
+                {/* ถ้อยคำเกลาโดยผู้ใช้ 4 ก.ย. 2569 — ห้ามแก้โดยไม่ถาม */}
+                <p className="font-semibold">หมายเหตุสำคัญ:</p>
+                <p className="mt-1">
+                  หากวันนัดมีการสับเปลี่ยนแพทย์ผู้ออกตรวจ (แพทย์แลกเวรกัน)
+                  ชื่อแพทย์ที่ออกตรวจจริงอาจไม่ตรงกับชื่อในใบนัดนี้ —
+                  ผู้ป่วยเข้าตรวจกับแพทย์ที่ออกตรวจในวันนั้นได้
+                </p>
+              </>
+            )}
           </div>
 
           <footer className="border-t border-zinc-300 pt-3 text-sm text-zinc-600 space-y-1">

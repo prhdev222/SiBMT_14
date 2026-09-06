@@ -158,6 +158,13 @@ function BookingPanel({
 
   const finished = cancelState.done ?? moveState.done;
 
+  // เปิดใบนัดซ้ำได้แม้ค้นด้วยเบอร์ (ไม่มี token ใน URL) — ใช้ token ที่ระบบคืนมา
+  const slipToken = token || booking.manageToken || "";
+  // กลุ่ม 3 = นัดมาประเมินความพร้อมที่ OPD 700 (ไม่ใช่นัดพบ fellow)
+  const isReadinessVisit =
+    booking.referralType === "CHEMO_ADMISSION" ||
+    booking.status === "Readiness Visit Scheduled";
+
   if (finished) {
     return (
       <div className="space-y-4">
@@ -182,15 +189,34 @@ function BookingPanel({
           {formatDateTh(booking.clinicDate)}
         </p>
         <dl className="mt-3 space-y-1.5 text-sm">
-          <Row label="เวลา" value="08:00 น." />
           <Row label="สถานที่" value="OPD 700 โรงพยาบาลศิริราช" />
-          <Row label="พบแพทย์" value={booking.fellowName} />
+          {isReadinessVisit ? (
+            <Row
+              label="รายละเอียด"
+              value={booking.appointmentNote || "พบแพทย์ที่ OPD 700 โลหิตวิทยา"}
+            />
+          ) : (
+            <>
+              <Row label="เวลา" value="08:00 น." />
+              <Row label="พบแพทย์" value={booking.fellowName} />
+            </>
+          )}
           <Row label="โรงพยาบาลต้นทาง" value={booking.referrerOrg} />
           {booking.diagnosis && (
             <Row label="การวินิจฉัย" value={booking.diagnosis} />
           )}
         </dl>
       </section>
+
+      {/* เปิด/บันทึกใบนัดซ้ำ — แสดงเสมอเมื่อมี token (รวมกลุ่ม 3 และนัดที่แก้ไม่ได้แล้ว) */}
+      {slipToken && (
+        <a
+          href={`/booking/slip?id=${encodeURIComponent(booking.referralId)}&t=${encodeURIComponent(slipToken)}`}
+          className="block rounded-lg border-2 border-zinc-800 px-5 py-3 text-center font-semibold text-zinc-900 hover:bg-zinc-50 transition-colors"
+        >
+          🎫 เปิดใบนัด (พิมพ์ / บันทึกรูปให้ผู้ป่วย)
+        </a>
+      )}
 
       {!booking.canChange ? (
         <Alert tone="warn">
@@ -200,16 +226,6 @@ function BookingPanel({
         </Alert>
       ) : mode === "view" ? (
         <div className="space-y-3">
-          {/* พิมพ์ใบนัดต้องใช้ manage token — เส้นทางค้นด้วยเบอร์ไม่มี token
-              จึงไม่แสดงปุ่ม (เปิดจากลิงก์ในอีเมลแทน) */}
-          {token && (
-            <a
-              href={`/booking/slip?id=${encodeURIComponent(booking.referralId)}&t=${encodeURIComponent(token)}`}
-              className="block rounded-lg border-2 border-zinc-800 px-5 py-3 text-center font-semibold text-zinc-900 hover:bg-zinc-50 transition-colors"
-            >
-              🖨️ พิมพ์ใบนัดให้ผู้ป่วย
-            </a>
-          )}
           <div className="grid gap-3 sm:grid-cols-2">
             <button
               type="button"
