@@ -9,6 +9,7 @@ import {
   saveAttending,
   saveDocument,
   setAttendingActive,
+  setConfig,
   setDocumentActive,
   unprotectHeaders,
 } from "@/lib/apps-script-api";
@@ -164,4 +165,9 @@ export async function deleteDocumentAction(
   url: string,
 ): Promise<ActionResult> {
   return runWrite(() => deleteDocument({ title, url }));
+}
+
+/** เปิด/ปิด LINE push อัตโนมัติ (สวิตช์ line_push ในชีต config) */
+export async function setLinePushAction(on: boolean): Promise<ActionResult> {
+  return runWrite(() => setConfig({ key: "line_push", value: on ? "on" : "off" }));
 }

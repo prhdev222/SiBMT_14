@@ -232,6 +232,10 @@ function doPost(e) {
       return jsonResponse_({ ok: true, data: updateStatus_(body.payload || {}) });
     }
 
+    if (body.action === 'setConfig') {
+      return jsonResponse_({ ok: true, data: setConfigValue_(body.payload || {}) });
+    }
+
     if (body.action === 'postReferrerMessage') {
       return jsonResponse_({ ok: true, data: postReferrerMessage_(body.payload || {}) });
     }
@@ -836,6 +840,38 @@ function updateStatus_(payload) {
   }
 
   logStatusChange_(referralId, prev, status, 'admin', 'เปลี่ยนสถานะจาก dashboard');
+  return { ok: true };
+}
+
+/**
+ * ตั้งค่า config จากหน้าเว็บ (เช่น สวิตช์เปิด/ปิด LINE push)
+ * จำกัดเฉพาะ key ที่อนุญาต กันแก้ config อื่นมั่วจากเว็บ
+ */
+function setConfigValue_(payload) {
+  const key = String(payload.key || '').trim();
+  const value = String(payload.value || '').trim();
+  if (!key) throw new Error('ไม่ได้ระบุ key');
+
+  const ALLOWED = ['line_push', 'chat_push_dent', 'chat_push_referrer'];
+  if (ALLOWED.indexOf(key) === -1) {
+    throw new Error('ไม่อนุญาตให้แก้ "' + key + '" ผ่านเว็บ');
+  }
+
+  const sheet = getSheet_(SHEETS.config);
+  const map = ensureColumns_(sheet, ['key', 'value', 'description']);
+  const match = readRows_(sheet).filter(function (r) {
+    return String(r['key'] || '').trim() === key;
+  })[0];
+
+  if (match) {
+    setCell_(sheet, map, match._row, 'value', value);
+  } else {
+    const rowArr = new Array(sheet.getLastColumn()).fill('');
+    rowArr[map['key']] = key;
+    rowArr[map['value']] = value;
+    if ('description' in map) rowArr[map['description']] = 'ตั้งจากหน้าเว็บ';
+    sheet.appendRow(rowArr);
+  }
   return { ok: true };
 }
 

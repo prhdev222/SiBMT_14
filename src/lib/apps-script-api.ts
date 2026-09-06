@@ -463,6 +463,14 @@ export async function updateStatus(payload: {
   return callAppsScript("updateStatus", payload);
 }
 
+/** ตั้งค่า config (สวิตช์) จากหน้าเว็บ — เฉพาะ key ที่อนุญาต */
+export async function setConfig(payload: {
+  key: string;
+  value: string;
+}): Promise<{ ok: boolean }> {
+  return callAppsScript("setConfig", payload);
+}
+
 /* ------------------------------------------------------------------ */
 /* บทสนทนาต่อเนื่องต่อเคส (Case Conversation)                          */
 /* ------------------------------------------------------------------ */

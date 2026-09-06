@@ -7,7 +7,12 @@ import { PageHeader } from "@/components/PageHeader";
 import { StructureCheck } from "./StructureCheck";
 import { AttendingsEditor } from "./AttendingsEditor";
 import { DocumentsEditor } from "./DocumentsEditor";
-import { loadAttendingRows, loadDocumentRows } from "@/lib/referral-repository";
+import { LinePushToggle } from "./LinePushToggle";
+import {
+  loadAttendingRows,
+  loadConfigValues,
+  loadDocumentRows,
+} from "@/lib/referral-repository";
 
 export const dynamic = "force-dynamic";
 
@@ -49,10 +54,12 @@ export default async function SettingsPage() {
   const session = await requireSession("/dashboard/settings");
   const mainUrl = mainSheetUrl();
   const schedUrl = scheduleSheetUrl();
-  const [attendings, documents] = await Promise.all([
+  const [attendings, documents, config] = await Promise.all([
     loadAttendingRows(),
     loadDocumentRows(),
+    loadConfigValues(),
   ]);
+  const linePushOn = (config["line_push"] ?? "").toLowerCase() === "on";
 
   const urlFor = (which: "main" | "schedule") =>
     which === "main" ? mainUrl : schedUrl;
@@ -90,6 +97,22 @@ export default async function SettingsPage() {
               เพื่อยืนยันว่าไม่มีอะไรพัง
             </li>
           </ul>
+        </section>
+
+        {/* สวิตช์ LINE push — เปิด/ปิดค่าใช้จ่ายแจ้งเตือน LINE ได้จากที่นี่ */}
+        <section className="rounded-xl bg-white border border-zinc-200 p-5 space-y-3">
+          <div>
+            <h2 className="font-semibold text-zinc-900">
+              <span className="mr-1.5" aria-hidden>
+                🔔
+              </span>
+              แจ้งเตือน LINE (ประหยัดค่าใช้จ่าย)
+            </h2>
+            <p className="text-sm text-zinc-500 mt-0.5">
+              เปิด/ปิดการเด้งแจ้งเตือนเข้า LINE อัตโนมัติ — ปิดไว้ไม่เสียโควตา
+            </p>
+          </div>
+          <LinePushToggle initialOn={linePushOn} />
         </section>
 
         <section className="grid gap-4">
