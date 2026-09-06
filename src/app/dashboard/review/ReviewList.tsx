@@ -1,6 +1,12 @@
 "use client";
 
-import { useActionState, useMemo, useRef, useState } from "react";
+import {
+  useActionState,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { saveAdviceAction, type AdviceState } from "./actions";
 import { DocButtons } from "@/components/DocButtons";
 import type { ChemoRegimen } from "@/lib/referral-repository";
@@ -80,11 +86,24 @@ export function ReviewList({
   cases,
   ...tools
 }: { cases: ReviewCase[] } & ReviewTools) {
+  // มาจากลิงก์ "ไปตอบคำปรึกษา" บน dashboard (#HEM-xxxx) — เปิดฟอร์มเคสนั้น + เลื่อนไปหา
+  const [focusId, setFocusId] = useState<string | null>(null);
+  useEffect(() => {
+    const hash = decodeURIComponent(window.location.hash.replace("#", "")).trim();
+    if (!hash) return;
+    setFocusId(hash);
+    requestAnimationFrame(() =>
+      document
+        .getElementById(hash)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+  }, []);
+
   return (
     <ul className="space-y-3">
       {cases.map((item) => (
         <li key={item.referralId} id={item.referralId} className="scroll-mt-4">
-          <ReviewCard item={item} {...tools} />
+          <ReviewCard item={item} focusId={focusId} {...tools} />
         </li>
       ))}
     </ul>
@@ -95,6 +114,7 @@ const INITIAL: AdviceState = { ok: false, message: "" };
 
 function ReviewCard({
   item,
+  focusId,
   defaultAnsweredBy,
   defaultWardPhone,
   regimens,
@@ -102,12 +122,17 @@ function ReviewCard({
   attendings,
   residents,
   fellows,
-}: { item: ReviewCase } & ReviewTools) {
+}: { item: ReviewCase; focusId?: string | null } & ReviewTools) {
   const [state, formAction, pending] = useActionState(
     saveAdviceAction,
     INITIAL,
   );
   const [open, setOpen] = useState(false);
+
+  // เปิดฟอร์มอัตโนมัติเมื่อมาจากลิงก์ "ไปตอบคำปรึกษา" ของเคสนี้
+  useEffect(() => {
+    if (focusId && focusId === item.referralId) setOpen(true);
+  }, [focusId, item.referralId]);
 
   // ตัวเลือกช่องนัดพบแพทย์ — เคสกลุ่ม 3 มาประเมินที่ OPD 700 พบได้ทั้ง
   // resident และ fellow จึงรวมสองบัญชีรายชื่อ (พิมพ์ชื่ออื่นเองได้เสมอ)

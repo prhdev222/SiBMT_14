@@ -73,12 +73,13 @@ function caseAudience_(referralType) {
  * ตั้งธง unread ของอีกฝั่ง แล้ว push เฉพาะตอนเพิ่งเปลี่ยนจากว่าง → yes
  * (ข้อความแรกหลังอีกฝั่งอ่านทัน) เพื่อไม่เปลืองโควตา push เวลาพิมพ์หลายที
  */
-function notifyCounterparty_(sheet, map, row, senderRole, text) {
+function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl) {
   const referralId = String(row['referral_id'] || '').trim();
   const caseToken = ensureCaseToken_(sheet, map, row);
   const map2 = ensureColumns_(sheet, CASE_THREAD_COLUMNS);
   // อ่านค่าปัจจุบันจากเซลล์จริง (row object อาจเก่ากว่าที่เพิ่ง set)
   const preview = String(text || '').slice(0, 300);
+  const fileLine = fileUrl ? '\n📎 เปิดไฟล์แนบ: ' + fileUrl : '';
 
   if (senderRole === 'referrer') {
     // แจ้ง dent ที่กลุ่ม LINE
@@ -90,7 +91,7 @@ function notifyCounterparty_(sheet, map, row, senderRole, text) {
       const audience = caseAudience_(row['referral_type']);
       pushDentNudgeWithQuote_(audience, referralId,
         '💬 ' + referralId + ' มีข้อความจากแพทย์ต้นทาง\n' +
-        '“' + preview + '”\n' +
+        '“' + preview + '”' + fileLine + '\n' +
         '─────────\n' +
         '↩️ ตอบง่าย ๆ: แตะค้างข้อความนี้ → "ตอบกลับ" แล้วพิมพ์คำตอบได้เลย\n' +
         '(หรือพิมพ์  ตอบ ' + referralId + ': <ข้อความ>  · หรือเปิด ' +
@@ -106,7 +107,8 @@ function notifyCounterparty_(sheet, map, row, senderRole, text) {
 
     const email = String(row['referrer_email'] || '').trim();
     if (email) {
-      sendMessageEmailToReferrer_(email, referralId, caseToken, preview,
+      sendMessageEmailToReferrer_(email, referralId, caseToken,
+        preview + (fileUrl ? '\n📎 ไฟล์แนบ: ' + fileUrl : ''),
         String(row['sender_name'] || 'ทีมโลหิตวิทยา'));
     }
     const userId = findLineUserByPhone_(row['referrer_phone']);
@@ -116,7 +118,7 @@ function notifyCounterparty_(sheet, map, row, senderRole, text) {
       if (token) {
         sendOneLinePush_(token, userId,
           '💬 เคส ' + referralId + ' มีข้อความตอบกลับจากทีมโลหิตวิทยา\n' +
-          '“' + preview + '”\n' +
+          '“' + preview + '”' + fileLine + '\n' +
           'อ่าน/ตอบต่อ: ' + SITE_URL + '/case/' + caseToken);
       }
     }
@@ -194,7 +196,8 @@ function postReferrerMessage_(payload) {
   markCaughtUp_(sheet, map, row, 'referrer');
   // ข้อความแจ้งเตือน: ถ้าไม่มีข้อความ ใช้ชื่อไฟล์เป็นตัวอย่าง
   const notice = text || ('📎 ' + (attachment ? attachment.name : 'ไฟล์แนบ'));
-  notifyCounterparty_(sheet, map, row, 'referrer', notice);
+  notifyCounterparty_(sheet, map, row, 'referrer', notice,
+    attachment ? attachment.url : '');
   return {
     ok: true,
     fileUrl: attachment ? attachment.url : '',
