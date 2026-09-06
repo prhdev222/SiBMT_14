@@ -376,6 +376,25 @@ function handleReferrerLineMessage_(event, text, userId) {
       'ถ้าต้องการส่งเคสใหม่ กรุณากรอกแบบฟอร์มส่งต่อ หรือพิมพ์ "เคสของฉัน" เพื่อดูรายการ');
     return true;
   }
+
+  // ถามสั้น ๆ เชิง "เช็คคำตอบ" = อ่านคำตอบล่าสุดของทีม (ฟรี) โดยไม่โพสต์ทับ thread
+  if (/(คำตอบ|อัปเดต|มีอะไรใหม่|ล่าสุด|เช็ค|update)/i.test(text) &&
+      text.length <= 30) {
+    const sheet = getSheet_(SHEETS.referrals);
+    const map = headerMap_(sheet);
+    let msg = '';
+    open.forEach(function (r) {
+      const id = String(r['referral_id'] || '').trim();
+      const latest = latestTeamMessageFor_(id);
+      const token = ensureCaseToken_(sheet, map, r);
+      msg += '📋 ' + id + '\n' +
+        (latest ? '💬 ทีมตอบล่าสุด:\n“' + latest + '”\n' : 'ยังไม่มีคำตอบจากทีม\n') +
+        SITE_URL + '/case/' + token + '\n\n';
+    });
+    replyLineMessage_(event.replyToken, msg + 'พิมพ์ข้อความเพื่อถามทีมเพิ่มได้เลยครับ');
+    return true;
+  }
+
   if (open.length === 1) {
     routeReferrerMessageToCase_(event, open[0], text);
     return true;
@@ -412,9 +431,41 @@ function routeReferrerMessageToCase_(event, row, text) {
   appendMessage_(referralId, 'referrer', name, 'line', text);
   markCaughtUp_(sheet, map, row, 'referrer');
   notifyCounterparty_(sheet, map, row, 'referrer', text);
-  replyLineMessage_(event.replyToken,
-    '📨 ส่งข้อความถึงทีมแล้ว (เคส ' + referralId + ')\n' +
-    'จะแจ้งเตือนที่นี่เมื่อมีคนตอบกลับครับ');
+
+  // ตอบกลับด้วย reply (ฟรี) พร้อมคำตอบล่าสุดของทีม — คุยกันใน LINE ได้โดยไม่ push
+  const caseToken = ensureCaseToken_(sheet, map, row);
+  const latest = latestTeamMessageFor_(referralId);
+  let reply = '📨 ส่งข้อความถึงทีมแล้ว (เคส ' + referralId + ')';
+  if (latest) {
+    reply += '\n\n💬 ทีมตอบล่าสุด:\n“' + latest + '”';
+  }
+  reply += '\n\nพิมพ์ทักมาได้อีกเพื่อดูอัปเดต (ฟรี) หรือเปิดอ่าน/ตอบทั้งหมด:\n' +
+    SITE_URL + '/case/' + caseToken;
+  replyLineMessage_(event.replyToken, reply);
+}
+
+/** ข้อความล่าสุดจากทีม (resident) ของเคสนี้ — ใช้โชว์ใน reply ฟรีให้แพทย์ต้นทาง */
+function latestTeamMessageFor_(referralId) {
+  let sheet;
+  try {
+    sheet = SpreadsheetApp.getActiveSpreadsheet()
+      .getSheetByName(SHEETS.messages || 'messages');
+  } catch (err) { return ''; }
+  if (!sheet) return '';
+
+  const rows = readRows_(sheet).filter(function (r) {
+    return String(r['referral_id'] || '').trim() === referralId &&
+      String(r['sender_role'] || '').trim() === 'resident';
+  });
+  if (rows.length === 0) return '';
+
+  const last = rows[rows.length - 1];
+  let t = String(last['text'] || '').trim();
+  if (String(last['file_url'] || '').trim()) {
+    t += (t ? '\n' : '') + '📎 ' + (last['file_name'] || 'ไฟล์แนบ') +
+      ': ' + last['file_url'];
+  }
+  return t.slice(0, 500);
 }
 
 /** ผู้ใช้เลือกเคสที่จะส่งข้อความ (ตอนมีหลายเคส) */
