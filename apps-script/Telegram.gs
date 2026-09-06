@@ -195,13 +195,28 @@ function testTelegram() {
   Logger.log('ส่งข้อความทดสอบไปทุกกลุ่มที่ตั้ง chat_id ไว้แล้ว');
 }
 
-/** ผูก webhook ให้ Telegram ส่งข้อความเข้าระบบ — รันครั้งเดียวหลัง Deploy */
+/**
+ * ผูก webhook ให้ Telegram ส่งข้อความเข้าระบบ — รันครั้งเดียวหลัง Deploy
+ *
+ * ⚠️ ต้องใช้ URL แบบ /exec (สาธารณะ ตัวเดียวกับที่ LINE ใช้) ไม่ใช่ /dev
+ * getService().getUrl() ตอนรันจาก editor คืน /dev (ต้องล็อกอิน → Telegram 401)
+ * จึงอ่าน URL /exec จาก Script Property 'WEB_APP_URL' ก่อนเสมอ
+ *   วิธีหา: Deploy → Manage deployments → Web app → คัดลอก URL ลงท้าย /exec
+ */
 function setTelegramWebhook() {
   const token = telegramToken_();
   if (!token) { Logger.log('❌ ยังไม่ได้ตั้ง TELEGRAM_BOT_TOKEN'); return; }
-  const url = ScriptApp.getService().getUrl();
+
+  const url = PropertiesService.getScriptProperties()
+    .getProperty('WEB_APP_URL') || ScriptApp.getService().getUrl();
   if (!url) {
     Logger.log('❌ ยังไม่ได้ Deploy เป็น Web App — Deploy ก่อนแล้วรันใหม่');
+    return;
+  }
+  if (url.indexOf('/exec') === -1) {
+    Logger.log('⚠️ URL นี้ไม่ใช่ /exec: ' + url);
+    Logger.log('→ ไปตั้ง Script Property "WEB_APP_URL" = URL ที่ลงท้าย /exec ก่อน');
+    Logger.log('   (Deploy → Manage deployments → Web app → คัดลอก URL)');
     return;
   }
   const res = UrlFetchApp.fetch(
@@ -209,6 +224,17 @@ function setTelegramWebhook() {
     { muteHttpExceptions: true });
   Logger.log('setWebhook → ' + res.getContentText());
   Logger.log('URL ที่ผูก: ' + url);
+}
+
+/** ตรวจสถานะ webhook — url ที่ตั้งไว้, error ล่าสุด, จำนวน update ค้าง */
+function telegramWebhookInfo() {
+  const token = telegramToken_();
+  if (!token) { Logger.log('❌ ยังไม่ได้ตั้ง TELEGRAM_BOT_TOKEN'); return; }
+  const res = UrlFetchApp.fetch(TELEGRAM_API + token + '/getWebhookInfo',
+    { muteHttpExceptions: true });
+  Logger.log('getWebhookInfo → ' + res.getContentText());
+  Logger.log('URL ของ Web App นี้: ' + (ScriptApp.getService().getUrl() || '(ยังไม่ได้ Deploy)'));
+  Logger.log('chat_id ที่ตั้งไว้: ' + JSON.stringify(telegramKnownChats_()));
 }
 
 function deleteTelegramWebhook() {
