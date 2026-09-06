@@ -480,6 +480,19 @@ function sendDailyBatch() {
     }
   });
 
+  // เคสที่มีข้อความใหม่จากแพทย์ต้นทางที่ยังไม่อ่าน — เกาะรอบนี้ (ฟรี ไม่เปลือง push)
+  // เพื่อให้ปิด push ต่อข้อความได้โดย dent ยังไม่พลาดข้อความ (ดู chat_push_dent)
+  const unread = open.filter(function (r) {
+    return String(r['dent_unread'] || '').toLowerCase() === 'yes';
+  });
+  if (unread.length > 0) {
+    message += '\n\n💬 เคสมีข้อความใหม่จากแพทย์ต้นทาง — ' + unread.length + ' เคส\n';
+    unread.slice(0, 10).forEach(function (r) {
+      message += '• ' + r['referral_id'] + '\n';
+    });
+    message += 'เปิด dashboard เพื่ออ่าน/ตอบ\n';
+  }
+
   message += '\nเปิดดูรายละเอียด:\n' + DASHBOARD_URL;
   // เตือนทุกวันว่าถามบอทได้ — การ์ดเมนูที่ปักหมุดคนเลื่อนผ่าน แต่บรรทัดนี้มากับ
   // ข้อความที่ทุกคนอ่านอยู่แล้ว (คำขอผู้ใช้ 5 ก.ย. 2569)

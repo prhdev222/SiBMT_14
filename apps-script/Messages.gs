@@ -80,6 +80,19 @@ function caseAudience_(referralType) {
  * ตั้งธง unread ของอีกฝั่ง แล้ว push เฉพาะตอนเพิ่งเปลี่ยนจากว่าง → yes
  * (ข้อความแรกหลังอีกฝั่งอ่านทัน) เพื่อไม่เปลืองโควตา push เวลาพิมพ์หลายที
  */
+/**
+ * อ่านสวิตช์ push จาก config sheet — ประหยัดโควตา LINE
+ *   chat_push_dent     = on/off (ไม่ตั้ง = off) → push เตือน dent ต่อข้อความ
+ *   chat_push_referrer = on/off (ไม่ตั้ง = on)  → push เตือนแพทย์ต้นทางต่อข้อความ
+ * ปิดแล้วยังมี: ป้าย 💬 บน dashboard (ฟรี) + รอบ 10:00 (ฟรี) + อีเมล (ฟรี)
+ */
+function chatPushOn_(key, defaultOn) {
+  const v = readConfigValue_(key).toLowerCase();
+  if (v === 'on' || v === 'yes' || v === 'true' || v === 'เปิด') return true;
+  if (v === 'off' || v === 'no' || v === 'false' || v === 'ปิด') return false;
+  return defaultOn;
+}
+
 function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl) {
   const referralId = String(row['referral_id'] || '').trim();
   const caseToken = ensureCaseToken_(sheet, map, row);
@@ -94,7 +107,8 @@ function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl) {
       String(readCell_(sheet, map2, row._row, 'dent_unread') || '')
         .toLowerCase() === 'yes';
     setCell_(sheet, map2, row._row, 'dent_unread', 'yes');
-    if (!wasPending) {
+    // ป้าย 💬 บน dashboard ขึ้นเสมอ (ฟรี) · push เฉพาะเมื่อเปิดสวิตช์ (ไม่ตั้ง = off)
+    if (!wasPending && chatPushOn_('chat_push_dent', false)) {
       const audience = caseAudience_(row['referral_type']);
       pushDentNudgeWithQuote_(audience, referralId,
         '💬 ' + referralId + ' มีข้อความจากแพทย์ต้นทาง\n' +
@@ -118,7 +132,9 @@ function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl) {
         preview + (fileUrl ? '\n📎 ไฟล์แนบ: ' + fileUrl : ''),
         String(row['sender_name'] || 'ทีมโลหิตวิทยา'));
     }
-    const userId = findLineUserByPhone_(row['referrer_phone']);
+    // อีเมลส่งเสมอ (ฟรี) · push เฉพาะเมื่อเปิดสวิตช์ (ไม่ตั้ง = on เพราะแพทย์ไม่มี dashboard เฝ้า)
+    const userId = chatPushOn_('chat_push_referrer', true)
+      ? findLineUserByPhone_(row['referrer_phone']) : '';
     if (userId) {
       const token = PropertiesService.getScriptProperties()
         .getProperty('LINE_CHANNEL_ACCESS_TOKEN');
