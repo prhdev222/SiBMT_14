@@ -105,14 +105,15 @@ function handleTelegramUpdate_(update) {
     return jsonResponse_({ ok: true });
   }
 
-  // ดึงข้อมูลเอง (ฟรี): "สรุป/เคสค้าง" · "ข้อความใหม่"
-  if (/^(สรุป|เคสค้าง|งานค้าง|ค้าง)\s*$/.test(text)) {
-    telegramReply_(chatId, buildPendingReply_());
-    return jsonResponse_({ ok: true });
-  }
-  if (/^(ข้อความใหม่|ข้อความ)\s*$/.test(text)) {
-    telegramReply_(chatId, buildUnreadReply_());
-    return jsonResponse_({ ok: true });
+  // คำสั่งถาม-ตอบ (ฟรี) — ใช้ตัวตอบกลางร่วมกับ LINE: เมนู, เคสค้าง, ข้อความใหม่,
+  // นัดวันนี้/พรุ่งนี้, นัด 15/9, เวร, นัด fellow, พิมพ์ชื่อ fellow ดูนัดตัวเอง
+  try {
+    const reply = answerGroupQuery_(text, {
+      inFellowGroup: chatId === String(telegramChatId_('fellow')),
+    });
+    if (reply) telegramReply_(chatId, reply);
+  } catch (err) {
+    telegramReply_(chatId, '⚠️ บอทขัดข้อง ตอบไม่ได้: ' + err);
   }
   return jsonResponse_({ ok: true });
 }

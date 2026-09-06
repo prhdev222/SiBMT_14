@@ -201,6 +201,55 @@ function handleGroupQuery_(event, text, sourceId) {
 }
 
 /**
+ * ตัวตอบคำสั่งกลุ่มแบบ "ไม่ผูกช่องทาง" — รับข้อความ คืนคำตอบเป็น string
+ * (หรือ null ถ้าไม่ตรงคำสั่งใด) เพื่อให้ Telegram ใช้ตรรกะเดียวกับ LINE
+ *
+ * LINE ยังใช้ handleGroupQuery_ (มี quick-reply + รายงาน error เข้าแชท)
+ * ส่วน Telegram เรียกฟังก์ชันนี้แล้วส่งผลผ่าน telegramReply_
+ *
+ * opts.inFellowGroup = true → โชว์รายละเอียดผู้ป่วยของ fellow (ข้อยกเว้น PDPA-003)
+ */
+function answerGroupQuery_(text, opts) {
+  opts = opts || {};
+  text = String(text || '').trim();
+
+  if (GROUP_QUERY_MENU.test(text)) {
+    return buildMenuText_(GROUP_QUERY_APPOINTMENT_ACTIONS
+      .concat(GROUP_QUERY_FELLOW_ACTIONS)
+      .concat(GROUP_QUERY_PENDING_ACTIONS));
+  }
+  if (GROUP_QUERY_PENDING.test(text)) return buildPendingReply_();
+  if (GROUP_QUERY_UNREAD.test(text)) return buildUnreadReply_();
+
+  const upcoming = text.match(GROUP_QUERY_FELLOW_UPCOMING);
+  if (upcoming) return buildFellowUpcomingReply_(parseInt(upcoming[1], 10) || 7);
+
+  if (GROUP_QUERY_DUTY.test(text)) return buildDutyReply_();
+
+  const match = text.match(GROUP_QUERY_APPOINTMENT);
+  if (!match) {
+    const matchedFellow = matchFellowByName_(text);
+    if (matchedFellow === null) return null; // ไม่ตรงคำสั่งไหนเลย
+    if (Array.isArray(matchedFellow)) {
+      return 'มี fellow ชื่อคล้ายกันหลายท่าน พิมพ์ให้ชัดขึ้นครับ:\n' +
+        matchedFellow.map(function (n) { return '• ' + n; }).join('\n');
+    }
+    return buildFellowOwnReply_(matchedFellow, !!opts.inFellowGroup);
+  }
+
+  const target = parseQueryDate_(match[2]);
+  if (!target) {
+    return 'พิมพ์แบบนี้ได้ครับ\n' +
+      '  นัดวันนี้\n' +
+      '  นัดพรุ่งนี้\n' +
+      '  นัด 15/9   (วันที่/เดือน)\n' +
+      '  นัด 15/9/69   (ใส่ปี พ.ศ. ได้)\n\n' +
+      'หรือพิมพ์ "เมนู" เพื่อดูคำสั่งทั้งหมด';
+  }
+  return buildAppointmentReply_(target);
+}
+
+/**
  * ตอบด้วยผลของ builder หรือรายงานข้อผิดพลาดเข้าแชทตรง ๆ
  *
  * รับได้ทั้งข้อความสำเร็จรูปและฟังก์ชัน — ที่ให้ส่งฟังก์ชันเข้ามาเพราะ
