@@ -51,6 +51,20 @@ export function DutyEditor({
     return true;
   }
 
+  function deleteShift(s: ResidentShift) {
+    if (
+      !window.confirm(`ลบช่วงเวร ${s.name} (${s.fromDate} – ${s.toDate})?`)
+    )
+      return;
+    void run(() =>
+      deleteShiftAction({
+        fromDate: s.fromDate,
+        toDate: s.toDate,
+        residentName: s.name,
+      }),
+    );
+  }
+
   async function handleSync() {
     const sure = window.confirm(
       "ดึงตารางเวรจาก HSOS ทับข้อมูลในระบบทั้งชุด?\n\n" +
@@ -130,21 +144,7 @@ export function DutyEditor({
                       }),
                     )
                   }
-                  onDelete={() => {
-                    if (
-                      window.confirm(
-                        `ลบช่วงเวร ${s.name} (${s.fromDate} – ${s.toDate})?`,
-                      )
-                    ) {
-                      void run(() =>
-                        deleteShiftAction({
-                          fromDate: s.fromDate,
-                          toDate: s.toDate,
-                          residentName: s.name,
-                        }),
-                      );
-                    }
-                  }}
+                  onDelete={() => deleteShift(s)}
                 />
               </li>
             );
@@ -158,18 +158,28 @@ export function DutyEditor({
               <span className="text-zinc-500">
                 {s.fromDate} – {s.toDate}
               </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingKey(key);
-                  setAdding(false);
-                  setError(null);
-                }}
-                disabled={saving}
-                className="ml-auto rounded-lg border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
-              >
-                แก้ / แลกเวร
-              </button>
+              <div className="ml-auto flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingKey(key);
+                    setAdding(false);
+                    setError(null);
+                  }}
+                  disabled={saving}
+                  className="rounded-lg border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+                >
+                  แก้ / แลกเวร
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteShift(s)}
+                  disabled={saving}
+                  className="rounded-lg border border-red-200 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  ลบ
+                </button>
+              </div>
             </li>
           );
         })}
