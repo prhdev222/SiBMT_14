@@ -108,14 +108,16 @@ function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl, urgent,
         .toLowerCase() === 'yes';
     setCell_(sheet, map2, row._row, 'dent_unread', 'yes');
     const audience = caseAudience_(row['referral_type']);
-    // Telegram เด้งเตือน dent ทันที (ฟรี) — coalesce ต่อชุดข้อความที่ยังไม่อ่าน
+    // Telegram แจ้งเตือน dent (ฟรี) — เข้าไปตอบใน LINE (reply ฟรี), Telegram
+    // (ถ้าตั้ง webhook), หรือ dashboard · coalesce ต่อชุดข้อความที่ยังไม่อ่าน
     if (!wasPending) {
       sendTelegram_(
         '💬 ' + referralId + ' มีข้อความจากแพทย์ต้นทาง\n' +
         '“' + preview + '”' + fileLine + '\n' +
         '─────────\n' +
-        'ตอบ: พิมพ์  ตอบ ' + referralId + ': <ข้อความ>\n' +
-        'หรือเปิด ' + SITE_URL + '/dashboard',
+        'เข้าไปตอบได้ที่ (ฟรีทุกช่อง):\n' +
+        '• พิมพ์  ตอบ ' + referralId + ': <ข้อความ>  ในกลุ่ม (LINE/Telegram)\n' +
+        '• หรือ dashboard → ' + SITE_URL + '/dashboard',
         audience);
     }
     // ป้าย 💬 บน dashboard ขึ้นเสมอ (ฟรี) · LINE push เมื่อ "แพทย์กดด่วน" หรือเปิดสวิตช์
