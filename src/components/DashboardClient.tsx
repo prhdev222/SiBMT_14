@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/Badge";
 import {
   updateAssignedToAction,
@@ -16,6 +16,7 @@ import {
   REFERRAL_TYPES_ORDERED,
   REFERRAL_TYPE_META,
   STATUSES,
+  STATUSES_BY_TYPE,
   STATUS_COLOR,
   STATUS_LABEL_TH,
   alertLevelFor,
@@ -242,6 +243,24 @@ export function DashboardClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [referrals, statusOverrides]);
 
+  /**
+   * ตัวเลือกสถานะใน dropdown — กรองตามกลุ่มที่เลือก ให้เห็นเฉพาะสถานะที่กลุ่มนั้น
+   * ใช้จริง (กลุ่ม 2/3 จะได้ไม่เห็น "จองคิว fellow"/"ยืนยันวันนัด" ของกลุ่ม 1)
+   * เลือก "ทุกกลุ่มงาน" = เห็นทุกสถานะตามเดิม
+   */
+  const statusOptions = useMemo<Status[]>(() => {
+    if (referralType === "all") return STATUSES;
+    return STATUSES_BY_TYPE[referralType];
+  }, [referralType]);
+
+  // เปลี่ยนกลุ่มแล้วสถานะที่กรองไว้ไม่อยู่ในกลุ่มใหม่ — รีเซ็ตเป็น "ทั้งหมด"
+  // กันกรณีกรองค้างจนตารางว่างเปล่าโดยไม่รู้สาเหตุ
+  useEffect(() => {
+    if (status !== "all" && !statusOptions.includes(status)) {
+      setStatus("all");
+    }
+  }, [statusOptions, status]);
+
   return (
     <div className="space-y-6">
       {/* stat cards */}
@@ -330,7 +349,7 @@ export function DashboardClient({
           className="w-full min-w-0 rounded-md border border-zinc-300 px-3 py-2 text-sm"
         >
           <option value="all">สถานะทั้งหมด</option>
-          {STATUSES.map((s) => (
+          {statusOptions.map((s) => (
             <option key={s} value={s}>
               {STATUS_LABEL_TH[s]}
             </option>
