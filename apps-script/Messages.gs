@@ -109,7 +109,8 @@ function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl, urgent,
     setCell_(sheet, map2, row._row, 'dent_unread', 'yes');
     // ป้าย 💬 บน dashboard ขึ้นเสมอ (ฟรี) · push เมื่อ "แพทย์กดด่วน" หรือเปิดสวิตช์
     // ไม่ด่วน + สวิตช์ปิด = ไม่ push ทันที แต่ไปโผล่รอบ 10:00 ในกลุ่ม dent (ฟรี)
-    if (!wasPending && (urgent || chatPushOn_('chat_push_dent', false))) {
+    if (!wasPending && linePushEnabled_() &&
+        (urgent || chatPushOn_('chat_push_dent', false))) {
       const audience = caseAudience_(row['referral_type']);
       pushDentNudgeWithQuote_(audience, referralId,
         '💬 ' + referralId + ' มีข้อความจากแพทย์ต้นทาง\n' +
@@ -131,8 +132,8 @@ function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl, urgent,
     // ค่าว่าง (ข้อความ dent จาก LINE) = ค่าเดิม: อีเมล + push ตามสวิตช์ config
     const ch = String(dentChannel || '').toLowerCase();
     const wantEmail = ch === 'email' || ch === '';
-    const wantLine = ch === 'line' ||
-      (ch === '' && chatPushOn_('chat_push_referrer', true));
+    const wantLine = linePushEnabled_() && (ch === 'line' ||
+      (ch === '' && chatPushOn_('chat_push_referrer', true)));
 
     const email = String(row['referrer_email'] || '').trim();
     if (email && wantEmail) {

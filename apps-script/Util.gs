@@ -216,6 +216,15 @@ function logStatusChange_(referralId, oldStatus, newStatus, changedBy, note) {
  * ไม่โยน error เพราะผู้เรียกทุกรายมีทางเลือกสำรองอยู่แล้ว
  * ค่าที่ยังไม่ได้กรอกในชีตไม่ควรทำให้คำสั่งทั้งคำสั่งล้ม
  */
+/**
+ * เปิด LINE push ไหม — ค่าเริ่มต้น "ปิด" (ประหยัดโควตา ใช้ปุ่มดึงเอง + Telegram/อีเมล)
+ * ตั้ง config key `line_push` = on เพื่อเปิด push อัตโนมัติกลับมา
+ */
+function linePushEnabled_() {
+  const v = readConfigValue_('line_push').toLowerCase();
+  return v === 'on' || v === 'yes' || v === 'true' || v === 'เปิด';
+}
+
 function readConfigValue_(key) {
   try {
     const sheet = getSheet_(SHEETS.config);

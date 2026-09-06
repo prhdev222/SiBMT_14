@@ -142,6 +142,12 @@ const LINE_TARGET_FALLBACK = 'LINE_TARGET_ADMIN';
  * @param {string} audience 'batch' = resident, 'red' = แอดมินกลาง, 'fellow' = fellow
  */
 function pushLineMessage_(text, audience) {
+  // สวิตช์หลัก: ปิด push อัตโนมัติทั้งหมด (ค่าเริ่มต้น) — ทีมดึงข้อมูลเองผ่านปุ่ม/เมนู
+  // (reply ฟรี) · ตั้ง config line_push = on เพื่อเปิดกลับ
+  if (!linePushEnabled_()) {
+    console.log('[LINE push ปิด (line_push=off)] ' + audience + ': ' + text);
+    return;
+  }
   const props = PropertiesService.getScriptProperties();
   const token = props.getProperty('LINE_CHANNEL_ACCESS_TOKEN');
 
@@ -775,6 +781,7 @@ function sendLinkCodeEmail_(email, code) {
  * ล้มเหลวได้โดยไม่ทำให้การบันทึกคำตอบล้มตาม
  */
 function notifyReferrerOnLine_(row, answerToken) {
+  if (!linePushEnabled_()) return false; // ปิด push — แพทย์ต้นทางรับทางอีเมล/ถามบอทเอง
   try {
     const userId = findLineUserByPhone_(row['referrer_phone']);
     // ไม่ได้ผูกบัญชี — ไม่ใช่ความผิดพลาด แค่ยังไม่มีปลายทาง LINE

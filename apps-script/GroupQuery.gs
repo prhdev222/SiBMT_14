@@ -36,6 +36,9 @@ const GROUP_QUERY_FELLOW_UPCOMING = /^นัด\s*fellow\s*(\d{1,2})?\s*$/i;
 /** เวรตอบคำปรึกษากลุ่ม 2/3 — "เวร" "เวร resident" "เวรตอนนี้" */
 const GROUP_QUERY_DUTY = /^เวร(\s*resident|ตอนนี้)?\s*$/i;
 
+/** เคสที่มีข้อความใหม่จากแพทย์ต้นทาง — "ข้อความใหม่" "ข้อความ" "แชท" */
+const GROUP_QUERY_UNREAD = /^(ข้อความใหม่|ข้อความ|แชท)\s*$/;
+
 
 /**
  * ปุ่มทั้งหมดที่มี — ⚠️ template แบบปุ่มรับได้มากสุด 4 ปุ่ม ป้ายยาวได้ 20 ตัวอักษร
@@ -46,6 +49,7 @@ const GROUP_QUERY_APPOINTMENT_ACTIONS = [
 ];
 const GROUP_QUERY_PENDING_ACTIONS = [
   { label: 'เคสค้าง', text: 'เคสค้าง' },
+  { label: 'ข้อความใหม่', text: 'ข้อความใหม่' },
   { label: 'เวร resident', text: 'เวร resident' },
 ];
 const GROUP_QUERY_FELLOW_ACTIONS = [
@@ -129,6 +133,11 @@ function handleGroupQuery_(event, text, sourceId) {
 
   if (GROUP_QUERY_PENDING.test(text)) {
     replyOrReport_(event.replyToken, buildPendingReply_);
+    return true;
+  }
+
+  if (GROUP_QUERY_UNREAD.test(text)) {
+    replyOrReport_(event.replyToken, buildUnreadReply_);
     return true;
   }
 
@@ -362,6 +371,31 @@ function buildAppointmentReply_(date) {
  * แยกตามระดับการแจ้งเตือน เพราะจำนวนรวมอย่างเดียวไม่บอกว่าต้องรีบแค่ไหน
  * — ค้าง 12 เคสที่ยังอยู่ในกรอบเวลา ต่างจากค้าง 3 เคสที่เลยกำหนดแล้วโดยสิ้นเชิง
  */
+/** เคสที่มีข้อความใหม่จากแพทย์ต้นทางที่ยังไม่อ่าน — ทีมพิมพ์ "ข้อความใหม่" ดึงเอง (ฟรี) */
+function buildUnreadReply_() {
+  const rows = readRows_(getSheet_(SHEETS.referrals));
+  const unread = rows.filter(function (r) {
+    return String(r['dent_unread'] || '').toLowerCase() === 'yes' &&
+      TERMINAL_STATUSES.indexOf(String(r['status'] || '')) === -1;
+  });
+
+  const header = '💬 เคสมีข้อความใหม่จากแพทย์ต้นทาง\n────────────────\n';
+  if (unread.length === 0) {
+    return header + 'ไม่มีข้อความใหม่ ✅';
+  }
+
+  let msg = header;
+  unread.slice(0, 15).forEach(function (r) {
+    const groupNo = GROUP_NUMBER[String(r['referral_type'])] || '-';
+    msg += '• ' + r['referral_id'] + ' · กลุ่ม ' + groupNo + '\n';
+  });
+  if (unread.length > 15) {
+    msg += '  ...และอีก ' + (unread.length - 15) + ' เคส\n';
+  }
+  msg += '\nเปิดอ่าน/ตอบใน dashboard:\n' + DASHBOARD_URL;
+  return msg;
+}
+
 function buildPendingReply_() {
   const rows = readRows_(getSheet_(SHEETS.referrals));
 
