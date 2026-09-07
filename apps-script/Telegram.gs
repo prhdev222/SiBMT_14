@@ -54,27 +54,49 @@ function telegramKnownChats_() {
   return ids;
 }
 
-/** ส่งข้อความเข้าปลายทาง Telegram หนึ่ง chat */
+/**
+ * ส่งข้อความเข้าปลายทาง Telegram หนึ่ง chat
+ *
+ * ทน rate-limit: ถ้าโดน 429 (ส่งถี่เกิน) Telegram บอก retry_after มา →
+ * รอแล้วลองใหม่ (สูงสุด 3 รอบ) แทนที่จะเงียบหาย · log ทุก error ที่ไม่ใช่ 200
+ * เพื่อให้เห็นว่าทำไม "บางครั้งไม่ตอบ"
+ */
 function telegramReply_(chatId, text) {
   const token = telegramToken_();
   if (!token || !chatId) {
     console.log('[Telegram ยังไม่ตั้งค่า] ' + text);
     return;
   }
-  try {
-    UrlFetchApp.fetch(TELEGRAM_API + token + '/sendMessage', {
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify({
-        chat_id: String(chatId),
-        text: text,
-        disable_web_page_preview: true,
-      }),
-      muteHttpExceptions: true,
-    });
-  } catch (err) {
-    console.error('ส่ง Telegram ไม่สำเร็จ: ' + err);
+  for (var attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = UrlFetchApp.fetch(TELEGRAM_API + token + '/sendMessage', {
+        method: 'post',
+        contentType: 'application/json',
+        payload: JSON.stringify({
+          chat_id: String(chatId),
+          text: text,
+          disable_web_page_preview: true,
+        }),
+        muteHttpExceptions: true,
+      });
+      const code = res.getResponseCode();
+      if (code === 200) return; // สำเร็จ
+      const info = res.getContentText() || '';
+      console.log('sendMessage ' + code + ': ' + info);
+      // 429 = ส่งถี่เกิน → รอ retry_after แล้วลองใหม่
+      if (code === 429) {
+        var wait = 2;
+        try { wait = (JSON.parse(info).parameters || {}).retry_after || 2; } catch (e) {}
+        Utilities.sleep((wait + 1) * 1000);
+        continue;
+      }
+      return; // error อื่น (400/403...) ลองใหม่ก็ไม่ช่วย
+    } catch (err) {
+      console.error('ส่ง Telegram ไม่สำเร็จ: ' + err);
+      return;
+    }
   }
+  console.log('sendMessage ยอมแพ้หลังลอง 3 รอบ (rate-limit ยาว)');
 }
 
 /** ส่งแจ้งเตือนเข้ากลุ่มตาม audience (batch/red/fellow) */
