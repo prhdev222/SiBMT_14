@@ -32,7 +32,14 @@ export async function POST(request: Request) {
     result = await verifyTelegramWebApp({ initData });
   } catch (error) {
     console.error("[telegram-webapp]", error);
-    return NextResponse.json({ ok: false, error: "verify_failed" }, { status: 502 });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "verify_failed",
+        detail: error instanceof Error ? error.message : String(error),
+      },
+      { status: 502 },
+    );
   }
 
   if (!result.allowed || !result.displayName) {

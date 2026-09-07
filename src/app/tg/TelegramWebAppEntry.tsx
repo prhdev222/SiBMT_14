@@ -47,12 +47,15 @@ export function TelegramWebAppEntry() {
           window.location.href = "/dashboard";
           return;
         }
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          detail?: string;
+        };
         setFailed(true);
         setStatus(
           data.error === "not_member"
             ? "ไม่มีสิทธิ์เข้าระบบ — บัญชี Telegram นี้ไม่ได้อยู่ในกลุ่มทีม"
-            : "เข้าระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
+            : "เข้าระบบไม่สำเร็จ: " + (data.detail || "กรุณาลองใหม่อีกครั้ง"),
         );
       } catch {
         setFailed(true);
