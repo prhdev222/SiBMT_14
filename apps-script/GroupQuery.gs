@@ -540,13 +540,55 @@ function buildResidentDigest_(now) {
 }
 
 /**
- * สรุปประจำวันสำหรับกลุ่ม fellow — นัดวันนี้ + พรุ่งนี้ (ใครมีนัดบ้าง)
- * ใช้ในรอบ 10:00 · reuse buildAppointmentReply_ (มีหัวข้อ/ลิงก์ในตัวแล้ว)
+ * รายละเอียดนัด fellow ต่อเคสในวันหนึ่ง (เพศ/อายุ/วินิจฉัย/ข้อบ่งชี้/รพ.)
+ * ใช้เฉพาะกลุ่ม fellow ที่ดูรายละเอียดผู้ป่วยได้ (ข้อยกเว้น PDPA-003) —
+ * ต่างจาก buildAppointmentReply_ ที่ให้แค่จำนวนต่อ fellow (ใช้กับกลุ่มอื่น)
+ */
+function buildAppointmentDetailReply_(date) {
+  const rows = readRows_(getSheet_(SHEETS.referrals));
+  const iso = Utilities.formatDate(date, TIMEZONE, 'yyyy-MM-dd');
+
+  const matched = rows.filter(function (r) {
+    if (String(r['referral_type'] || '') !== TYPES.transplant) return false;
+    if (String(r['status'] || '') !== 'Appointment Confirmed') return false;
+    const at = toDate_(r['appointment_date']);
+    return at && Utilities.formatDate(at, TIMEZONE, 'yyyy-MM-dd') === iso;
+  });
+
+  const header = '📅 นัด fellow ' + formatThaiDate_(date) + '\n────────────────\n';
+  if (matched.length === 0) return header + 'ไม่มีนัด';
+
+  // เรียงตามชื่อ fellow ให้เคสของคนเดียวกันอยู่ติดกัน
+  matched.sort(function (a, b) {
+    return String(a['fellow_assigned'] || '').localeCompare(
+      String(b['fellow_assigned'] || ''));
+  });
+
+  let text = header + 'รวม ' + matched.length + ' ราย\n';
+  matched.forEach(function (r) {
+    const timeNote = String(r['appointment_note'] || '').trim();
+    text += '\n👨‍⚕️ ' +
+      (String(r['fellow_assigned'] || '').trim() || '(ยังไม่ระบุ fellow)') +
+      (timeNote ? ' · ' + timeNote.split(' พบ')[0] : '') + '\n' +
+      '   เลขที่: ' + String(r['referral_id'] || '').trim() + '\n' +
+      '   👤 ' + (r['patient_sex'] || '-') + ' อายุ ' +
+        (r['patient_age'] || '-') + ' ปี\n' +
+      '   การวินิจฉัย: ' + (r['diagnosis'] || '-') + '\n' +
+      '   ข้อบ่งชี้ (I/C): ' + (r['transplant_indication'] || '-') + '\n' +
+      '   จาก: ' + (r['referrer_org'] || '-') + '\n';
+  });
+  return text + '\nรายละเอียดเพิ่มเติม\n' + SITE_URL + '/dashboard/appointments';
+}
+
+/**
+ * สรุปประจำวันสำหรับกลุ่ม fellow — นัดวันนี้ + พรุ่งนี้ พร้อมรายละเอียดผู้ป่วย
+ * ใช้ในรอบ 10:00 (ส่งเข้ากลุ่ม fellow เท่านั้น จึงแสดงรายละเอียดได้)
  */
 function buildFellowDigest_(now) {
   const tomorrow = new Date(now.getTime());
   tomorrow.setDate(tomorrow.getDate() + 1);
-  return buildAppointmentReply_(now) + '\n\n' + buildAppointmentReply_(tomorrow);
+  return buildAppointmentDetailReply_(now) + '\n\n' +
+    buildAppointmentDetailReply_(tomorrow);
 }
 
 /**
