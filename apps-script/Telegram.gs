@@ -144,6 +144,13 @@ function handleTelegramUpdate_(update) {
   const chatId = String(msg.chat.id);
   const text = String(msg.text || '').trim();
 
+  // /login → เข้า dashboard (ตรวจสิทธิ์เองด้วย getChatMember จึงข้าม gate ด้านล่างได้
+  // ใช้ได้ทั้งในกลุ่มและใน DM ส่วนตัวกับบอท)
+  if (/^\/?(login|เข้าระบบ|เข้าหลังบ้าน)\s*$/i.test(text)) {
+    handleTelegramLoginCommand_(msg, chatId);
+    return jsonResponse_({ ok: true });
+  }
+
   // รับเฉพาะกลุ่มที่ตั้งไว้ (Apps Script อ่าน header ไม่ได้ จึงยืนยันด้วย chat_id)
   // ถ้า id ยังไม่ตรง → บอกเลขที่ถูกในกลุ่มเลย เพื่อให้ตั้งค่าได้ง่าย (ไม่ต้องอ่าน log)
   if (telegramKnownChats_().indexOf(chatId) === -1) {
@@ -204,6 +211,105 @@ function handleTelegramDentReply_(chatId, referralId, body) {
   notifyCounterparty_(sheet, map, row, 'resident', body);
   telegramReply_(chatId,
     '✅ บันทึกและส่งถึงแพทย์ต้นทางแล้ว (เคส ' + referralId + ')');
+}
+
+/* ------------------------------------------------------------------ */
+/* เข้า dashboard จากในกลุ่ม (พิมพ์ /login) — ยืนยันจากสมาชิกกลุ่ม        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * เช็คว่า userId เป็นสมาชิกกลุ่มทีมไหน → คืน role (admin/resident/fellow)
+ * หรือ '' ถ้าไม่ได้อยู่กลุ่มไหนเลย · ใช้ getChatMember (ต้องมี bot token)
+ */
+function telegramMemberRole_(userId) {
+  const token = telegramToken_();
+  if (!token || !userId) return '';
+  const props = PropertiesService.getScriptProperties();
+  const groups = [
+    { id: props.getProperty('TELEGRAM_CHAT_ADMIN') ||
+        props.getProperty('TELEGRAM_CHAT_ID'), role: 'admin' },
+    { id: props.getProperty('TELEGRAM_CHAT_RESIDENT'), role: 'resident' },
+    { id: props.getProperty('TELEGRAM_CHAT_FELLOW'), role: 'fellow' },
+  ];
+  for (var i = 0; i < groups.length; i++) {
+    if (!groups[i].id) continue;
+    try {
+      const res = UrlFetchApp.fetch(TELEGRAM_API + token + '/getChatMember?chat_id=' +
+        encodeURIComponent(groups[i].id) + '&user_id=' + encodeURIComponent(userId),
+        { muteHttpExceptions: true });
+      const data = JSON.parse(res.getContentText() || '{}');
+      if (data.ok && data.result) {
+        const st = data.result.status;
+        if (st === 'creator' || st === 'administrator' ||
+            st === 'member' || st === 'restricted') {
+          return groups[i].role;
+        }
+      }
+    } catch (err) { /* ลองกลุ่มถัดไป */ }
+  }
+  return '';
+}
+
+/**
+ * /login ในกลุ่ม → สร้างลิงก์เข้า dashboard ครั้งเดียว (อายุ 5 นาที)
+ * ส่งเข้า DM ส่วนตัวเพื่อกันคนอื่นในกลุ่มกดแทน
+ */
+function handleTelegramLoginCommand_(msg, chatId) {
+  const from = msg.from || {};
+  const userId = from.id;
+  if (!userId) return;
+
+  const role = telegramMemberRole_(userId);
+  if (!role) {
+    telegramReply_(chatId, 'ไม่พบสิทธิ์ — บัญชี Telegram นี้ไม่ได้อยู่ในกลุ่มทีม');
+    return;
+  }
+  const name = ((from.first_name || '') + ' ' + (from.last_name || '')).trim() ||
+    from.username || ('Telegram ' + userId);
+
+  const token = Utilities.getUuid().replace(/-/g, '');
+  CacheService.getScriptCache().put('tglogin_' + token,
+    JSON.stringify({ name: name, role: role }), 300);
+  const url = SITE_URL + '/login/telegram?t=' + token;
+
+  // ส่งลิงก์เข้า DM (chat_id = userId) — ได้เฉพาะถ้าผู้ใช้เคยกด Start กับบอท
+  const dm = UrlFetchApp.fetch(TELEGRAM_API + telegramToken_() + '/sendMessage', {
+    method: 'post', contentType: 'application/json',
+    payload: JSON.stringify({
+      chat_id: String(userId),
+      text: '🔑 ลิงก์เข้า dashboard (ใช้ได้ครั้งเดียว · หมดใน 5 นาที)\n' + url +
+        '\n\n⚠️ อย่าส่งต่อลิงก์นี้ให้ใคร',
+      disable_web_page_preview: true,
+    }),
+    muteHttpExceptions: true,
+  });
+  const ok = (JSON.parse(dm.getContentText() || '{}')).ok;
+  if (ok) {
+    if (String(chatId) !== String(userId)) {
+      telegramReply_(chatId, '✅ ส่งลิงก์เข้า dashboard ให้ทาง DM แล้ว (แชทส่วนตัวกับบอท)');
+    }
+  } else {
+    telegramReply_(chatId,
+      '⚠️ ส่งลิงก์ทาง DM ไม่ได้ — แตะชื่อบอท → กด Start คุยกับบอทก่อน แล้วพิมพ์ /login อีกครั้ง');
+  }
+}
+
+/**
+ * แลก token เข้าระบบ (เรียกจากเว็บ) → คืนชื่อ/role ถ้าใช้ได้ แล้วลบทิ้ง (ครั้งเดียว)
+ */
+function redeemTelegramLogin_(payload) {
+  const token = String((payload && payload.token) || '').trim();
+  if (!token) return { allowed: false };
+  const cache = CacheService.getScriptCache();
+  const raw = cache.get('tglogin_' + token);
+  if (!raw) return { allowed: false };
+  cache.remove('tglogin_' + token);
+  try {
+    const data = JSON.parse(raw);
+    return { allowed: true, displayName: data.name, role: data.role };
+  } catch (e) {
+    return { allowed: false };
+  }
 }
 
 /* ------------------------------------------------------------------ */

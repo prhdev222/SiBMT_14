@@ -31,6 +31,11 @@ const LINE_ERRORS: Record<string, string> = {
     "ตรวจสอบสิทธิ์ไม่สำเร็จ กรุณาลองใหม่ — หากยังไม่ได้ให้แจ้งแพทย์แอดมินกลาง",
   line_not_member:
     "บัญชี LINE นี้ไม่ได้อยู่ในกลุ่มงานที่มีสิทธิ์เข้าระบบ — หากเพิ่งเข้ากลุ่ม กรุณาลองใหม่อีกครั้ง หรือแจ้งแพทย์แอดมินกลางให้เพิ่มเข้ากลุ่ม",
+  tg_expired:
+    "ลิงก์เข้าระบบหมดอายุหรือถูกใช้ไปแล้ว — พิมพ์ /login ในกลุ่ม Telegram อีกครั้งเพื่อรับลิงก์ใหม่",
+  tg_missing:
+    "ลิงก์ไม่ถูกต้อง — พิมพ์ /login ในกลุ่ม Telegram เพื่อรับลิงก์เข้าระบบ",
+  tg_failed: "เข้าระบบด้วย Telegram ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
 };
 
 export default async function LoginPage({
@@ -110,6 +115,12 @@ export default async function LoginPage({
             </div>
           )}
         </div>
+
+        <p className="text-center text-xs text-zinc-500">
+          เจ้าหน้าที่ในกลุ่ม Telegram: พิมพ์{" "}
+          <code className="rounded bg-zinc-100 px-1">/login</code>{" "}
+          ในกลุ่มเพื่อรับลิงก์เข้าระบบ
+        </p>
 
         <p className="text-center text-xs text-zinc-500">
           ลืมรหัสผ่านให้ติดต่อแพทย์แอดมินกลาง — ระบบไม่มีการรีเซ็ตด้วยตัวเอง

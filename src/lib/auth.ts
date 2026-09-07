@@ -40,7 +40,15 @@ const SESSION_HOURS = 12;
 const LINE_SESSION_HOURS = 8;
 
 /** ที่มาของ session — ใช้ตัดสินว่าจะตรวจรายชื่อผู้ใช้ซ้ำหรือไม่ */
-export type SessionSource = "password" | "line";
+export type SessionSource = "password" | "line" | "telegram";
+
+/**
+ * session ภายนอก (LINE/Telegram) — ยืนยันสิทธิ์จากสมาชิกภาพกลุ่มตอนล็อกอิน
+ * ไม่ได้อยู่ใน DASHBOARD_USERS จึงใช้เพดานอายุสั้นกว่าและข้ามการตรวจรายชื่อซ้ำ
+ */
+function isExternalSource(via: SessionSource | undefined): boolean {
+  return via === "line" || via === "telegram";
+}
 
 export interface Session {
   username: string;
@@ -201,7 +209,7 @@ export async function createSessionToken(
   username: string,
   via: SessionSource = "password",
 ): Promise<string> {
-  const hours = via === "line" ? LINE_SESSION_HOURS : SESSION_HOURS;
+  const hours = isExternalSource(via) ? LINE_SESSION_HOURS : SESSION_HOURS;
   const session: Session = {
     username,
     expiresAt: Date.now() + hours * 60 * 60 * 1000,
@@ -243,9 +251,9 @@ export async function readSessionToken(
     if (!session.username || typeof session.expiresAt !== "number") return null;
     if (session.expiresAt < Date.now()) return null;
 
-    // ชื่อที่มาจาก LINE ไม่ได้อยู่ใน DASHBOARD_USERS และไม่ควรอยู่
+    // ชื่อที่มาจาก LINE/Telegram ไม่ได้อยู่ใน DASHBOARD_USERS และไม่ควรอยู่
     // สิ่งที่ค้ำ session นี้คือลายเซ็น HMAC กับการตรวจสมาชิกภาพกลุ่มตอนออก token
-    if (session.via !== "line" && !parseUsers().has(session.username)) {
+    if (!isExternalSource(session.via) && !parseUsers().has(session.username)) {
       return null;
     }
 
@@ -283,7 +291,7 @@ export function sessionCookieOptions(via: SessionSource = "password") {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     path: "/",
-    maxAge: (via === "line" ? LINE_SESSION_HOURS : SESSION_HOURS) * 60 * 60,
+    maxAge: (isExternalSource(via) ? LINE_SESSION_HOURS : SESSION_HOURS) * 60 * 60,
   };
 }
 

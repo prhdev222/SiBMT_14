@@ -153,6 +153,11 @@ function doPost(e) {
     }
 
     // จัดการนัดของกลุ่มที่ 1 โดยแพทย์ต้นทางเอง — ตัวจัดการอยู่ใน ManageBooking.gs
+    // แลก token เข้า dashboard จาก Telegram (/login) — ตัวจัดการใน Telegram.gs
+    if (body.action === 'redeemTelegramLogin') {
+      return jsonResponse_({ ok: true, data: redeemTelegramLogin_(body.payload || {}) });
+    }
+
     if (body.action === 'lookupBooking') {
       return jsonResponse_({ ok: true, data: lookupBooking_(body.payload || {}) });
     }

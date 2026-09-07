@@ -162,6 +162,28 @@ export async function checkDashboardMember(
   return callAppsScript("checkDashboardMember", { lineUserId, displayName });
 }
 
+export interface TelegramLoginResult {
+  /** token ใช้ได้และผู้ใช้อยู่ในกลุ่มทีมหรือไม่ */
+  allowed: boolean;
+  /** ชื่อที่จะแสดงในระบบ (ชื่อ Telegram) */
+  displayName?: string;
+  /** บทบาทจากกลุ่มที่อยู่ (admin/resident/fellow) */
+  role?: string;
+}
+
+/**
+ * แลก token ที่ได้จากคำสั่ง /login ในกลุ่ม Telegram เป็นตัวตนที่ยืนยันแล้ว
+ *
+ * token เป็นแบบใช้ครั้งเดียว อายุสั้น เก็บใน CacheService ฝั่ง Apps Script
+ * — Apps Script ออก token หลังเช็ค getChatMember ว่าอยู่ในกลุ่มทีมแล้ว
+ * เว็บแค่แลกคืนแล้วออก session (bot token คงอยู่ที่ Apps Script ที่เดียว)
+ */
+export async function redeemTelegramLogin(payload: {
+  token: string;
+}): Promise<TelegramLoginResult> {
+  return callAppsScript("redeemTelegramLogin", payload);
+}
+
 async function callAppsScript<T>(
   action: string,
   payload: unknown,
