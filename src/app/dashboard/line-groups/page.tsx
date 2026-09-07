@@ -61,19 +61,22 @@ const GROUPS = [
     key: "line_invite_resident",
     emoji: "🩺",
     title: "กลุ่ม Resident วอร์ดเคมีบำบัด",
-    audience: "resident หมุนเวียนทุกท่าน + แพทย์แอดมิน — รับแจ้งเคสกลุ่ม 2/3 รอบ 10:00 น.",
+    audience:
+      "resident + แพทย์แอดมิน · กลุ่มสำรอง — แจ้งเตือนย้ายไป Telegram แล้ว",
   },
   {
     key: "line_invite_fellow",
     emoji: "👨‍⚕️",
     title: "กลุ่ม Fellow Transplant",
-    audience: "fellow ทุกท่าน + แพทย์แอดมิน — รับแจ้งคิวนัดกลุ่ม 1",
+    audience:
+      "fellow + แพทย์แอดมิน · กลุ่มสำรอง — แจ้งเตือนย้ายไป Telegram แล้ว",
   },
   {
     key: "line_invite_admin",
     emoji: "🛡️",
     title: "กลุ่มแพทย์แอดมินกลาง",
-    audience: "เฉพาะแพทย์แอดมินกลางและผู้ดูแลระบบ — รับ Red Alert และข้อความติดต่อ",
+    audience:
+      "แพทย์แอดมิน + ผู้ดูแล · กลุ่มสำรอง — แจ้งเตือนย้ายไป Telegram แล้ว",
   },
 ];
 
@@ -124,12 +127,18 @@ export default async function LineGroupsPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="print:hidden font-semibold text-zinc-900">
-            <span className="mr-1.5" aria-hidden>
-              💬
-            </span>
-            กลุ่ม LINE (สำรอง)
-          </h2>
+          <div className="print:hidden">
+            <h2 className="font-semibold text-zinc-900">
+              <span className="mr-1.5" aria-hidden>
+                💬
+              </span>
+              กลุ่ม LINE (สำรอง)
+            </h2>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              แจ้งเตือนย้ายไป Telegram แล้ว — เปิดแจ้งเตือน LINE กลับได้จากสวิตช์
+              &ldquo;แจ้งเตือน LINE&rdquo; ในหน้าตั้งค่า (จะกลับมาเสียโควตา LINE)
+            </p>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {GROUPS.map((g) => (
               <GroupCard
