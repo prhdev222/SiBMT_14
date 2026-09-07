@@ -133,6 +133,18 @@ function onFormSubmit(e) {
     setCell_(sheet, map, row, 'alert_level', 'none');
     logStatusChange_(referralId, '', initialStatus, 'system', 'สร้างจากแบบฟอร์ม');
 
+    // แจ้งกลุ่ม resident ทันทีสำหรับเคสกลุ่ม 2/3 ใหม่ (real-time, มีปุ่มอ่าน)
+    if (referralType === TYPES.regimen || referralType === TYPES.admission) {
+      notifyResidentNewCase_(
+        referralId,
+        GROUP_NUMBER[referralType] || '-',
+        String(readCell_(sheet, map, row, 'assigned_to') || ''),
+        (readCell_(sheet, map, row, 'patient_sex') || '-') + ' อายุ ' +
+          (readCell_(sheet, map, row, 'patient_age') || '-') + ' ปี',
+        String(readCell_(sheet, map, row, 'diagnosis') || '-'),
+        String(readCell_(sheet, map, row, 'referrer_org') || '-'));
+    }
+
     // 5. ตรวจเคสซ้ำ
     const duplicateOf = findPossibleDuplicate_(sheet, row, referralId, submittedAt);
     if (duplicateOf) {

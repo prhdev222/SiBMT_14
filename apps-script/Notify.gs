@@ -415,7 +415,12 @@ function sendDailyBatch() {
 
   sendTelegram_(resident.text, 'batch', resident.buttons);
   sendTelegram_(fellow, 'fellow');
-  sendTelegram_(fellow + '\n\n' + resident.text, 'red', resident.buttons);
+  // admin: เตือนเฉพาะเคสค้างตาม SLA — เหลือง (ใกล้ครบ) / แดง (เกินกำหนดยังไม่ปิด)
+  // ไม่รับ real-time (คำขอผู้ใช้ 7 ก.ย. 2569) ดูรอบ 10:00 รอบเดียวพอ
+  const adminMsg = buildAdminAlertMessage_(now, false);
+  sendTelegram_(
+    adminMsg || ('✅ ไม่มีเคสเกินกำหนด/ใกล้ครบ — ' + formatThaiDate_(now)),
+    'red');
 
   // ยังเปิดทาง LINE ถ้าเปิดสวิตช์ line_push (สรุป resident แบบข้อความ ไม่มีปุ่ม)
   if (linePushEnabled_()) {
@@ -430,6 +435,26 @@ function sendDailyBatch() {
       setCell_(sheet, map, r._row, 'yellow_alert_sent_at', nowTs);
     }
   });
+}
+
+/**
+ * แจ้งกลุ่ม resident ทันทีเมื่อมีเคสกลุ่ม 2/3 ใหม่ (real-time)
+ * เรียกจาก onFormSubmit หลังมอบหมายเคสเสร็จ · มีปุ่มกดอ่านเคส
+ * (คำขอผู้ใช้ 7 ก.ย. 2569 — เคสใหม่ให้เด้งเลย ไม่รอรอบ 10:00)
+ */
+function notifyResidentNewCase_(referralId, groupNo, assignedTo, patient, diagnosis, org) {
+  const buttons = [{
+    text: '📖 อ่าน ' + referralId,
+    url: SITE_URL + '/dashboard/review#' + referralId,
+  }];
+  sendTelegram_(
+    '🆕 เคสใหม่กลุ่ม ' + groupNo + ' รอตอบ\n' +
+    '────────────────\n' +
+    'เลขที่: ' + referralId + '\n' +
+    '👤 ' + patient + ' · ' + diagnosis + '\n' +
+    '🩺 มอบหมาย: ' + (assignedTo || 'ยังไม่มอบหมาย') + '\n' +
+    '🏥 จาก: ' + (org || '-'),
+    'batch', buttons);
 }
 
 /**
