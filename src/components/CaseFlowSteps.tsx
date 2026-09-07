@@ -10,14 +10,6 @@ import type { ReferralType, Status } from "@/lib/referral-types";
 
 type FlowStep = { label: string };
 
-const CONSULT_STEPS: FlowStep[] = [
-  { label: "รับเรื่อง" },
-  { label: "มอบหมาย" },
-  { label: "รออาจารย์" },
-  { label: "ตอบแล้ว" },
-  { label: "จบเคส" },
-];
-
 const TRANSPLANT_STEPS: FlowStep[] = [
   { label: "รับเรื่อง" },
   { label: "ยืนยันนัด" },
@@ -34,7 +26,13 @@ function flowFor(
   type: ReferralType,
   status: Status,
   hasAssignee: boolean,
-): { steps: FlowStep[]; current: number; ended: boolean; loopAt: number } {
+): {
+  steps: FlowStep[];
+  current: number;
+  ended: boolean;
+  loopAt: number;
+  isChemo: boolean;
+} {
   const ended =
     status === "Closed" ||
     status === "Rejected / Redirected" ||
@@ -42,12 +40,12 @@ function flowFor(
 
   if (type === "TRANSPLANT_APPOINTMENT") {
     const current = ended ? 2 : status === "Appointment Confirmed" ? 1 : 0;
-    return { steps: TRANSPLANT_STEPS, current, ended, loopAt: -1 };
+    return { steps: TRANSPLANT_STEPS, current, ended, loopAt: -1, isChemo: false };
   }
 
   if (type === "GENERAL_OPD") {
     const current = ended ? 2 : status === "Auto Replied" ? 1 : 0;
-    return { steps: GENERAL_STEPS, current, ended, loopAt: -1 };
+    return { steps: GENERAL_STEPS, current, ended, loopAt: -1, isChemo: false };
   }
 
   // กลุ่ม 2/3 (คำปรึกษา)
@@ -62,8 +60,25 @@ function flowFor(
   )
     current = 2;
   else current = hasAssignee ? 1 : 0; // Submitted
-  // ช่วง "รออาจารย์"(2) → "ตอบแล้ว"(3) วนได้
-  return { steps: CONSULT_STEPS, current, ended, loopAt: 2 };
+
+  // กลุ่ม 3 มี 2 ทางออก — ขั้นผลลัพธ์บอกด้วยว่า "นัด OPD" หรือ "ตอบแล้ว (ไม่นัด)"
+  const isChemo = type === "CHEMO_ADMISSION";
+  const outcome = !isChemo
+    ? "ตอบแล้ว"
+    : status === "Readiness Visit Scheduled"
+      ? "นัด OPD"
+      : status === "Advice Sent"
+        ? "ตอบแล้ว"
+        : "ตอบ/นัด";
+  const steps: FlowStep[] = [
+    { label: "รับเรื่อง" },
+    { label: "มอบหมาย" },
+    { label: "รออาจารย์" },
+    { label: outcome },
+    { label: "จบเคส" },
+  ];
+  // ช่วง "รออาจารย์"(2) → ผลลัพธ์(3) วนได้
+  return { steps, current, ended, loopAt: 2, isChemo };
 }
 
 function Check() {
@@ -89,7 +104,7 @@ export function CaseFlowSteps({
   status: Status;
   hasAssignee: boolean;
 }) {
-  const { steps, current, ended, loopAt } = flowFor(
+  const { steps, current, ended, loopAt, isChemo } = flowFor(
     referralType,
     status,
     hasAssignee,
@@ -167,6 +182,8 @@ export function CaseFlowSteps({
             ตอบแล้วยังไม่จบ — แพทย์ต้นทางถามเพิ่มได้ (วน รออาจารย์ ↔ ตอบแล้ว)
             เคสจบเมื่อกด &ldquo;ปิดเคส&rdquo; หรือแพทย์ต้นทางจบเอง ·
             คำตอบเพิ่มทุกครั้งต้องมีอาจารย์รับรอง
+            {isChemo &&
+              " · กลุ่ม 3 อาจ “นัดมาประเมินที่ OPD 700” หรือ “ตอบให้ดูแลเอง (ไม่นัด)” ก็ได้"}
           </span>
         </p>
       )}
