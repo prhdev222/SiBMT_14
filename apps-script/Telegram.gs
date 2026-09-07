@@ -96,6 +96,17 @@ function sendTeamNotify_(text, audience) {
 /* ------------------------------------------------------------------ */
 
 function handleTelegramUpdate_(update) {
+  // กัน Telegram ส่ง update เดิมซ้ำ (retry) — บอทตอบช้าเล็กน้อย Telegram จึง
+  // คิดว่าไม่สำเร็จแล้วส่งซ้ำเรื่อย ๆ → จำ update_id ไว้ 1 ชม. เจอซ้ำก็ตอบ ok
+  // ทันทีโดยไม่ทำงาน/ไม่ตอบซ้ำ (แก้อาการบอทพ่นข้อความวนไม่หยุด)
+  const uid = update && update.update_id;
+  if (uid != null) {
+    const cache = CacheService.getScriptCache();
+    const key = 'tg_seen_' + uid;
+    if (cache.get(key)) return jsonResponse_({ ok: true });
+    cache.put(key, '1', 3600);
+  }
+
   const msg = update.message || update.edited_message;
   if (!msg || !msg.chat) return jsonResponse_({ ok: true });
 
