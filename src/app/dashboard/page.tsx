@@ -48,7 +48,7 @@ export default async function DashboardPage() {
             { href: "/dashboard/stats", label: "สถิติและรายงาน" },
             { href: "/dashboard/schedule", label: "ตารางออกตรวจ Fellow" },
             { href: "/dashboard/duty", label: "เวร resident/fellow" },
-            { href: "/dashboard/line-groups", label: "กลุ่ม LINE" },
+            { href: "/dashboard/line-groups", label: "กลุ่ม LINE/Telegram" },
             { href: "/dashboard/settings", label: "ตั้งค่า" },
             { href: "/", label: "กลับหน้าแรก", muted: true },
           ]}
