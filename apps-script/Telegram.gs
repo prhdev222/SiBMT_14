@@ -253,7 +253,10 @@ function telegramWebhookInfo() {
   const res = UrlFetchApp.fetch(TELEGRAM_API + token + '/getWebhookInfo',
     { muteHttpExceptions: true });
   Logger.log('getWebhookInfo → ' + res.getContentText());
-  Logger.log('URL ของ Web App นี้: ' + (ScriptApp.getService().getUrl() || '(ยังไม่ได้ Deploy)'));
+  // URL ที่ webhook ใช้จริง = WEB_APP_URL (/exec) — ไม่ใช่ getService (/dev editor)
+  Logger.log('WEB_APP_URL ที่ตั้งไว้ (ตัวจริงที่ webhook ใช้): ' +
+    (PropertiesService.getScriptProperties().getProperty('WEB_APP_URL') ||
+      '(ยังไม่ตั้ง!)'));
   Logger.log('chat_id ที่ตั้งไว้: ' + JSON.stringify(telegramKnownChats_()));
 }
 
