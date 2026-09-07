@@ -178,6 +178,13 @@ function handleTelegramUpdate_(update) {
     return jsonResponse_({ ok: true });
   }
 
+  // เปลี่ยนผู้รับผิดชอบ: "มอบ HEM-xxxx: <ชื่อ>" → แจ้งกลุ่มแอดมิน/อาจารย์ด้วย
+  const rm = text.match(/^มอบ\s+(HEM-\d{8}-\d{4})\s*[:：]\s*([\s\S]+)$/i);
+  if (rm) {
+    handleTelegramReassign_(msg, chatId, rm[1].toUpperCase(), String(rm[2] || '').trim());
+    return jsonResponse_({ ok: true });
+  }
+
   // ปุ่มลัด /command (เมนูพิมพ์ "/" ใน Telegram) → แปลงเป็นคำสั่งไทยแล้วใช้ตัวตอบกลาง
   // Telegram ส่งมาเป็น "/pending" หรือ "/pending@BotName" — ตัด @ชื่อบอทออก
   let query = text;
@@ -197,6 +204,33 @@ function handleTelegramUpdate_(update) {
     telegramReply_(chatId, '⚠️ บอทขัดข้อง ตอบไม่ได้: ' + err);
   }
   return jsonResponse_({ ok: true });
+}
+
+/**
+ * เปลี่ยนผู้รับผิดชอบเคสจาก Telegram ("มอบ HEM-xxx: ชื่อ")
+ * แจ้งกลุ่มแอดมิน/อาจารย์ให้รับรู้ด้วย (คำขอผู้ใช้ 7 ก.ย. 2569)
+ */
+function handleTelegramReassign_(msg, chatId, referralId, name) {
+  if (!name) return;
+  const sheet = getSheet_(SHEETS.referrals);
+  const row = readRows_(sheet).filter(function (r) {
+    return String(r['referral_id'] || '').trim() === referralId;
+  })[0];
+  if (!row) { telegramReply_(chatId, 'ไม่พบเคส ' + referralId + ' ในระบบ'); return; }
+
+  const map = ensureColumns_(sheet, ['assigned_to']);
+  setCell_(sheet, map, row._row, 'assigned_to', name);
+
+  const from = msg.from || {};
+  const by = ((from.first_name || '') + ' ' + (from.last_name || '')).trim() ||
+    from.username || '';
+
+  telegramReply_(chatId, '✅ มอบ ' + referralId + ' ให้ ' + name + ' แล้ว');
+  // แจ้งกลุ่มแอดมิน/อาจารย์
+  sendTelegram_(
+    '👤 เปลี่ยนผู้รับผิดชอบเคส\n' + referralId + ' → ' + name +
+    (by ? '\n(โดย ' + by + ')' : ''),
+    'red');
 }
 
 function handleTelegramDentReply_(chatId, referralId, body) {

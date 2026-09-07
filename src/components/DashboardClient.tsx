@@ -8,6 +8,7 @@ import {
   updateStatusAction,
 } from "@/app/dashboard/actions";
 import { DentThread } from "@/components/DentThread";
+import { CaseFlowSteps } from "@/components/CaseFlowSteps";
 import { downloadCsv, fileStamp, toCsv } from "@/lib/csv";
 import {
   ALERT_COLOR,
@@ -634,6 +635,13 @@ export function DashboardClient({
             />
             <Detail label="วันติดตาม" value={selected.followUpDate ?? "—"} />
           </dl>
+
+          {/* แถบสถานะแบบติดตามพัสดุ — เห็นทันทีว่าเคสอยู่ขั้นไหน */}
+          <CaseFlowSteps
+            referralType={selected.referralType}
+            status={statusOf(selected)}
+            hasAssignee={Boolean(assignedOf(selected))}
+          />
 
           {/* ขั้นตอนต่อไป: ยังไม่ตอบ → ไปตอบ · ตอบแล้ว → ปิดเคส */}
           <div className="flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-3">
