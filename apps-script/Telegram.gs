@@ -370,6 +370,56 @@ function sendTelegramWebAppButton_(chatId) {
   });
 }
 
+/**
+ * ส่งปุ่ม "เปิด dashboard" เข้าทุกกลุ่มแล้วปักหมุด — รันครั้งเดียวจาก editor
+ *
+ * ⚠️ บอทต้องเป็น admin ของกลุ่ม + มีสิทธิ์ "Pin messages" ถึงจะปักหมุดได้
+ * ถ้าปักหมุดไม่ได้ log จะบอก แล้วปักหมุดเองก็ได้ (แตะค้างข้อความบอท → Pin)
+ */
+function pinDashboardButtons() {
+  const token = telegramToken_();
+  if (!token) { Logger.log('❌ ยังไม่ได้ตั้ง TELEGRAM_BOT_TOKEN'); return; }
+  const props = PropertiesService.getScriptProperties();
+  ['TELEGRAM_CHAT_ADMIN', 'TELEGRAM_CHAT_RESIDENT', 'TELEGRAM_CHAT_FELLOW']
+    .forEach(function (key) {
+      const chatId = props.getProperty(key);
+      if (!chatId) { Logger.log(key + ' — ยังไม่ตั้ง chat_id ข้าม'); return; }
+
+      const res = UrlFetchApp.fetch(TELEGRAM_API + token + '/sendMessage', {
+        method: 'post', contentType: 'application/json',
+        payload: JSON.stringify({
+          chat_id: String(chatId),
+          text: '📲 เข้า dashboard หลังบ้าน — แตะปุ่มด้านล่าง (เข้าได้เลย ไม่ต้อง login)',
+          reply_markup: {
+            inline_keyboard: [[
+              { text: '📲 เปิด dashboard', web_app: { url: SITE_URL + '/tg' } },
+            ]],
+          },
+        }),
+        muteHttpExceptions: true,
+      });
+      const data = JSON.parse(res.getContentText() || '{}');
+      if (!data.ok) {
+        Logger.log(key + ' — ส่งไม่สำเร็จ: ' + res.getContentText());
+        return;
+      }
+      const pin = UrlFetchApp.fetch(TELEGRAM_API + token + '/pinChatMessage', {
+        method: 'post', contentType: 'application/json',
+        payload: JSON.stringify({
+          chat_id: String(chatId),
+          message_id: data.result.message_id,
+          disable_notification: true,
+        }),
+        muteHttpExceptions: true,
+      });
+      const pinOk = (JSON.parse(pin.getContentText() || '{}')).ok;
+      Logger.log(key + ' → ' + (pinOk
+        ? '✅ ส่ง + ปักหมุดแล้ว'
+        : '⚠️ ส่งแล้ว แต่ปักหมุดไม่ได้ (บอทต้องเป็น admin + สิทธิ์ Pin) — ปักหมุดเองได้: '
+          + pin.getContentText()));
+    });
+}
+
 /** ตั้งปุ่มเมนู (ข้างช่องพิมพ์) ในแชทส่วนตัวกับบอทให้เปิด dashboard — รันครั้งเดียว */
 function setTelegramMenuButton() {
   const token = telegramToken_();
