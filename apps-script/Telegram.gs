@@ -413,7 +413,7 @@ function pinDashboardButtons() {
         payload: JSON.stringify({
           chat_id: String(chatId),
           text:
-            '📌 คู่มือกลุ่มนี้ · SiBMT-refer\n' +
+            '📌 คู่มือกลุ่มนี้\n' +
             '─────────────\n' +
             '📲 เข้า dashboard หลังบ้าน — แตะปุ่มด้านล่าง (เข้าได้เลย ไม่ต้อง login)\n' +
             '   หรือพิมพ์  /login  รับลิงก์เข้าทางเบราว์เซอร์\n\n' +
