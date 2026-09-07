@@ -1051,6 +1051,21 @@ function saveAdvice_(payload) {
     // คืนผลกลับไปให้หน้าตอบรู้ว่าถึง LINE หรือไม่ จะได้ไม่ต้องเดา
     const lineNotified = notifyReferrerOnLine_(match, answerToken);
 
+    // เด้งกลุ่ม Telegram ว่าเคสนี้ตอบแล้ว — กัน resident ตอบซ้ำ + เห็นว่าใครตอบ
+    // (คำขอผู้ใช้ 7 ก.ย. 2569) · ไม่ให้พังทั้งคำสั่งถ้าแจ้งไม่สำเร็จ
+    try {
+      const answeredBy = String(payload.answeredBy || '').trim() || 'ทีม';
+      const closed = TERMINAL_STATUSES.indexOf(status) !== -1;
+      sendTelegram_(
+        '✅ ' + referralId + ' ตอบคำปรึกษาแล้ว\n' +
+        'โดย: ' + answeredBy +
+        (payload.attending ? ' (อ. ' + String(payload.attending).trim() + ')' : '') +
+        '\n' + (closed ? 'สถานะ: จบเคส' : 'สถานะ: ' + status),
+        caseAudience_(match['referral_type']));
+    } catch (e) {
+      console.error('แจ้งกลุ่มว่าตอบแล้วไม่สำเร็จ: ' + e);
+    }
+
     return {
       referralId: referralId,
       status: status,
