@@ -412,7 +412,16 @@ function pinDashboardButtons() {
         method: 'post', contentType: 'application/json',
         payload: JSON.stringify({
           chat_id: String(chatId),
-          text: '📲 เข้า dashboard หลังบ้าน — แตะปุ่มด้านล่าง (เข้าได้เลย ไม่ต้อง login)',
+          text:
+            '📌 คู่มือกลุ่มนี้ · SiBMT-refer\n' +
+            '─────────────\n' +
+            '📲 เข้า dashboard หลังบ้าน — แตะปุ่มด้านล่าง (เข้าได้เลย ไม่ต้อง login)\n' +
+            '   หรือพิมพ์  /login  รับลิงก์เข้าทางเบราว์เซอร์\n\n' +
+            '💬 ถามบอทได้ (ฟรี) — พิมพ์  เมนู  เพื่อดูคำสั่งทั้งหมด\n' +
+            '   เช่น  เคสค้าง · นัดวันนี้ · นัดพรุ่งนี้ · ข้อความใหม่ · เวร\n\n' +
+            '↩️ ตอบแพทย์ต้นทาง\n' +
+            '   พิมพ์  ตอบ HEM-xxxxxxxx-xxxx: ข้อความ\n\n' +
+            '🔒 ห้ามพิมพ์ชื่อ–HN ผู้ป่วยในกลุ่ม — อ้างอิงด้วยเลขเคส HEM-... เท่านั้น',
           reply_markup: {
             inline_keyboard: [[{ text: '📲 เปิด dashboard', url: link }]],
           },
