@@ -224,26 +224,35 @@ function testTelegram() {
 function setTelegramWebhook() {
   const token = telegramToken_();
   if (!token) { Logger.log('❌ ยังไม่ได้ตั้ง TELEGRAM_BOT_TOKEN'); return; }
+  const props = PropertiesService.getScriptProperties();
 
-  const url = PropertiesService.getScriptProperties()
-    .getProperty('WEB_APP_URL') || ScriptApp.getService().getUrl();
+  // แนะนำ: ชี้ webhook ไปที่ตัวคั่น Cloudflare (TELEGRAM_WEBHOOK_URL) เพื่อกัน
+  // loop — Apps Script /exec ตอบผ่าน redirect ทำให้ Telegram retry ไม่หยุด
+  //   TELEGRAM_WEBHOOK_URL = https://<โดเมนเว็บ>/api/telegram
+  // ถ้าไม่ตั้ง จะ fallback ไป WEB_APP_URL (/exec) — ใช้ได้แต่เสี่ยง loop
+  const url = props.getProperty('TELEGRAM_WEBHOOK_URL') ||
+    props.getProperty('WEB_APP_URL') || ScriptApp.getService().getUrl();
   if (!url) {
-    Logger.log('❌ ยังไม่ได้ Deploy เป็น Web App — Deploy ก่อนแล้วรันใหม่');
+    Logger.log('❌ ยังไม่มี URL — ตั้ง Script Property TELEGRAM_WEBHOOK_URL ก่อน');
     return;
   }
-  if (url.indexOf('/exec') === -1) {
-    Logger.log('⚠️ URL นี้ไม่ใช่ /exec: ' + url);
-    Logger.log('→ ไปตั้ง Script Property "WEB_APP_URL" = URL ที่ลงท้าย /exec ก่อน');
-    Logger.log('   (Deploy → Manage deployments → Web app → คัดลอก URL)');
+  const viaWorker = url.indexOf('/api/telegram') !== -1;
+  if (!viaWorker && url.indexOf('/exec') === -1) {
+    Logger.log('⚠️ URL ไม่ใช่ตัวคั่น (/api/telegram) และไม่ใช่ /exec: ' + url);
+    Logger.log('→ ตั้ง TELEGRAM_WEBHOOK_URL = https://<โดเมนเว็บ>/api/telegram');
     return;
   }
-  // drop_pending_updates=true → ทิ้งคิวข้อความค้างเก่า (กันวนส่งซ้ำไม่หยุด)
-  const res = UrlFetchApp.fetch(
-    TELEGRAM_API + token + '/setWebhook?url=' + encodeURIComponent(url) +
-    '&drop_pending_updates=true',
-    { muteHttpExceptions: true });
+
+  // secret_token → Telegram แนบ header ให้ตัวคั่นยืนยันว่าเป็น Telegram จริง
+  // ต้องตรงกับ env TELEGRAM_WEBHOOK_SECRET บน Cloudflare (ถ้าตั้งไว้)
+  const secret = props.getProperty('TELEGRAM_WEBHOOK_SECRET') || '';
+  let api = TELEGRAM_API + token + '/setWebhook?url=' + encodeURIComponent(url) +
+    '&drop_pending_updates=true';
+  if (secret) api += '&secret_token=' + encodeURIComponent(secret);
+
+  const res = UrlFetchApp.fetch(api, { muteHttpExceptions: true });
   Logger.log('setWebhook → ' + res.getContentText());
-  Logger.log('URL ที่ผูก: ' + url);
+  Logger.log('URL ที่ผูก: ' + url + (viaWorker ? '  (ผ่านตัวคั่น ✅)' : '  (ตรงไป /exec ⚠️ เสี่ยง loop)'));
 }
 
 /** ตรวจสถานะ webhook — url ที่ตั้งไว้, error ล่าสุด, จำนวน update ค้าง */
