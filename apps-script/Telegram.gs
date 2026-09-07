@@ -61,22 +61,31 @@ function telegramKnownChats_() {
  * รอแล้วลองใหม่ (สูงสุด 3 รอบ) แทนที่จะเงียบหาย · log ทุก error ที่ไม่ใช่ 200
  * เพื่อให้เห็นว่าทำไม "บางครั้งไม่ตอบ"
  */
-function telegramReply_(chatId, text) {
+function telegramReply_(chatId, text, buttons) {
   const token = telegramToken_();
   if (!token || !chatId) {
     console.log('[Telegram ยังไม่ตั้งค่า] ' + text);
     return;
+  }
+  // buttons = [{text, url}] → ปุ่ม inline เรียงลงมาปุ่มละแถว (กดเปิดลิงก์ได้)
+  const payload = {
+    chat_id: String(chatId),
+    text: text,
+    disable_web_page_preview: true,
+  };
+  if (buttons && buttons.length) {
+    payload.reply_markup = {
+      inline_keyboard: buttons.map(function (b) {
+        return [{ text: b.text, url: b.url }];
+      }),
+    };
   }
   for (var attempt = 0; attempt < 3; attempt++) {
     try {
       const res = UrlFetchApp.fetch(TELEGRAM_API + token + '/sendMessage', {
         method: 'post',
         contentType: 'application/json',
-        payload: JSON.stringify({
-          chat_id: String(chatId),
-          text: text,
-          disable_web_page_preview: true,
-        }),
+        payload: JSON.stringify(payload),
         muteHttpExceptions: true,
       });
       const code = res.getResponseCode();
@@ -99,9 +108,9 @@ function telegramReply_(chatId, text) {
   console.log('sendMessage ยอมแพ้หลังลอง 3 รอบ (rate-limit ยาว)');
 }
 
-/** ส่งแจ้งเตือนเข้ากลุ่มตาม audience (batch/red/fellow) */
-function sendTelegram_(text, audience) {
-  telegramReply_(telegramChatId_(audience), text);
+/** ส่งแจ้งเตือนเข้ากลุ่มตาม audience (batch/red/fellow) — buttons ไม่ใส่ก็ได้ */
+function sendTelegram_(text, audience, buttons) {
+  telegramReply_(telegramChatId_(audience), text, buttons);
 }
 
 /**

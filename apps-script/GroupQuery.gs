@@ -481,6 +481,75 @@ function buildPendingReply_() {
 }
 
 /**
+ * สรุปประจำวันสำหรับกลุ่ม resident — เคสค้างพร้อมรายละเอียด + ผู้ต้องดู + ปุ่มอ่าน
+ * ใช้ในรอบ 10:00 (sendDailyBatch) · คืน { text, buttons } (buttons = ปุ่ม inline)
+ */
+function buildResidentDigest_(now) {
+  const rows = readRows_(getSheet_(SHEETS.referrals));
+  const open = rows.filter(function (r) {
+    const type = String(r['referral_type'] || '');
+    if (type !== TYPES.regimen && type !== TYPES.admission) return false;
+    return TERMINAL_STATUSES.indexOf(String(r['status'] || '')) === -1;
+  });
+
+  const header = '📋 เคสค้างของ resident — ' + formatThaiDate_(now) +
+    '\n────────────────\n';
+  if (open.length === 0) return { text: header + 'ไม่มีเคสค้าง ✅', buttons: [] };
+
+  // ด่วนสุด (รอนานสุด) ขึ้นก่อน
+  open.sort(function (a, b) {
+    return (parseFloat(b['elapsed_business_hours']) || 0) -
+      (parseFloat(a['elapsed_business_hours']) || 0);
+  });
+
+  let text = header + 'รวม ' + open.length + ' เคส\n\n';
+  const buttons = [];
+  open.slice(0, 10).forEach(function (r) {
+    const id = String(r['referral_id'] || '').trim();
+    const elapsed = parseFloat(r['elapsed_business_hours']) || 0;
+    const left = Math.round((ESCALATION.redHours - elapsed) * 10) / 10;
+    const icon = elapsed >= ESCALATION.redHours ? '🔴'
+      : elapsed >= ESCALATION.yellowHours ? '🟡' : '⚪';
+    const timeLabel = left >= 0
+      ? 'เหลือ ' + left + ' ชม.ทำการ'
+      : 'เกิน ' + Math.abs(left) + ' ชม.ทำการ';
+    text += icon + ' ' + id + '  (' + timeLabel + ')\n' +
+      '   👤 ' + (r['patient_sex'] || '-') + ' อายุ ' + (r['patient_age'] || '-') +
+        ' ปี · ' + (r['diagnosis'] || '-') + '\n' +
+      '   🩺 ผู้ต้องดู: ' + responsibleName_(r) + '\n' +
+      '   🏥 จาก: ' + (r['referrer_org'] || '-') + '\n\n';
+    buttons.push({ text: '📖 อ่าน ' + id, url: SITE_URL + '/dashboard/review#' + id });
+  });
+  if (open.length > 10) {
+    text += '...และอีก ' + (open.length - 10) + ' เคส (ดูใน dashboard)\n\n';
+  }
+
+  // เกาะเคสที่มีข้อความใหม่จากแพทย์ต้นทาง (ฟรี ไม่เปลือง push)
+  const unread = open.filter(function (r) {
+    return String(r['dent_unread'] || '').toLowerCase() === 'yes';
+  });
+  if (unread.length > 0) {
+    text += '💬 มีข้อความใหม่จากแพทย์ต้นทาง — ' + unread.length + ' เคส\n';
+    unread.slice(0, 10).forEach(function (r) {
+      text += '• ' + String(r['referral_id'] || '').trim() + '\n';
+    });
+  }
+
+  text += '\n' + SITE_URL + '/dashboard/review';
+  return { text: text, buttons: buttons };
+}
+
+/**
+ * สรุปประจำวันสำหรับกลุ่ม fellow — นัดวันนี้ + พรุ่งนี้ (ใครมีนัดบ้าง)
+ * ใช้ในรอบ 10:00 · reuse buildAppointmentReply_ (มีหัวข้อ/ลิงก์ในตัวแล้ว)
+ */
+function buildFellowDigest_(now) {
+  const tomorrow = new Date(now.getTime());
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return buildAppointmentReply_(now) + '\n\n' + buildAppointmentReply_(tomorrow);
+}
+
+/**
  * ตรวจว่าทำไมบอทถึงไม่ตอบคำสั่งในกลุ่ม
  *
  * ⚠️ รันในหน้าจอได้เลย ไม่ต้อง deploy — อ่าน Script Properties ชุดเดียวกับที่

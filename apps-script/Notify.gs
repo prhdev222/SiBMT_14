@@ -405,111 +405,28 @@ function sendDailyBatch() {
 
   const sheet = getSheet_(SHEETS.referrals);
   const map = headerMap_(sheet);
-  const rows = readRows_(sheet);
 
-  const open = rows.filter(function (r) {
-    return !isTerminal_(r['status']) && r['referral_id'];
-  });
+  // เนื้อหาแยกตามกลุ่ม (คำขอผู้ใช้ 7 ก.ย. 2569):
+  //   fellow   → นัด fellow วันนี้ + พรุ่งนี้
+  //   resident → เคสค้าง + รายละเอียด + ผู้ต้องดู + ปุ่มอ่านแต่ละเคส
+  //   admin    → ได้ทั้ง fellow และ resident
+  const resident = buildResidentDigest_(now);   // { text, buttons }
+  const fellow = buildFellowDigest_(now);         // text
 
-  if (open.length === 0) {
-    sendTeamNotify_(
-      '☀️ สรุปเคสประจำวันที่ ' + formatThaiDate_(now) + '\nไม่มีเคสค้างดำเนินการ',
-      'batch'
-    );
-    return;
+  sendTelegram_(resident.text, 'batch', resident.buttons);
+  sendTelegram_(fellow, 'fellow');
+  sendTelegram_(fellow + '\n\n' + resident.text, 'red', resident.buttons);
+
+  // ยังเปิดทาง LINE ถ้าเปิดสวิตช์ line_push (สรุป resident แบบข้อความ ไม่มีปุ่ม)
+  if (linePushEnabled_()) {
+    pushLineMessage_(resident.text, 'batch');
   }
 
-  const yellow = open.filter(function (r) { return String(r['alert_level']) === 'yellow'; });
-  const red = open.filter(function (r) { return String(r['alert_level']) === 'red'; });
-
-  const countByGroup = {};
-  open.forEach(function (r) {
-    const g = GROUP_NUMBER[String(r['referral_type'])] || '-';
-    countByGroup[g] = (countByGroup[g] || 0) + 1;
-  });
-
-  let message = '☀️ สรุปเคสรอดำเนินการ ' + formatThaiDate_(now) + '\n';
-  message += '────────────────\n';
-
-  // ชื่อเวรตอบคำปรึกษาจากตารางเวร — วางบรรทัดแรกใต้เส้นคั่นตามรูปแบบ
-  // ที่ผู้ใช้ร่างมา (5 ก.ย. 2569); resident ทุกคนอยู่ในกลุ่ม LINE ถาวร
-  // (API ของ LINE ดึงคนเข้า/ออกจากกลุ่มไม่ได้) ตารางเวรจึงเป็นตัวชี้ตัวแทน
-  const duty = onDutyResidents_(now);
-  if (duty.length > 0) {
-    message += 'ผู้รับผิดชอบ: ' + duty.map(function (d) {
-      return d.name;
-    }).join(', ') + '\n\n';
-  } else {
-    // เตือนในข้อความรายวันจนกว่าจะเติม — แอดมินเห็นเองไม่ต้องมีใครไปตาม
-    message += '⚠️ ยังไม่มีชื่อเวรในตาราง ' + SHEETS.residentSchedule +
-      ' — เคสใหม่จะไม่ถูกมอบหมายอัตโนมัติ\n\n';
-  }
-  [1, 2, 3].forEach(function (g) {
-    if (countByGroup[g]) message += 'กลุ่มที่ ' + g + ': ' + countByGroup[g] + ' เคส\n';
-  });
-  message += 'รวม ' + open.length + ' เคส\n';
-
-  // แบ่งเคสเป็นระดับตาม "เวลาทำการที่เหลือ" ก่อนครบกำหนด (redHours = 3 วันทำการ)
-  //
-  // เดิมแสดงชั่วโมงที่ผ่านไปแล้ว ซึ่งคนอ่านตีความกลับด้าน (feedback ใช้จริง
-  // 4 ก.ย. 2569 — เห็น "23.3 ชม." แล้วคิดว่ายังเหลือเวลาอีกมาก ทั้งที่จริง
-  // เหลือไม่ถึงชั่วโมง) จึงกลับด้านเป็น "เหลืออีก" และติดสัญลักษณ์สีตามระดับ
-  // LINE ใส่สีตัวอักษรไม่ได้ ใช้วงกลมสีแทน — เพดานเวลา 24 ชม.ทำการ = 3 วันทำการ
-  const tiers = [
-    { icon: '🔴', title: 'เกินกำหนดแล้ว', rows: [] },
-    { icon: '🟠', title: 'เหลือไม่ถึง 1 วันทำการ', rows: [] },
-    { icon: '🟡', title: 'เหลือประมาณ 2 วันทำการ', rows: [] },
-    { icon: '🆕', title: 'เคสใหม่วันนี้ (เหลือ 3 วันทำการ)', rows: [] },
-  ];
-  const HOURS_PER_DAY = BUSINESS.endHour - BUSINESS.startHour;
-  open.forEach(function (r) {
-    const elapsed = parseFloat(r['elapsed_business_hours']) || 0;
-    if (elapsed >= ESCALATION.redHours) tiers[0].rows.push(r);
-    else if (elapsed >= ESCALATION.yellowHours) tiers[1].rows.push(r);
-    else if (elapsed >= HOURS_PER_DAY) tiers[2].rows.push(r);
-    else tiers[3].rows.push(r);
-  });
-
-  tiers.forEach(function (tier) {
-    if (tier.rows.length === 0) return;
-    message += '\n' + tier.icon + ' ' + tier.title + ' — ' + tier.rows.length + ' เคส\n';
-    tier.rows.slice(0, 10).forEach(function (r) {
-      const elapsed = parseFloat(r['elapsed_business_hours']) || 0;
-      const left = Math.round((ESCALATION.redHours - elapsed) * 10) / 10;
-      const label = left >= 0
-        ? 'เหลืออีก ' + left + ' ชม.ทำการ'
-        : 'เกินมา ' + Math.abs(left) + ' ชม.ทำการ';
-      message += '• ' + r['referral_id'] + ' (' + label + ')\n';
-    });
-    if (tier.rows.length > 10) {
-      message += '  ...และอีก ' + (tier.rows.length - 10) + ' เคส (ดูใน dashboard)\n';
-    }
-  });
-
-  // เคสที่มีข้อความใหม่จากแพทย์ต้นทางที่ยังไม่อ่าน — เกาะรอบนี้ (ฟรี ไม่เปลือง push)
-  // เพื่อให้ปิด push ต่อข้อความได้โดย dent ยังไม่พลาดข้อความ (ดู chat_push_dent)
-  const unread = open.filter(function (r) {
-    return String(r['dent_unread'] || '').toLowerCase() === 'yes';
-  });
-  if (unread.length > 0) {
-    message += '\n\n💬 เคสมีข้อความใหม่จากแพทย์ต้นทาง — ' + unread.length + ' เคส\n';
-    unread.slice(0, 10).forEach(function (r) {
-      message += '• ' + r['referral_id'] + '\n';
-    });
-    message += 'เปิด dashboard เพื่ออ่าน/ตอบ\n';
-  }
-
-  message += '\nเปิดดูรายละเอียด:\n' + DASHBOARD_URL;
-  // เตือนทุกวันว่าถามบอทได้ — การ์ดเมนูที่ปักหมุดคนเลื่อนผ่าน แต่บรรทัดนี้มากับ
-  // ข้อความที่ทุกคนอ่านอยู่แล้ว (คำขอผู้ใช้ 5 ก.ย. 2569)
-  message += '\n\n💬 พิมพ์ "เมนู" เพื่อดูคำสั่งที่ถามบอทได้';
-
-  sendTeamNotify_(message, 'batch');
-
-  // บันทึกว่าแจ้ง Yellow ไปแล้ว เพื่อใช้ดูย้อนหลังว่าเคสถูกเตือนกี่รอบ
+  // ประทับว่าแจ้ง Yellow ไปแล้ว เพื่อดูย้อนหลังว่าเคสถูกเตือนกี่รอบ
   const nowTs = new Date();
-  yellow.forEach(function (r) {
-    if (!r['yellow_alert_sent_at']) {
+  readRows_(sheet).forEach(function (r) {
+    if (!isTerminal_(r['status']) && r['referral_id'] &&
+        String(r['alert_level']) === 'yellow' && !r['yellow_alert_sent_at']) {
       setCell_(sheet, map, r._row, 'yellow_alert_sent_at', nowTs);
     }
   });
