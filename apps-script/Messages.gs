@@ -143,8 +143,11 @@ function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl, urgent,
     // ค่าว่าง (ข้อความ dent จาก LINE) = ค่าเดิม: อีเมล + push ตามสวิตช์ config
     const ch = String(dentChannel || '').toLowerCase();
     const wantEmail = ch === 'email' || ch === '';
-    const wantLine = linePushEnabled_() && (ch === 'line' ||
-      (ch === '' && chatPushOn_('chat_push_referrer', true)));
+    // LINE ถึงแพทย์ต้นทาง = push รายคน 1 ข้อความ (ถูก ไม่คิดรายหัวเหมือน push กลุ่ม)
+    // จึงเปิดอิสระจากสวิตช์กลุ่ม line_push — คุมด้วย config line_push_referrer
+    // (ค่าเริ่มต้น on) หรือเมื่อ dent เลือกช่อง 'line' โดยตรง · ต้องผูก LINE ไว้ถึงจะส่งได้
+    const wantLine = ch === 'line' ||
+      (ch === '' && chatPushOn_('line_push_referrer', true));
 
     const email = String(row['referrer_email'] || '').trim();
     if (email && wantEmail) {
