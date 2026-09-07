@@ -137,6 +137,12 @@ function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl, urgent,
     // ไม่ coalesce ฝั่งนี้ (ต่างจากฝั่ง dent): แพทย์ต้นทางอยากได้คำตอบทันที
     // ไม่ควรรอ และคำตอบจาก dent มีไม่บ่อย จึงไม่เปลืองโควตามากนัก
     // (มติผู้ใช้ 5 ก.ย. 2569)
+    // รวบ push LINE (ประหยัดโควตา): ถ้าแพทย์ต้นทางยังไม่อ่านชุดก่อนหน้าอยู่แล้ว
+    // แปลว่าเคย push ไปแล้ว → ข้อความถัดไปในชุดเดียวกันไม่ push ซ้ำ (เขาเปิด /case
+    // แล้วเห็นครบทุกข้อความอยู่ดี) · อีเมลยังส่งทุกข้อความเพราะฟรีและเป็นบันทึก
+    const wasReferrerPending =
+      String(readCell_(sheet, map2, row._row, 'referrer_unread') || '')
+        .toLowerCase() === 'yes';
     setCell_(sheet, map2, row._row, 'referrer_unread', 'yes');
 
     // dent เลือกช่องแจ้งเองต่อข้อความ (chat=ไม่แจ้ง / email / line=LINE เท่านั้น)
@@ -155,7 +161,10 @@ function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl, urgent,
         preview + (fileUrl ? '\n📎 ไฟล์แนบ: ' + fileUrl : ''),
         String(row['sender_name'] || 'ทีมโลหิตวิทยา'));
     }
-    const userId = wantLine ? findLineUserByPhone_(row['referrer_phone']) : '';
+    // push LINE เฉพาะข้อความแรกของชุดที่ยังไม่อ่าน (dent กด "line" ตรง ๆ = ตั้งใจ
+    // ส่งด่วน จึง push ได้เสมอ ไม่ต้องรวบ)
+    const pushLineNow = wantLine && (ch === 'line' || !wasReferrerPending);
+    const userId = pushLineNow ? findLineUserByPhone_(row['referrer_phone']) : '';
     if (userId) {
       const token = PropertiesService.getScriptProperties()
         .getProperty('LINE_CHANNEL_ACCESS_TOKEN');
