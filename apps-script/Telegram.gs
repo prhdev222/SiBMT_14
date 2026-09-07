@@ -151,6 +151,12 @@ function handleTelegramUpdate_(update) {
     return jsonResponse_({ ok: true });
   }
 
+  // /app → ปุ่ม web_app เปิด dashboard ในแอป Telegram (แบบ B)
+  if (/^\/?(app|เปิดระบบ|เปิด dashboard|dashboard)\s*$/i.test(text)) {
+    sendTelegramWebAppButton_(chatId);
+    return jsonResponse_({ ok: true });
+  }
+
   // รับเฉพาะกลุ่มที่ตั้งไว้ (Apps Script อ่าน header ไม่ได้ จึงยืนยันด้วย chat_id)
   // ถ้า id ยังไม่ตรง → บอกเลขที่ถูกในกลุ่มเลย เพื่อให้ตั้งค่าได้ง่าย (ไม่ต้องอ่าน log)
   if (telegramKnownChats_().indexOf(chatId) === -1) {
@@ -292,6 +298,94 @@ function handleTelegramLoginCommand_(msg, chatId) {
     telegramReply_(chatId,
       '⚠️ ส่งลิงก์ทาง DM ไม่ได้ — แตะชื่อบอท → กด Start คุยกับบอทก่อน แล้วพิมพ์ /login อีกครั้ง');
   }
+}
+
+/**
+ * ยืนยัน Telegram Web App (แบบ B: แตะปุ่ม → dashboard เปิดในแอป Telegram)
+ *
+ * รับ initData ที่ Telegram แนบมา (เซ็นด้วย bot token ปลอมไม่ได้) → ตรวจลายเซ็น
+ * ตามอัลกอริทึม Web App → ดึง user → เช็คว่าอยู่ในกลุ่มทีม → คืนชื่อ/role
+ *   secret = HMAC(key="WebAppData", msg=token) · hash = HMAC(key=secret, msg=dcs)
+ */
+function verifyTelegramWebApp_(payload) {
+  const initData = String((payload && payload.initData) || '');
+  const token = telegramToken_();
+  if (!initData || !token) return { allowed: false };
+
+  const pairs = initData.split('&').map(function (kv) {
+    const i = kv.indexOf('=');
+    return { k: kv.slice(0, i), v: decodeURIComponent(kv.slice(i + 1)) };
+  });
+  var hash = '';
+  var authDate = 0;
+  var userJson = '';
+  const check = [];
+  pairs.forEach(function (p) {
+    if (p.k === 'hash') { hash = p.v; return; }
+    if (p.k === 'auth_date') authDate = parseInt(p.v, 10) || 0;
+    if (p.k === 'user') userJson = p.v;
+    check.push(p.k + '=' + p.v);
+  });
+  if (!hash) return { allowed: false };
+  check.sort();
+
+  const secret = Utilities.computeHmacSha256Signature(token, 'WebAppData');
+  const calc = Utilities.computeHmacSha256Signature(
+    Utilities.newBlob(check.join('\n')).getBytes(), secret);
+  const calcHex = calc.map(function (b) {
+    return ('0' + (b & 0xff).toString(16)).slice(-2);
+  }).join('');
+  if (calcHex !== String(hash).toLowerCase()) return { allowed: false };
+
+  // initData เปิดค้างได้ — จำกัดอายุ 1 วันกันนำ initData เก่ามาใช้ซ้ำนาน ๆ
+  if (!authDate || (Date.now() / 1000 - authDate) > 86400) return { allowed: false };
+
+  var user;
+  try { user = JSON.parse(userJson); } catch (e) { return { allowed: false }; }
+  if (!user || !user.id) return { allowed: false };
+
+  const role = telegramMemberRole_(user.id);
+  if (!role) return { allowed: false };
+  const name = ((user.first_name || '') + ' ' + (user.last_name || '')).trim() ||
+    user.username || ('Telegram ' + user.id);
+  return { allowed: true, displayName: name, role: role };
+}
+
+/** ส่งปุ่ม web_app เปิด dashboard ในแอป Telegram (แบบ B) */
+function sendTelegramWebAppButton_(chatId) {
+  const token = telegramToken_();
+  if (!token) return;
+  UrlFetchApp.fetch(TELEGRAM_API + token + '/sendMessage', {
+    method: 'post', contentType: 'application/json',
+    payload: JSON.stringify({
+      chat_id: String(chatId),
+      text: '📲 เปิด dashboard ในแอป Telegram — แตะปุ่มด้านล่าง (เข้าได้เลย ไม่ต้อง login)',
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '📲 เปิด dashboard', web_app: { url: SITE_URL + '/tg' } },
+        ]],
+      },
+    }),
+    muteHttpExceptions: true,
+  });
+}
+
+/** ตั้งปุ่มเมนู (ข้างช่องพิมพ์) ในแชทส่วนตัวกับบอทให้เปิด dashboard — รันครั้งเดียว */
+function setTelegramMenuButton() {
+  const token = telegramToken_();
+  if (!token) { Logger.log('❌ ยังไม่ได้ตั้ง TELEGRAM_BOT_TOKEN'); return; }
+  const res = UrlFetchApp.fetch(TELEGRAM_API + token + '/setChatMenuButton', {
+    method: 'post', contentType: 'application/json',
+    payload: JSON.stringify({
+      menu_button: {
+        type: 'web_app',
+        text: 'Dashboard',
+        web_app: { url: SITE_URL + '/tg' },
+      },
+    }),
+    muteHttpExceptions: true,
+  });
+  Logger.log('setChatMenuButton → ' + res.getContentText());
 }
 
 /**

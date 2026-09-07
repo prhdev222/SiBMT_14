@@ -158,6 +158,11 @@ function doPost(e) {
       return jsonResponse_({ ok: true, data: redeemTelegramLogin_(body.payload || {}) });
     }
 
+    // ยืนยัน Telegram Web App (แบบ B: แตะปุ่มเปิดใน Telegram) — ตัวจัดการใน Telegram.gs
+    if (body.action === 'verifyTelegramWebApp') {
+      return jsonResponse_({ ok: true, data: verifyTelegramWebApp_(body.payload || {}) });
+    }
+
     if (body.action === 'lookupBooking') {
       return jsonResponse_({ ok: true, data: lookupBooking_(body.payload || {}) });
     }

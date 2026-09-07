@@ -184,6 +184,16 @@ export async function redeemTelegramLogin(payload: {
   return callAppsScript("redeemTelegramLogin", payload);
 }
 
+/**
+ * ยืนยัน Telegram Web App (แบบ B) — ส่ง initData ที่ Telegram แนบมาให้ Apps Script
+ * ตรวจลายเซ็น (bot token) + เช็คสมาชิกกลุ่ม แล้วคืนตัวตนเพื่อออก session
+ */
+export async function verifyTelegramWebApp(payload: {
+  initData: string;
+}): Promise<TelegramLoginResult> {
+  return callAppsScript("verifyTelegramWebApp", payload);
+}
+
 async function callAppsScript<T>(
   action: string,
   payload: unknown,
