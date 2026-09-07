@@ -10,12 +10,6 @@ import type { ReferralType, Status } from "@/lib/referral-types";
 
 type FlowStep = { label: string };
 
-const TRANSPLANT_STEPS: FlowStep[] = [
-  { label: "รับเรื่อง" },
-  { label: "ยืนยันนัด" },
-  { label: "จบเคส" },
-];
-
 const GENERAL_STEPS: FlowStep[] = [
   { label: "รับเรื่อง" },
   { label: "ตอบอัตโนมัติ" },
@@ -32,6 +26,9 @@ function flowFor(
   ended: boolean;
   loopAt: number;
   isChemo: boolean;
+  isTransplant: boolean;
+  /** เคสถึงปลายทางแล้ว — ขั้นปัจจุบันแสดงเป็น "เสร็จ" (เขียว) ไม่ใช่ "กำลังอยู่" */
+  finished: boolean;
 } {
   const ended =
     status === "Closed" ||
@@ -39,13 +36,38 @@ function flowFor(
     status === "Cancelled by Referrer";
 
   if (type === "TRANSPLANT_APPOINTMENT") {
-    const current = ended ? 2 : status === "Appointment Confirmed" ? 1 : 0;
-    return { steps: TRANSPLANT_STEPS, current, ended, loopAt: -1, isChemo: false };
+    // กลุ่ม 1: จองปุ๊บ "ยืนยันนัด" = จบเคสอัตโนมัติ (เป็น terminal) ไม่มีขั้นปิดแยก
+    const confirmed = status === "Appointment Confirmed" || ended;
+    const endLabel =
+      status === "Cancelled by Referrer"
+        ? "ยกเลิกนัด"
+        : status === "Rejected / Redirected"
+          ? "ไม่เข้าเกณฑ์"
+          : status === "Closed"
+            ? "ปิดเคส"
+            : "ยืนยันนัด";
+    return {
+      steps: [{ label: "รับเรื่อง" }, { label: endLabel }],
+      current: confirmed ? 1 : 0,
+      ended,
+      loopAt: -1,
+      isChemo: false,
+      isTransplant: true,
+      finished: confirmed,
+    };
   }
 
   if (type === "GENERAL_OPD") {
     const current = ended ? 2 : status === "Auto Replied" ? 1 : 0;
-    return { steps: GENERAL_STEPS, current, ended, loopAt: -1, isChemo: false };
+    return {
+      steps: GENERAL_STEPS,
+      current,
+      ended,
+      loopAt: -1,
+      isChemo: false,
+      isTransplant: false,
+      finished: ended || status === "Auto Replied",
+    };
   }
 
   // กลุ่ม 2/3 (คำปรึกษา)
@@ -77,8 +99,16 @@ function flowFor(
     { label: outcome },
     { label: "จบเคส" },
   ];
-  // ช่วง "รออาจารย์"(2) → ผลลัพธ์(3) วนได้
-  return { steps, current, ended, loopAt: 2, isChemo };
+  // ช่วง "รออาจารย์"(2) → ผลลัพธ์(3) วนได้ · จบจริงเมื่อ Closed/Rejected/Cancelled
+  return {
+    steps,
+    current,
+    ended,
+    loopAt: 2,
+    isChemo,
+    isTransplant: false,
+    finished: ended,
+  };
 }
 
 function Check() {
@@ -104,11 +134,8 @@ export function CaseFlowSteps({
   status: Status;
   hasAssignee: boolean;
 }) {
-  const { steps, current, ended, loopAt, isChemo } = flowFor(
-    referralType,
-    status,
-    hasAssignee,
-  );
+  const { steps, current, ended, loopAt, isChemo, isTransplant, finished } =
+    flowFor(referralType, status, hasAssignee);
   const isConsult = loopAt >= 0;
   const last = steps.length - 1;
 
@@ -117,8 +144,9 @@ export function CaseFlowSteps({
       <div className="overflow-x-auto">
         <div className="flex min-w-[300px] items-start">
           {steps.map((s, i) => {
-            const done = i < current;
-            const isCurrent = i === current;
+            // เคสถึงปลายทางแล้ว (finished) → ขั้นปัจจุบันแสดงเป็น "เสร็จ" (เขียว)
+            const done = i < current || (i === current && finished);
+            const isCurrent = i === current && !finished;
             const loopSeg = i === loopAt; // เส้นช่วงที่วนได้ = เส้นประ
 
             return (
@@ -174,6 +202,16 @@ export function CaseFlowSteps({
           })}
         </div>
       </div>
+
+      {isTransplant && finished && !ended && (
+        <p className="mt-3 flex items-start gap-1.5 border-t border-zinc-100 pt-2.5 text-[11px] leading-relaxed text-zinc-500">
+          <span aria-hidden>✅</span>
+          <span>
+            นัดยืนยันแล้ว = จบเคสอัตโนมัติ (ไม่ต้องกดปิดเอง) · เลื่อน/ยกเลิกนัดได้
+            ถึงวันก่อนวันนัด — เลยวันนัดให้โทรธุรการ OPD 700
+          </span>
+        </p>
+      )}
 
       {isConsult && !ended && (
         <p className="mt-3 flex items-start gap-1.5 border-t border-zinc-100 pt-2.5 text-[11px] leading-relaxed text-zinc-500">
