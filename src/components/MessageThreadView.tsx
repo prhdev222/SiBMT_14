@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CaseMessage } from "@/lib/referral-repository";
 
 type SendResult = {
@@ -31,6 +31,8 @@ export function MessageThreadView({
   allowAttach = false,
   showUrgent = false,
   showChannelPicker = false,
+  onRefresh,
+  onSeen,
 }: {
   initialMessages: CaseMessage[];
   mySide: "referrer" | "resident";
@@ -48,8 +50,65 @@ export function MessageThreadView({
   showUrgent?: boolean;
   /** true = แสดงตัวเลือกช่องแจ้ง (แชท/อีเมล/LINE) — ฝั่ง dent */
   showChannelPicker?: boolean;
+  /** ให้มา = เปิดแชทสด: ดึงข้อความใหม่เองทุก ~7 วิ (หยุดเมื่อสลับไปแท็บอื่น) */
+  onRefresh?: () => Promise<CaseMessage[]>;
+  /** เรียกเมื่อ poll พบข้อความใหม่ (ให้ล้างธง unread ระหว่างที่กำลังดูอยู่) */
+  onSeen?: () => void;
 }) {
-  const [messages, setMessages] = useState<CaseMessage[]>(initialMessages);
+  // ข้อความจากเซิร์ฟเวอร์ (แหล่งความจริง) + ข้อความที่เพิ่งส่ง (optimistic) รอ poll เก็บ
+  const [serverMessages, setServerMessages] =
+    useState<CaseMessage[]>(initialMessages);
+  const [pending, setPending] = useState<CaseMessage[]>([]);
+  const messages = useMemo(
+    () => [...serverMessages, ...pending],
+    [serverMessages, pending],
+  );
+
+  // แชทสด: poll ข้อความใหม่ทุก 7 วิ เฉพาะตอนแท็บนี้ถูกมองอยู่ (ประหยัด)
+  const refreshRef = useRef(onRefresh);
+  refreshRef.current = onRefresh;
+  const seenRef = useRef(onSeen);
+  seenRef.current = onSeen;
+  const countRef = useRef(serverMessages.length);
+  countRef.current = serverMessages.length;
+
+  useEffect(() => {
+    if (!refreshRef.current) return;
+    let alive = true;
+    const tick = async () => {
+      if (document.visibilityState !== "visible" || !refreshRef.current) return;
+      try {
+        const fresh = await refreshRef.current();
+        if (!alive) return;
+        setServerMessages(fresh);
+        // เจอข้อความใหม่จากอีกฝั่ง → ล้างธง unread (กำลังดูอยู่) + ตัด optimistic ที่ถึงแล้ว
+        if (fresh.length > countRef.current) seenRef.current?.();
+        setPending((p) =>
+          p.filter(
+            (pm) =>
+              !fresh.some(
+                (s) =>
+                  s.senderRole === pm.senderRole &&
+                  s.senderName === pm.senderName &&
+                  s.text === pm.text,
+              ),
+          ),
+        );
+      } catch {
+        /* เงียบ — รอบถัดไปลองใหม่ */
+      }
+    };
+    const id = setInterval(tick, 7000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      alive = false;
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
   const [draft, setDraft] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [urgent, setUrgent] = useState(false);
@@ -65,7 +124,7 @@ export function MessageThreadView({
     setError(null);
     const result = await onSend(t, file, { urgent, channel });
     if (result.ok) {
-      setMessages((prev) => [
+      setPending((prev) => [
         ...prev,
         {
           id: `local-${Date.now()}`,

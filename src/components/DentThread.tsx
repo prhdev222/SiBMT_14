@@ -47,6 +47,8 @@ export function DentThread({
         postDentMessageAction(referralId, text, senderName, opts.channel)
       }
       showChannelPicker
+      onRefresh={() => loadMessagesAction(referralId)}
+      onSeen={() => markReadDentAction(referralId)}
     />
   );
 }

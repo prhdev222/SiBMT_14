@@ -7,6 +7,17 @@ import {
   postReferrerMessage,
   reopenCaseByToken,
 } from "@/lib/apps-script-api";
+import { loadCaseByToken, type CaseMessage } from "@/lib/referral-repository";
+
+/** ดึงข้อความล่าสุดของเคส (สำหรับแชทสด — poll ทุก ~7 วิ) · case_token = สิทธิ์เข้าถึง */
+export async function loadCaseMessagesAction(
+  caseToken: string,
+): Promise<CaseMessage[]> {
+  const token = String(caseToken || "").trim();
+  if (token.length < 16) return [];
+  const thread = await loadCaseByToken(token);
+  return thread?.messages ?? [];
+}
 
 const ATTACH_TYPES: Record<string, string> = {
   "application/pdf": "PDF",

@@ -5,6 +5,7 @@ import type { CaseMessage } from "@/lib/referral-repository";
 import { MessageThreadView } from "@/components/MessageThreadView";
 import {
   closeCaseAction,
+  loadCaseMessagesAction,
   markReadReferrerAction,
   reopenCaseAction,
   sendReferrerMessageAction,
@@ -81,6 +82,8 @@ export function ReferrerThread({
         locked={closed}
         allowAttach
         showUrgent
+        onRefresh={() => loadCaseMessagesAction(caseToken)}
+        onSeen={() => markReadReferrerAction(caseToken)}
       />
 
       {closed ? (

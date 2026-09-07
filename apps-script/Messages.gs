@@ -108,12 +108,19 @@ function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl, urgent,
         .toLowerCase() === 'yes';
     setCell_(sheet, map2, row._row, 'dent_unread', 'yes');
     const audience = caseAudience_(row['referral_type']);
-    // Telegram แจ้งเตือน dent (ฟรี) — เข้าไปตอบใน LINE (reply ฟรี), Telegram
-    // (ถ้าตั้ง webhook), หรือ dashboard · coalesce ต่อชุดข้อความที่ยังไม่อ่าน
-    if (!wasPending) {
+    const hasFile = Boolean(fileUrl);
+    // Telegram แจ้งเตือน dent (ฟรี) · coalesce ข้อความ (แจ้งครั้งแรกของชุดที่ยังไม่อ่าน)
+    // แต่ "ไฟล์แนบใหม่" แจ้งเสมอ — ทีมต้องรู้ว่ามีเอกสารเข้ามาแม้อยู่กลางชุด
+    if (!wasPending || hasFile) {
+      const head = hasFile
+        ? (preview
+            ? '💬📎 ' + referralId + ' — ข้อความ + ไฟล์แนบใหม่จากแพทย์ต้นทาง'
+            : '📎 ' + referralId + ' — ไฟล์แนบใหม่จากแพทย์ต้นทาง')
+        : '💬 ' + referralId + ' — ข้อความใหม่จากแพทย์ต้นทาง';
       sendTelegram_(
-        '💬 ' + referralId + ' มีข้อความจากแพทย์ต้นทาง\n' +
-        '“' + preview + '”' + fileLine + '\n' +
+        head + '\n' +
+        (preview ? '“' + preview + '”\n' : '') +
+        (fileUrl ? '📎 เปิดไฟล์แนบ: ' + fileUrl + '\n' : '') +
         '─────────\n' +
         'เข้าไปตอบได้ที่ (ฟรีทุกช่อง):\n' +
         '• พิมพ์  ตอบ ' + referralId + ': <ข้อความ>  ในกลุ่ม (LINE/Telegram)\n' +
