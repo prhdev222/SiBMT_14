@@ -351,19 +351,36 @@ function verifyTelegramWebApp_(payload) {
   return { allowed: true, displayName: name, role: role };
 }
 
-/** ส่งปุ่ม web_app เปิด dashboard ในแอป Telegram (แบบ B) */
+/** ลิงก์ Mini App (จาก @BotFather /newapp) — ใช้เป็นปุ่ม url เปิดในกลุ่มได้ */
+function telegramAppLink_() {
+  return PropertiesService.getScriptProperties()
+    .getProperty('TELEGRAM_APP_LINK') || '';
+}
+
+/**
+ * ปุ่มเปิด dashboard (แบบ B)
+ *
+ * ⚠️ ปุ่ม web_app เปิดในกลุ่มไม่ได้ (Telegram อนุญาตเฉพาะ DM) — ในกลุ่มต้องใช้
+ * ปุ่ม url ชี้ไปลิงก์ Mini App (t.me/<bot>/<app>) ที่สร้างไว้ที่ @BotFather /newapp
+ * แตะแล้วเปิด Web App auto-login เหมือนกัน · ตั้งลิงก์ใน TELEGRAM_APP_LINK
+ */
 function sendTelegramWebAppButton_(chatId) {
   const token = telegramToken_();
   if (!token) return;
+  const link = telegramAppLink_();
+  if (!link) {
+    telegramReply_(chatId,
+      '⚠️ ยังไม่ได้ตั้ง Mini App — ผู้ดูแลสร้างที่ @BotFather (/newapp) แล้ววางลิงก์ ' +
+      't.me/<bot>/<app> ใน Script Property TELEGRAM_APP_LINK');
+    return;
+  }
   UrlFetchApp.fetch(TELEGRAM_API + token + '/sendMessage', {
     method: 'post', contentType: 'application/json',
     payload: JSON.stringify({
       chat_id: String(chatId),
-      text: '📲 เปิด dashboard ในแอป Telegram — แตะปุ่มด้านล่าง (เข้าได้เลย ไม่ต้อง login)',
+      text: '📲 เปิด dashboard หลังบ้าน — แตะปุ่มด้านล่าง (เข้าได้เลย ไม่ต้อง login)',
       reply_markup: {
-        inline_keyboard: [[
-          { text: '📲 เปิด dashboard', web_app: { url: SITE_URL + '/tg' } },
-        ]],
+        inline_keyboard: [[{ text: '📲 เปิด dashboard', url: link }]],
       },
     }),
     muteHttpExceptions: true,
@@ -379,6 +396,12 @@ function sendTelegramWebAppButton_(chatId) {
 function pinDashboardButtons() {
   const token = telegramToken_();
   if (!token) { Logger.log('❌ ยังไม่ได้ตั้ง TELEGRAM_BOT_TOKEN'); return; }
+  const link = telegramAppLink_();
+  if (!link) {
+    Logger.log('❌ ยังไม่ได้ตั้ง TELEGRAM_APP_LINK — สร้าง Mini App ที่ @BotFather (/newapp) ' +
+      'แล้ววางลิงก์ t.me/<bot>/<app> ใน Script Property TELEGRAM_APP_LINK ก่อน');
+    return;
+  }
   const props = PropertiesService.getScriptProperties();
   ['TELEGRAM_CHAT_ADMIN', 'TELEGRAM_CHAT_RESIDENT', 'TELEGRAM_CHAT_FELLOW']
     .forEach(function (key) {
@@ -391,9 +414,7 @@ function pinDashboardButtons() {
           chat_id: String(chatId),
           text: '📲 เข้า dashboard หลังบ้าน — แตะปุ่มด้านล่าง (เข้าได้เลย ไม่ต้อง login)',
           reply_markup: {
-            inline_keyboard: [[
-              { text: '📲 เปิด dashboard', web_app: { url: SITE_URL + '/tg' } },
-            ]],
+            inline_keyboard: [[{ text: '📲 เปิด dashboard', url: link }]],
           },
         }),
         muteHttpExceptions: true,
