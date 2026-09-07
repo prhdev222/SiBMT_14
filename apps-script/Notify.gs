@@ -452,7 +452,7 @@ function notifyResidentNewCase_(referralId, groupNo, assignedTo, patient, diagno
     '────────────────\n' +
     'เลขที่: ' + referralId + '\n' +
     '👤 ' + patient + ' · ' + diagnosis + '\n' +
-    '🩺 มอบหมาย: ' + (assignedTo || 'ยังไม่มอบหมาย') + '\n' +
+    '🩺 ผู้รับผิดชอบเคส: ' + (assignedTo || 'ยังไม่มอบหมาย') + '\n' +
     '🏥 จาก: ' + (org || '-'),
     'batch', buttons);
 }

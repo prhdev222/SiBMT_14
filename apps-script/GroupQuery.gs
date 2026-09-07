@@ -516,7 +516,7 @@ function buildResidentDigest_(now) {
     text += icon + ' ' + id + '  (' + timeLabel + ')\n' +
       '   👤 ' + (r['patient_sex'] || '-') + ' อายุ ' + (r['patient_age'] || '-') +
         ' ปี · ' + (r['diagnosis'] || '-') + '\n' +
-      '   🩺 ผู้ต้องดู: ' + responsibleName_(r) + '\n' +
+      '   🩺 ผู้รับผิดชอบเคส: ' + responsibleName_(r) + '\n' +
       '   🏥 จาก: ' + (r['referrer_org'] || '-') + '\n\n';
     buttons.push({ text: '📖 อ่าน ' + id, url: SITE_URL + '/dashboard/review#' + id });
   });
