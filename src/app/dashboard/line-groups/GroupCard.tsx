@@ -14,6 +14,7 @@ export function GroupCard({
   audience,
   inviteLink,
   configKey,
+  scanWith = "LINE",
 }: {
   emoji: string;
   title: string;
@@ -21,6 +22,8 @@ export function GroupCard({
   /** ลิงก์เชิญจากชีต config — ว่าง = ยังไม่ได้วาง แสดงวิธีตั้งค่าแทน */
   inviteLink: string;
   configKey: string;
+  /** แอปที่ใช้สแกน/เข้ากลุ่ม (LINE หรือ Telegram) — ปรับข้อความให้ตรงช่องทาง */
+  scanWith?: string;
 }) {
   const [qr, setQr] = useState<string | null>(null);
 
@@ -63,7 +66,7 @@ export function GroupCard({
             เข้ากลุ่มนี้ (กดจากมือถือ)
           </a>
           <p className="print:hidden text-xs text-zinc-400">
-            สแกน QR ด้วยกล้องหรือ LINE ก็เข้ากลุ่มได้เช่นกัน
+            สแกน QR ด้วยกล้องหรือ {scanWith} ก็เข้ากลุ่มได้เช่นกัน
           </p>
         </>
       ) : (

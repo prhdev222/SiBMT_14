@@ -9,7 +9,7 @@ import { PrintButton } from "@/components/PrintButton";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "กลุ่ม LINE ของระบบ — ส่งต่อผู้ป่วยโลหิตวิทยา ศิริราช",
+  title: "กลุ่มแจ้งเตือน Telegram / LINE — ส่งต่อผู้ป่วยโลหิตวิทยา ศิริราช",
   robots: { index: false, follow: false },
 };
 
@@ -25,6 +25,37 @@ export const metadata: Metadata = {
  * ⚠️ ลิงก์เชิญ = ใครมีก็เข้ากลุ่มได้ หน้านี้จึงอยู่หลังล็อกอินเสมอ
  * และห้ามเอา QR ไปแปะหน้าเว็บสาธารณะ
  */
+/**
+ * กลุ่ม Telegram — ช่องทางหลักปัจจุบัน (แจ้งเตือนฟรีไม่จำกัด + เข้า dashboard /login)
+ * ลิงก์เริ่มต้นฝังไว้ให้ใช้ได้ทันที · แก้/เปลี่ยนได้จากชีต config (key telegram_invite_)
+ */
+const TELEGRAM_GROUPS = [
+  {
+    key: "telegram_invite_resident",
+    emoji: "🩺",
+    title: "กลุ่ม Resident (เคสกลุ่ม 2/3)",
+    audience:
+      "resident + แพทย์แอดมิน — เด้งเคสกลุ่ม 2/3 ใหม่ทันที + สรุปเคสค้าง 10:00 น.",
+    fallback: "https://t.me/+_prh3HSX4tgxOGE1",
+  },
+  {
+    key: "telegram_invite_fellow",
+    emoji: "👨‍⚕️",
+    title: "กลุ่ม Fellow BMT",
+    audience:
+      "fellow + แพทย์แอดมิน — เด้งคิวนัดกลุ่ม 1 ทันที + นัดวันนี้/พรุ่งนี้ 10:00 น.",
+    fallback: "https://t.me/+C9XzA7fb55dmZTdl",
+  },
+  {
+    key: "telegram_invite_admin",
+    emoji: "🛡️",
+    title: "กลุ่มแพทย์แอดมินกลาง",
+    audience:
+      "แพทย์แอดมิน + ผู้ดูแล — เตือน SLA รอบ 10:00 + ข้อความติดต่อจากเว็บ",
+    fallback: "https://t.me/+JA0S7D12WQY3MDU1",
+  },
+];
+
 const GROUPS = [
   {
     key: "line_invite_resident",
@@ -56,7 +87,7 @@ export default async function LineGroupsPage() {
         <SessionBar username={session.username} />
         <PageHeader
           eyebrow="สำหรับบุคลากรภายใน"
-          title="กลุ่ม LINE ของระบบ"
+          title="กลุ่มแจ้งเตือน (Telegram / LINE)"
           links={[{ href: "/dashboard", label: "กลับ Dashboard" }]}
         />
       </div>
@@ -70,18 +101,48 @@ export default async function LineGroupsPage() {
           <PrintButton label="🖨️ พิมพ์ติดบอร์ดวอร์ด" />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {GROUPS.map((g) => (
-            <GroupCard
-              key={g.key}
-              emoji={g.emoji}
-              title={g.title}
-              audience={g.audience}
-              inviteLink={(config[g.key] ?? "").trim()}
-              configKey={g.key}
-            />
-          ))}
-        </div>
+        <section className="space-y-3">
+          <h2 className="font-semibold text-zinc-900">
+            <span className="mr-1.5" aria-hidden>
+              ✈️
+            </span>
+            กลุ่ม Telegram (ช่องทางหลัก)
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {TELEGRAM_GROUPS.map((g) => (
+              <GroupCard
+                key={g.key}
+                emoji={g.emoji}
+                title={g.title}
+                audience={g.audience}
+                inviteLink={(config[g.key] ?? "").trim() || g.fallback}
+                configKey={g.key}
+                scanWith="Telegram"
+              />
+            ))}
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="print:hidden font-semibold text-zinc-900">
+            <span className="mr-1.5" aria-hidden>
+              💬
+            </span>
+            กลุ่ม LINE (สำรอง)
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {GROUPS.map((g) => (
+              <GroupCard
+                key={g.key}
+                emoji={g.emoji}
+                title={g.title}
+                audience={g.audience}
+                inviteLink={(config[g.key] ?? "").trim()}
+                configKey={g.key}
+              />
+            ))}
+          </div>
+        </section>
 
         <p className="print:hidden text-xs text-zinc-400">
           ลิงก์เชิญเก็บอยู่ในชีต config (key ขึ้นต้น line_invite_) — ถ้ากลุ่มไหน
