@@ -79,13 +79,21 @@ export async function loadReferrals(): Promise<ReferralSource> {
           `ชี้ไฟล์เดียวกับที่ Apps Script ผูกอยู่ และแท็บชื่อ "${REFERRALS_SHEET}" ตรงเป๊ะ`;
       } else {
         const sample = rows[0];
-        const heads = Object.keys(sample).slice(0, 10).join(", ");
+        const heads = Object.keys(sample);
+        // นับว่าคอลัมน์สำคัญ "ว่างทั้งคอลัมน์" (ค่าหาย) หรือ "หัวคอลัมน์ไม่ตรง" (ถูกเปลี่ยนชื่อ)
+        const filled = (key: string) =>
+          rows.filter((r) => text(r[key])).length;
+        const refHeads = heads.filter((h) => /referral|status/i.test(h));
         diag =
-          `อ่านได้ ${rows.length} แถว แต่แปลงเป็นเคสไม่ได้เลย — ` +
-          `หัวคอลัมน์ที่เห็น: ${heads} · ` +
-          `ตัวอย่างค่า referral_type="${sample["referral_type"] ?? ""}" ` +
-          `status="${sample["status"] ?? ""}" referral_id="${sample["referral_id"] ?? ""}" ` +
-          `(ต้องตรงกับค่าที่ระบบรู้จัก และหัวคอลัมน์ต้องอยู่แถวที่ 1)`;
+          `อ่านได้ ${rows.length} แถว แต่แปลงเป็นเคสไม่ได้เลย · ` +
+          `referral_type มีค่า ${filled("referral_type")}/${rows.length} แถว · ` +
+          `referral_id มีค่า ${filled("referral_id")}/${rows.length} · ` +
+          `status มีค่า ${filled("status")}/${rows.length} · ` +
+          `หัวคอลัมน์ที่ชื่อคล้าย: [${refHeads.join(", ")}] · ` +
+          `ตัวอย่างแถวแรก referral_type="${sample["referral_type"] ?? ""}" ` +
+          `status="${sample["status"] ?? ""}" referral_id="${sample["referral_id"] ?? ""}" — ` +
+          `ถ้า referral_type = 0/${rows.length} แปลว่าคอลัมน์ว่างทั้งคอลัมน์ (ค่าถูกลบ) · ` +
+          `ถ้าไม่มีชื่อ "referral_type" ในรายการ แปลว่าหัวคอลัมน์ถูกเปลี่ยนชื่อ`;
       }
       return { referrals: [], isSampleData: false, error: diag };
     }
