@@ -73,7 +73,10 @@ function onFormSubmit(e) {
     setCell_(sheet, map, row, 'consent_acknowledged_at', submittedAt);
 
     // 3. referral_type — แปลงข้อความตัวเลือกในฟอร์มเป็นค่าที่ระบบใช้
-    const typeLabel = String(readCell_(sheet, map, row, 'referral_type') || '').trim();
+    // อ่านป้ายตัวเลือกจากคอลัมน์ referral_type หรือคอลัมน์คำถามฟอร์ม "ต้องการติดต่อ…"
+    // (Google Forms ชอบเปลี่ยนหัวคอลัมน์กลับเป็นข้อความคำถามเมื่อแก้ฟอร์ม — 8 ก.ย. 2569
+    // ทำให้ referral_type ว่างทั้งคอลัมน์และ dashboard ขึ้น 0 เคส)
+    const typeLabel = formLabelFor_(sheet, map, row);
     // เทียบแบบ normalize — ทนอักขระล่องหน/ขีดต่างชนิดที่ติดมากับฟอร์ม
     // (ดูเหตุผลที่ normalizeFormLabel_ ใน Config.gs)
     const referralType = typeFromFormLabel_(typeLabel);
@@ -271,6 +274,70 @@ function buildVerifyEmailUrl_(referralId, token) {
   return SITE_URL + '/verify-email?id=' + encodeURIComponent(referralId) +
     '&t=' + encodeURIComponent(token);
 }
+
+/**
+ * หัวคอลัมน์คำถามฟอร์ม "ต้องการติดต่อเรื่องอะไร" — Google Forms ตั้งชื่อหัวคอลัมน์
+ * ตามข้อความคำถาม และจะ "รีเซ็ต" กลับเป็นชื่อนี้ทุกครั้งที่แก้ฟอร์ม/เชื่อมชีตใหม่
+ * จึงห้ามพึ่งชื่อ referral_type อย่างเดียว
+ */
+function formLabelHeader_(map) {
+  const keys = Object.keys(map);
+  for (let i = 0; i < keys.length; i++) {
+    if (/^ต้องการติดต่อ/.test(keys[i])) return keys[i];
+  }
+  return '';
+}
+
+/** ป้ายตัวเลือกกลุ่มของแถวนี้ — จาก referral_type ก่อน ไม่มีค่อยไปคอลัมน์คำถามฟอร์ม */
+function formLabelFor_(sheet, map, rowNumber) {
+  let label = ('referral_type' in map)
+    ? String(readCell_(sheet, map, rowNumber, 'referral_type') || '').trim()
+    : '';
+  if (label) return label;
+  const h = formLabelHeader_(map);
+  return h ? String(readCell_(sheet, map, rowNumber, h) || '').trim() : '';
+}
+
+/**
+ * เติม referral_type ให้แถวที่ว่าง (หลังหัวคอลัมน์ถูกรีเซ็ต 8 ก.ย. 2569)
+ *   previewBackfillReferralTypes()  → ดูก่อนว่าจะเติมอะไร (ไม่เขียน)
+ *   applyBackfillReferralTypes()    → เขียนจริง
+ * กลุ่ม 2/3 แปลงจากป้ายตัวเลือก · กลุ่ม 1 อนุมานจาก manage_token/fellow_assigned
+ * แถวที่ตีความไม่ได้จะถูกข้ามและบอกใน log ให้แก้มือ
+ */
+function backfillReferralTypes_(dryRun) {
+  const sheet = getSheet_(SHEETS.referrals);
+  ensureColumns_(sheet, ['referral_type']);
+  const map = headerMap_(sheet);
+  const rows = readRows_(sheet);
+  const labelKey = formLabelHeader_(map);
+  Logger.log('คอลัมน์ป้ายฟอร์มที่ใช้: "' + (labelKey || '(ไม่พบ)') + '" · แถวทั้งหมด ' + rows.length);
+
+  let filled = 0, skipped = 0, already = 0;
+  rows.forEach(function (r) {
+    if (String(r['referral_type'] || '').trim()) { already++; return; }
+    const label = labelKey ? String(r[labelKey] || '').trim() : '';
+    let code = typeFromFormLabel_(label);
+    if (!code && (String(r['manage_token'] || '').trim() ||
+                  String(r['fellow_assigned'] || '').trim())) {
+      code = TYPES.transplant;
+    }
+    if (!code) {
+      skipped++;
+      Logger.log('⏭️ ' + r['referral_id'] + ' — ป้าย "' + label + '" ตีความไม่ได้ ข้าม (แก้มือในชีต)');
+      return;
+    }
+    if (!dryRun) setCell_(sheet, map, r._row, 'referral_type', code);
+    filled++;
+    Logger.log((dryRun ? '👀 ' : '✅ ') + r['referral_id'] + ' — "' +
+      (label || '(ไม่มีป้าย → อนุมานกลุ่ม 1)') + '" → ' + code);
+  });
+  Logger.log('สรุป: มีค่าอยู่แล้ว ' + already + ' · ' +
+    (dryRun ? 'จะเติม ' : 'เติมแล้ว ') + filled + ' · ข้าม ' + skipped +
+    (dryRun ? '   ← นี่คือ preview ยังไม่เขียน — รัน applyBackfillReferralTypes() เพื่อเขียนจริง' : ''));
+}
+function previewBackfillReferralTypes() { backfillReferralTypes_(true); }
+function applyBackfillReferralTypes() { backfillReferralTypes_(false); }
 
 function readCell_(sheet, map, row, columnName) {
   if (!(columnName in map)) return '';
