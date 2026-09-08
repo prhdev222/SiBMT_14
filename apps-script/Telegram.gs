@@ -230,6 +230,7 @@ function handleTelegramUpdate_(update) {
   try {
     const reply = answerGroupQuery_(query, {
       inFellowGroup: chatId === String(telegramChatId_('fellow')),
+      telegram: true, // เมนูโชว์คำสั่งเฉพาะ Telegram (/login /app มอบ) ด้วย
     });
     if (reply) telegramReply_(chatId, reply);
   } catch (err) {

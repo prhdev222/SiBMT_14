@@ -232,9 +232,7 @@ function answerGroupQuery_(text, opts) {
   text = String(text || '').trim();
 
   if (GROUP_QUERY_MENU.test(text)) {
-    return buildMenuText_(GROUP_QUERY_APPOINTMENT_ACTIONS
-      .concat(GROUP_QUERY_FELLOW_ACTIONS)
-      .concat(GROUP_QUERY_PENDING_ACTIONS));
+    return buildMenuText_(null, { telegram: !!opts.telegram });
   }
   if (GROUP_QUERY_PENDING.test(text)) return buildPendingReply_();
   if (GROUP_QUERY_UNREAD.test(text)) return buildUnreadReply_();
@@ -301,15 +299,46 @@ function replyOrReport_(replyToken, builderOrText) {
  * ของอาการ "บอทเงียบทั้งที่ทุกอย่างถูกต้อง" ในคืนเปิดใช้ — ข้อความธรรมดา
  * แลกความสวยกับความแน่นอนว่าส่งถึง ซึ่งเป็นการแลกที่คุ้มสำหรับระบบงาน
  */
-function buildMenuText_(actions) {
-  let text = '🤖 คำสั่งที่ใช้ได้ในกลุ่มนี้ — พิมพ์ได้เลย\n────────────────\n';
-  actions.forEach(function (a) {
-    text += '  ' + a.text + '\n';
-  });
-  text += '  นัด 15/9  (ดูวันอื่น ใส่ปี พ.ศ. ได้)\n';
-  text += '  เวรราวด์  (เวร Chief ประจำวอร์ด ตอนนี้ + รอบถัดไป)\n';
-  text += '  (fellow) พิมพ์ชื่อตัวเอง เพื่อดูนัดของตัวเอง\n';
-  text += '  (resident) พิมพ์ชื่อตัวเอง เพื่อดูเคสค้าง + เวรของตัวเอง\n';
+function buildMenuText_(actions, opts) {
+  opts = opts || {};
+  void actions; // ปุ่มต่อกลุ่มเลิกใช้แล้ว — ทุกกลุ่มเห็นคำสั่งครบชุดเดียวกัน (8 ก.ย. 2569)
+  const tg = !!opts.telegram;
+
+  let text = '🤖 พิมพ์ได้เลยในกลุ่มนี้ (บอทตอบเฉพาะเมื่อถูกถาม)\n';
+
+  text += '\n📋 เคส\n' +
+    '  เคสค้าง        เคสกลุ่ม 2/3 ที่ยังไม่ตอบ\n' +
+    '  ข้อความใหม่    เคสที่แพทย์ต้นทางส่งเอกสาร/ข้อความมา\n' +
+    '  <ชื่อ resident>   เคสค้างของตัวเอง + เวรของตัวเอง\n';
+
+  text += '\n📅 นัด (กลุ่ม 1 ปลูกถ่าย)\n' +
+    '  นัดวันนี้ · นัดพรุ่งนี้\n' +
+    '  นัด 15/9        ดูวันอื่น (ใส่ปี พ.ศ. ได้ เช่น 15/9/69)\n' +
+    '  นัด fellow      นัด 7 วันข้างหน้า (นัด fellow 14 = 14 วัน)\n' +
+    '  <ชื่อ fellow>     นัดของตัวเอง\n';
+
+  text += '\n🩺 เวร\n' +
+    '  เวรราวด์        เวร Chief ประจำวอร์ด ตอนนี้ + รอบถัดไป\n' +
+    '                  (พิมพ์ เวร / เวร ward / chief ก็ได้)\n';
+
+  text += '\n✍️ ตอบ\n' +
+    '  ตอบ HEM-0123: ข้อความ   ส่งข้อความถึงแพทย์ต้นทางในเคสนั้น\n' +
+    '  #ABCD ข้อความ           ตอบตั๋วติดต่อจากแพทย์ต้นทาง (แอดมิน)\n';
+  if (tg) {
+    text += '  มอบ HEM-0123: ชื่อ       เปลี่ยนผู้รับผิดชอบเคส\n';
+  }
+
+  if (tg) {
+    text += '\n🔐 เข้าระบบ\n' +
+      '  /login          รับลิงก์เข้า dashboard ทาง DM\n' +
+      '  /app            เปิด dashboard ใน Telegram\n' +
+      '  รหัสผูกกลุ่ม     รหัสสำหรับผูกกลุ่ม LINE (กลุ่มแอดมิน)\n';
+  } else {
+    text += '\n🔐 อื่น ๆ\n' +
+      '  ผูกกลุ่ม <รหัส>   ผูกกลุ่ม LINE นี้เป็นกลุ่มเจ้าหน้าที่\n' +
+      '  #id             ดู ID ของห้องนี้ + สถานะ\n';
+  }
+
   text += '\n📌 ปักหมุดข้อความนี้ไว้ให้ทุกคนเห็น';
   return text;
 }
