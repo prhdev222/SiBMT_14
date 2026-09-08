@@ -14,7 +14,7 @@ type SendResult = {
 export type SendOpts = { urgent: boolean; channel: DentChannel };
 
 /** ช่องที่ dent เลือกส่งคำตอบให้แพทย์ต้นทาง */
-export type DentChannel = "chat" | "email" | "line";
+export type DentChannel = "chat" | "email";
 
 /**
  * มุมมองบทสนทนาต่อเคส — ใช้ทั้งหน้า /case (แพทย์ต้นทาง) และ dashboard (dent)
@@ -273,7 +273,7 @@ export function MessageThreadView({
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
               }}
               rows={2}
-              placeholder="พิมพ์ข้อความ…"
+              placeholder="ขอ/ส่งเอกสารเพิ่มเติม หรือแนบไฟล์…"
               className="flex-1 min-w-0 resize-y rounded-lg border border-zinc-300 px-3 py-2 text-sm"
             />
             <button
@@ -310,7 +310,6 @@ export function MessageThreadView({
                   [
                     ["chat", "แชทเท่านั้น"],
                     ["email", "อีเมล"],
-                    ["line", "LINE"],
                   ] as [DentChannel, string][]
                 ).map(([value, label]) => (
                   <label key={value} className="inline-flex items-center gap-1">
@@ -326,10 +325,8 @@ export function MessageThreadView({
               </span>
               <span className="block text-zinc-400 mt-0.5">
                 {channel === "chat"
-                  ? "แพทย์เห็นเมื่อเปิดหน้าเคส — ไม่ส่งอีเมล/LINE (เหมาะเมื่อกำลังคุยกันสด)"
-                  : channel === "email"
-                    ? "ส่งอีเมลแจ้ง (ฟรี) — แพทย์เปิดหน้าเคสอ่านต่อได้"
-                    : "แจ้งทาง LINE ทันที (ใช้โควตา push) — เหมาะเมื่ออยากให้เห็นเลย"}
+                  ? "แพทย์เห็นเมื่อเปิดหน้าเคส — ไม่ส่งอีเมล (เหมาะเมื่อกำลังคุยกันสด)"
+                  : "ส่งอีเมลแจ้ง (ฟรี) — แพทย์เปิดหน้าเคสอ่านต่อได้"}
               </span>
             </div>
           )}

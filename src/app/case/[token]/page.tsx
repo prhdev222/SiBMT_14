@@ -7,7 +7,7 @@ import { ReferrerThread } from "./ReferrerThread";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "คุยกับทีม — ส่งต่อผู้ป่วยโลหิตวิทยา ศิริราช",
+  title: "เอกสารเคส / คำตอบ — ส่งต่อผู้ป่วยโลหิตวิทยา ศิริราช",
   // เปิดได้ด้วย token ที่เดาไม่ได้ ไม่ควรถูกเก็บเข้าดัชนีค้นหา
   robots: { index: false, follow: false, nocache: true },
 };
@@ -61,7 +61,7 @@ export default async function CasePage({
             {meta ? `กลุ่มที่ ${meta.groupNumber} — ${meta.titleTh}` : "เคสส่งต่อ"}
           </p>
           <h1 className="mt-1 text-lg font-bold text-zinc-900">
-            คุยกับทีม · {thread.referralId}
+            📎 เอกสารเคส / คำตอบ · {thread.referralId}
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
             <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-zinc-700">
@@ -77,8 +77,8 @@ export default async function CasePage({
       <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-5">
         <div className="rounded-xl bg-white border border-zinc-200 p-4 sm:p-5">
           <p className="mb-3 text-xs text-zinc-500">
-            พิมพ์สอบถาม/ส่งข้อมูลเพิ่มถึงทีมโลหิตวิทยาได้ที่นี่ — ทีมจะเห็นและตอบกลับ
-            คุณจะได้รับแจ้งเตือนทาง LINE/อีเมลเมื่อมีข้อความใหม่
+            แนบเอกสารประกอบ (ผล lab, ใบ refer, รูป) หรือส่งข้อมูลที่ทีมขอเพิ่มได้ที่นี่
+            — คำตอบจากทีมจะแสดงที่นี่และส่งถึงอีเมลของคุณ · เรื่องใหม่กรุณากรอกฟอร์มใหม่
           </p>
           <ReferrerThread
             caseToken={thread.caseToken}

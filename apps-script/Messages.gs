@@ -156,11 +156,10 @@ function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl, urgent,
     // ค่าว่าง (ข้อความ dent จาก LINE) = ค่าเดิม: อีเมล + push ตามสวิตช์ config
     const ch = String(dentChannel || '').toLowerCase();
     const wantEmail = ch === 'email' || ch === '';
-    // LINE ถึงแพทย์ต้นทาง = push รายคน 1 ข้อความ (ถูก ไม่คิดรายหัวเหมือน push กลุ่ม)
-    // จึงเปิดอิสระจากสวิตช์กลุ่ม line_push — คุมด้วย config line_push_referrer
-    // (ค่าเริ่มต้น on) หรือเมื่อ dent เลือกช่อง 'line' โดยตรง · ต้องผูก LINE ไว้ถึงจะส่งได้
-    const wantLine = ch === 'line' ||
-      (ch === '' && chatPushOn_('line_push_referrer', true));
+    // แนวใหม่ (8 ก.ย. 2569): ไม่มี LINE push ถึงแพทย์ต้นทางเป็นค่าเริ่มต้น (ประหยัด
+    // ระยะยาว) — แพทย์ต้นทางดูคำตอบทางอีเมล หรือพิมพ์ "คำตอบ" ที่ LINE bot (reply ฟรี)
+    // เปิดกลับได้ด้วย config line_push_referrer = on · ต้องผูก LINE ไว้ถึงจะส่งได้
+    const wantLine = ch === '' && chatPushOn_('line_push_referrer', false);
 
     const email = String(row['referrer_email'] || '').trim();
     if (email && wantEmail) {
@@ -168,9 +167,8 @@ function notifyCounterparty_(sheet, map, row, senderRole, text, fileUrl, urgent,
         preview + (fileUrl ? '\n📎 ไฟล์แนบ: ' + fileUrl : ''),
         String(row['sender_name'] || 'ทีมโลหิตวิทยา'));
     }
-    // push LINE เฉพาะข้อความแรกของชุดที่ยังไม่อ่าน (dent กด "line" ตรง ๆ = ตั้งใจ
-    // ส่งด่วน จึง push ได้เสมอ ไม่ต้องรวบ)
-    const pushLineNow = wantLine && (ch === 'line' || !wasReferrerPending);
+    // push LINE (ถ้าเปิด config) เฉพาะข้อความแรกของชุดที่ยังไม่อ่าน
+    const pushLineNow = wantLine && !wasReferrerPending;
     const userId = pushLineNow ? findLineUserByPhone_(row['referrer_phone']) : '';
     if (userId) {
       const token = PropertiesService.getScriptProperties()

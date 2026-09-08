@@ -704,10 +704,10 @@ export function DashboardClient({
             </div>
           )}
 
-          {/* บทสนทนากับแพทย์ต้นทาง */}
+          {/* ห้องเคส — ขอ/ส่งเอกสารเพิ่มเติมกับแพทย์ต้นทาง (ไม่ใช่ถาม-ตอบทั่วไป) */}
           <div className="border-t border-zinc-100 pt-3">
             <p className="mb-2 text-sm font-semibold text-zinc-900">
-              💬 บทสนทนากับแพทย์ต้นทาง
+              📎 เอกสารเพิ่มเติม / ขอข้อมูลจากแพทย์ต้นทาง
             </p>
             <DentThread
               referralId={selected.referralId}

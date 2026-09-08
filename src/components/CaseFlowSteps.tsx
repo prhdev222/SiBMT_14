@@ -99,12 +99,12 @@ function flowFor(
     { label: outcome },
     { label: "จบเคส" },
   ];
-  // ช่วง "รออาจารย์"(2) → ผลลัพธ์(3) วนได้ · จบจริงเมื่อ Closed/Rejected/Cancelled
+  // เส้นตรง (แนวใหม่ 8 ก.ย. 2569): ตอบแล้ว → ปิดเคส · เรื่องใหม่ = ฟอร์มใหม่ ไม่วน
   return {
     steps,
     current,
     ended,
-    loopAt: 2,
+    loopAt: -1,
     isChemo,
     isTransplant: false,
     finished: ended,
@@ -136,7 +136,8 @@ export function CaseFlowSteps({
 }) {
   const { steps, current, ended, loopAt, isChemo, isTransplant, finished } =
     flowFor(referralType, status, hasAssignee);
-  const isConsult = loopAt >= 0;
+  const isConsult =
+    referralType === "REGIMEN_CONSULT" || referralType === "CHEMO_ADMISSION";
   const last = steps.length - 1;
 
   return (
@@ -215,11 +216,10 @@ export function CaseFlowSteps({
 
       {isConsult && !ended && (
         <p className="mt-3 flex items-start gap-1.5 border-t border-zinc-100 pt-2.5 text-[11px] leading-relaxed text-zinc-500">
-          <span aria-hidden>🔄</span>
+          <span aria-hidden>📋</span>
           <span>
-            ตอบแล้วยังไม่จบ — แพทย์ต้นทางถามเพิ่มได้ (วน รออาจารย์ ↔ ตอบแล้ว)
-            เคสจบเมื่อกด &ldquo;ปิดเคส&rdquo; หรือแพทย์ต้นทางจบเอง ·
-            คำตอบเพิ่มทุกครั้งต้องมีอาจารย์รับรอง
+            1 เรื่อง = 1 เคส — ตอบแล้ว (มีอาจารย์รับรอง) แล้วกด &ldquo;ปิดเคส&rdquo; ·
+            ห้องเคสมีไว้ขอ/ส่งเอกสารเพิ่มเท่านั้น · เรื่องใหม่ให้กรอกฟอร์มใหม่
             {isChemo &&
               " · กลุ่ม 3 อาจ “นัดมาประเมินที่ OPD 700” หรือ “ตอบให้ดูแลเอง (ไม่นัด)” ก็ได้"}
           </span>

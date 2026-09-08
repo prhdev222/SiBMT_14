@@ -7,7 +7,6 @@ import {
   closeCaseAction,
   loadCaseMessagesAction,
   markReadReferrerAction,
-  reopenCaseAction,
   sendReferrerMessageAction,
 } from "./actions";
 
@@ -32,7 +31,6 @@ export function ReferrerThread({
 }) {
   const [closed, setClosed] = useState(initiallyClosed);
   const [closing, setClosing] = useState(false);
-  const [reopening, setReopening] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -61,15 +59,6 @@ export function ReferrerThread({
     setClosing(false);
   }
 
-  async function reopen() {
-    setReopening(true);
-    setError(null);
-    const result = await reopenCaseAction(caseToken);
-    if (result.ok) setClosed(false);
-    else setError(result.error ?? "เปิดเคสไม่สำเร็จ");
-    setReopening(false);
-  }
-
   return (
     <div className="flex flex-col gap-3">
       <MessageThreadView
@@ -81,7 +70,6 @@ export function ReferrerThread({
         }
         locked={closed}
         allowAttach
-        showUrgent
         onRefresh={() => loadCaseMessagesAction(caseToken)}
         onSeen={() => markReadReferrerAction(caseToken)}
       />
@@ -89,16 +77,14 @@ export function ReferrerThread({
       {closed ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2.5">
           <span className="text-sm text-emerald-800">
-            ✓ เคสนี้ปิดแล้ว — มีคำถามเพิ่ม? เปิดเคสใหม่ก่อนได้เลย
+            ✓ เคสนี้ปิดแล้ว — เรื่องใหม่กรุณากรอกฟอร์มส่งต่อใหม่ (1 เรื่อง = 1 เคส)
           </span>
-          <button
-            type="button"
-            onClick={reopen}
-            disabled={reopening}
-            className="rounded-lg border border-emerald-400 bg-white px-3.5 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+          <a
+            href="/"
+            className="rounded-lg border border-emerald-400 bg-white px-3.5 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
           >
-            {reopening ? "กำลังเปิด…" : "เปิดเคสใหม่เพื่อถามเพิ่ม"}
-          </button>
+            กรอกฟอร์มเรื่องใหม่ →
+          </a>
         </div>
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-zinc-50 border border-zinc-200 px-3 py-2.5">
