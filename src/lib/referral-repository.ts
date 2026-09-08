@@ -66,6 +66,30 @@ export async function loadReferrals(): Promise<ReferralSource> {
       .map(toReferral)
       .filter((r): r is Referral => r !== null);
 
+    // อ่าน "สำเร็จ" แต่ได้ 0 เคส = เงียบจนเข้าใจผิดว่าไม่มีงาน (เคยเกิด 8 ก.ย. 2569:
+    // Telegram เห็น 5 เคส แต่ dashboard ขึ้น 0) — บอกสาเหตุที่น่าจะเป็นให้เห็นเลย
+    if (referrals.length === 0) {
+      const id = readCredentials()?.spreadsheetId ?? "";
+      const idTail = id ? `…${id.slice(-8)}` : "(ไม่มี GOOGLE_SHEET_ID)";
+      let diag: string;
+      if (rows.length === 0) {
+        diag =
+          `แท็บ "${REFERRALS_SHEET}" ในไฟล์ ${idTail} อ่านได้ 0 แถวข้อมูล ` +
+          `(ว่าง หรือมีแต่หัวคอลัมน์) — ตรวจว่า GOOGLE_SHEET_ID บน Cloudflare ` +
+          `ชี้ไฟล์เดียวกับที่ Apps Script ผูกอยู่ และแท็บชื่อ "${REFERRALS_SHEET}" ตรงเป๊ะ`;
+      } else {
+        const sample = rows[0];
+        const heads = Object.keys(sample).slice(0, 10).join(", ");
+        diag =
+          `อ่านได้ ${rows.length} แถว แต่แปลงเป็นเคสไม่ได้เลย — ` +
+          `หัวคอลัมน์ที่เห็น: ${heads} · ` +
+          `ตัวอย่างค่า referral_type="${sample["referral_type"] ?? ""}" ` +
+          `status="${sample["status"] ?? ""}" referral_id="${sample["referral_id"] ?? ""}" ` +
+          `(ต้องตรงกับค่าที่ระบบรู้จัก และหัวคอลัมน์ต้องอยู่แถวที่ 1)`;
+      }
+      return { referrals: [], isSampleData: false, error: diag };
+    }
+
     return { referrals, isSampleData: false, error: null };
   } catch (error) {
     // อ่านชีตไม่ได้แล้วหน้าจอว่างเปล่าจะทำให้เข้าใจผิดว่าไม่มีเคสค้าง

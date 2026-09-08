@@ -57,10 +57,15 @@ export default async function DashboardPage() {
       <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-6 space-y-4">
         {error && (
           <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-900">
-            <p className="font-semibold">อ่านข้อมูลจาก Google Sheet ไม่สำเร็จ</p>
+            <p className="font-semibold">
+              {isSampleData
+                ? "อ่านข้อมูลจาก Google Sheet ไม่สำเร็จ"
+                : "เชื่อมต่อ Google Sheet ได้ แต่ไม่พบเคส — สาเหตุที่น่าจะเป็น"}
+            </p>
             <p className="mt-1">
-              ข้อมูลที่แสดงด้านล่างเป็นข้อมูลตัวอย่าง ไม่ใช่เคสจริง
-              กรุณาแจ้งผู้ดูแลระบบ
+              {isSampleData
+                ? "ข้อมูลที่แสดงด้านล่างเป็นข้อมูลตัวอย่าง ไม่ใช่เคสจริง กรุณาแจ้งผู้ดูแลระบบ"
+                : "ตารางด้านล่างว่างเพราะระบบอ่านได้แต่ตีความไม่ได้ — ดูรายละเอียดด้านล่างแล้วแก้ที่ต้นทาง"}
             </p>
             <p className="mt-1 font-mono text-xs text-red-700 break-all">
               {error}
