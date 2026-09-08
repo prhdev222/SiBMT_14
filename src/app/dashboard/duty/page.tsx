@@ -87,9 +87,9 @@ export default async function DutyPage() {
                 </p>
               ) : (
                 <ul className="mt-2 space-y-1.5">
-                  {current.map((s) => (
+                  {current.map((s, i) => (
                     <li
-                      key={s.name + s.fromDate}
+                      key={`${s.name}|${s.fromDate}|${i}`}
                       className="flex flex-wrap items-baseline gap-x-3 text-sm"
                     >
                       <span className="font-semibold text-green-950 text-base">

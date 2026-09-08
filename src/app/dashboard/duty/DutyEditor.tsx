@@ -124,8 +124,10 @@ export function DutyEditor({
       )}
 
       <ul className="space-y-2">
-        {shifts.map((s) => {
-          const key = keyOf(s);
+        {shifts.map((s, i) => {
+          // ต่อท้ายลำดับแถว — ถ้าชีตมีแถวซ้ำกันเป๊ะ (ชื่อ+ช่วงเดียวกันสองแถว)
+          // key จะไม่ชนกัน และกดแก้แถวไหนก็เปิดฟอร์มเฉพาะแถวนั้น
+          const key = `${keyOf(s)}|${i}`;
           if (editingKey === key) {
             return (
               <li key={key}>
