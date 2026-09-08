@@ -1803,6 +1803,14 @@ function dashboardLineGroups_() {
       });
   });
 
+  // กลุ่มที่ผูกเองจากในกลุ่มด้วย "ผูกกลุ่ม <รหัส>" (LineWebhook.gs) — ไม่ต้องขอ #id
+  // ทุกกลุ่มที่ผูกใช้คำสั่งชุดเดียวกันหมด ไม่แยก fellow/dent/admin (8 ก.ย. 2569)
+  parseLineTargets_(props.getProperty(LINE_GROUPS_PROP)).forEach(function (id) {
+    if (id.charAt(0) !== 'C' || seen[id]) return;
+    seen[id] = true;
+    groups.push(id);
+  });
+
   return groups;
 }
 

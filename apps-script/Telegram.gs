@@ -178,6 +178,25 @@ function handleTelegramUpdate_(update) {
     return jsonResponse_({ ok: true });
   }
 
+  // รหัสผูกกลุ่ม LINE — เฉพาะกลุ่มแอดมิน (ดู handleGroupBind_ ใน LineWebhook.gs)
+  if (/^(รหัสผูกกลุ่ม|เปลี่ยนรหัสผูกกลุ่ม|\/linecode)$/i.test(text)) {
+    if (chatId !== String(telegramChatId_('red'))) {
+      telegramReply_(chatId, 'ดูรหัสผูกกลุ่มได้เฉพาะในกลุ่มแอดมิน');
+      return jsonResponse_({ ok: true });
+    }
+    const rotate = /^เปลี่ยน/.test(text);
+    const code = rotate ? rotateLineGroupCode_() : lineGroupCode_();
+    telegramReply_(chatId,
+      (rotate ? '🔄 ออกรหัสใหม่แล้ว รหัสเดิมใช้ไม่ได้\n\n' : '') +
+      '🔑 รหัสผูกกลุ่ม LINE:  ' + code + '\n\n' +
+      'วิธีใช้: เชิญบอท LINE OA เข้ากลุ่ม แล้วพิมพ์ในกลุ่มนั้น\n' +
+      '   ผูกกลุ่ม ' + code + '\n\n' +
+      'กลุ่มที่ผูกอยู่ตอนนี้: ' + boundLineGroups_().length + ' กลุ่ม\n' +
+      'ยกเลิก: พิมพ์ "ยกเลิกผูกกลุ่ม" ในกลุ่มนั้น หรือเอาบอทออกจากกลุ่ม\n' +
+      'รหัสหลุด → พิมพ์ "เปลี่ยนรหัสผูกกลุ่ม" ที่นี่');
+    return jsonResponse_({ ok: true });
+  }
+
   // แอดมินตอบตั๋วติดต่อจากแพทย์ต้นทาง: "#ABCD ข้อความ" — เฉพาะกลุ่มแอดมิน
   // ส่งแบบฟรี (reply ตอนเขาทัก LINE + อีเมลถ้ามี) ไม่ใช้ push (8 ก.ย. 2569)
   const tk = text.match(/^#([A-Za-z2-9]{4})\s+([\s\S]+)$/);

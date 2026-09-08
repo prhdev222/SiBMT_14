@@ -76,6 +76,27 @@ const LINE_STATUS_LABEL_TH = {
  */
 const LINE_WHOAMI_KEYWORD = '#id';
 
+/**
+ * กลุ่มผูกตัวเองจากในกลุ่ม — ไม่ต้องขอ #id แล้วมาวางใน Script Properties อีก
+ *
+ * เชิญบอท OA เข้ากลุ่มไหนก็ได้ (กลุ่ม dent/fellow ของเขาเอง) แล้วพิมพ์
+ *   ผูกกลุ่ม <รหัส>
+ * รหัสตัวเดียวทั้งระบบ อยู่ใน LINE_GROUP_CODE (สร้างให้เองครั้งแรก) —
+ * แอดมินดูได้โดยพิมพ์ "รหัสผูกกลุ่ม" ในกลุ่ม Telegram แอดมิน
+ *
+ * ⚠️ ต้องมีรหัส เพราะ "อยู่ในกลุ่มที่ผูก" = เข้า dashboard ด้วย LINE ได้
+ * ถ้าไม่มีรหัส ใครก็ตามที่แอด OA แล้วลากเข้ากลุ่มตัวเองจะเปิดประตูหลังบ้านได้
+ *
+ * ทุกกลุ่มที่ผูกใช้คำสั่งชุดเดียวกัน (เคสค้าง / นัด / ตอบ HEM / #ตั๋ว) ไม่แยกบทบาท
+ * และบอท "ตอบเมื่อถูกถาม" เท่านั้น — ไม่มี push เข้ากลุ่ม LINE (8 ก.ย. 2569)
+ */
+const LINE_GROUPS_PROP = 'LINE_GROUPS';
+const LINE_GROUP_CODE_PROP = 'LINE_GROUP_CODE';
+const LINE_BIND_PATTERN = /^ผูกกลุ่ม\s*(\S*)\s*$/;
+const LINE_UNBIND_KEYWORD = 'ยกเลิกผูกกลุ่ม';
+/** ลองรหัสผิดได้กี่ครั้งต่อกลุ่มต่อชั่วโมง — กันเดารหัส */
+const LINE_BIND_ATTEMPTS_PER_HOUR = 5;
+
 /** จำนวนครั้งที่ค้นสถานะได้ต่อหนึ่งคู่สนทนา ต่อหนึ่งชั่วโมง */
 const LINE_LOOKUP_LIMIT_PER_HOUR = 20;
 
@@ -218,6 +239,19 @@ function handleLineEvent_(event) {
     'LINE source: ' + (source.type || '?') + ' ' + id + ' | event: ' + event.type,
   );
 
+  // บอทถูกเชิญเข้ากลุ่ม → บอกวิธีผูกกลุ่มทันที (reply ฟรี ไม่ต้องขอ #id)
+  if (event.type === 'join' && event.replyToken) {
+    replyLineMessage_(event.replyToken, buildJoinReply_());
+    return;
+  }
+  // บอทถูกเอาออกจากกลุ่ม → ถอดสิทธิ์กลุ่มนั้นทันที ไม่ให้ค้างเป็นประตูหลังบ้าน
+  if (event.type === 'leave') {
+    if (unbindLineGroup_(id)) {
+      console.log('ถอดกลุ่ม ' + maskLineId_(id) + ' เพราะบอทถูกเอาออกจากกลุ่ม');
+    }
+    return;
+  }
+
   const text = event.message && event.message.type === 'text'
     ? String(event.message.text || '').trim()
     : '';
@@ -225,6 +259,12 @@ function handleLineEvent_(event) {
 
   if (text === LINE_WHOAMI_KEYWORD) {
     replyLineMessage_(event.replyToken, buildWhoAmIReply_(source.type, id));
+    return;
+  }
+
+  // ผูก/ยกเลิกผูกกลุ่ม — ต้องมาก่อนทุกคำสั่งกลุ่ม เพราะกลุ่มที่ยังไม่ผูกจะเงียบหมด
+  if ((source.type === 'group' || source.type === 'room') &&
+      handleGroupBind_(event, text, id)) {
     return;
   }
 
@@ -1080,11 +1120,146 @@ function relayToAdmin_(event, text, userId) {
 }
 
 
-/** ปลายทางนี้อยู่ใน LINE_TARGET_ADMIN หรือไม่ */
+/**
+ * ปลายทางนี้ตอบตั๋วแอดมินได้หรือไม่
+ *
+ * เดิมรับเฉพาะ LINE_TARGET_ADMIN — ตั้งแต่กลุ่มผูกตัวเองได้ (8 ก.ย. 2569)
+ * ทุกกลุ่มเจ้าหน้าที่ที่ผูกไว้ใช้คำสั่งชุดเดียวกัน จึงรับจากกลุ่มที่ผูกด้วย
+ * (ยังกันแชทตัวต่อตัวและกลุ่มที่ไม่รู้จักเหมือนเดิม)
+ */
 function isAdminTarget_(sourceId) {
   const raw = PropertiesService.getScriptProperties()
     .getProperty('LINE_TARGET_ADMIN');
-  return parseLineTargets_(raw).indexOf(String(sourceId)) !== -1;
+  if (parseLineTargets_(raw).indexOf(String(sourceId)) !== -1) return true;
+  return isStaffGroup_(String(sourceId));
+}
+
+/* ------------------------------------------------------------------ */
+/* ผูกกลุ่มจากในกลุ่ม — "ผูกกลุ่ม <รหัส>" / "ยกเลิกผูกกลุ่ม"              */
+/* ------------------------------------------------------------------ */
+
+/** รหัสผูกกลุ่ม — สร้างให้เองครั้งแรก (6 ตัว ตัดตัวที่สับสน 0/O 1/I ออก) */
+function lineGroupCode_() {
+  const props = PropertiesService.getScriptProperties();
+  let code = String(props.getProperty(LINE_GROUP_CODE_PROP) || '').trim();
+  if (!code) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    props.setProperty(LINE_GROUP_CODE_PROP, code);
+  }
+  return code;
+}
+
+/** ออกรหัสใหม่ — รหัสเดิมใช้ไม่ได้ทันที กลุ่มที่ผูกไว้แล้วไม่กระทบ */
+function rotateLineGroupCode_() {
+  PropertiesService.getScriptProperties().deleteProperty(LINE_GROUP_CODE_PROP);
+  return lineGroupCode_();
+}
+
+/** กลุ่มที่ผูกเองทั้งหมด (ไม่รวม LINE_TARGET_* เดิม) */
+function boundLineGroups_() {
+  return parseLineTargets_(
+    PropertiesService.getScriptProperties().getProperty(LINE_GROUPS_PROP),
+  );
+}
+
+/** เพิ่มกลุ่มเข้ารายชื่อ คืนจำนวนกลุ่มที่ผูกอยู่หลังเพิ่ม */
+function bindLineGroup_(groupId) {
+  const props = PropertiesService.getScriptProperties();
+  const list = boundLineGroups_();
+  if (list.indexOf(groupId) === -1) list.push(groupId);
+  props.setProperty(LINE_GROUPS_PROP, list.join(','));
+  return list.length;
+}
+
+/** ถอดกลุ่มออก คืน true ถ้ามีอยู่จริงและถอดแล้ว */
+function unbindLineGroup_(groupId) {
+  const props = PropertiesService.getScriptProperties();
+  const list = boundLineGroups_();
+  const next = list.filter(function (id) { return id !== groupId; });
+  if (next.length === list.length) return false;
+  props.setProperty(LINE_GROUPS_PROP, next.join(','));
+  return true;
+}
+
+/** กันเดารหัส — นับครั้งที่ลองต่อกลุ่มต่อชั่วโมง */
+function bindAttemptAllowed_(groupId) {
+  const cache = CacheService.getScriptCache();
+  const key = 'line_bind_' + groupId;
+  const current = parseInt(cache.get(key) || '0', 10);
+  if (current >= LINE_BIND_ATTEMPTS_PER_HOUR) return false;
+  cache.put(key, String(current + 1), 3600);
+  return true;
+}
+
+/** ข้อความตอนบอทเข้ากลุ่มใหม่ */
+function buildJoinReply_() {
+  return (
+    'สวัสดีค่ะ บอท SiBMT-refer เข้ากลุ่มแล้ว 👋\n\n' +
+    'ผูกกลุ่มนี้เป็นกลุ่มเจ้าหน้าที่ พิมพ์\n' +
+    '   ผูกกลุ่ม <รหัส>\n' +
+    '(ขอรหัสจากแพทย์แอดมิน)\n\n' +
+    'ผูกแล้วทุกคนในกลุ่มถามบอทได้ เช่น เคสค้าง · นัดวันนี้ · เมนู\n' +
+    'และเข้า dashboard ด้วย LINE ได้ทันที\n' +
+    'บอทตอบเฉพาะเมื่อถูกถาม ไม่ส่งข้อความเข้ากลุ่มเอง'
+  );
+}
+
+/** ลองจัดการคำสั่งผูก/ยกเลิกผูกกลุ่ม คืน true ถ้าตอบไปแล้ว */
+function handleGroupBind_(event, text, groupId) {
+  if (text === LINE_UNBIND_KEYWORD) {
+    const removed = unbindLineGroup_(groupId);
+    replyLineMessage_(event.replyToken, removed
+      ? '✅ ยกเลิกผูกกลุ่มนี้แล้ว — บอทจะไม่ตอบคำสั่งในกลุ่มนี้ และเข้า dashboard จากกลุ่มนี้ไม่ได้อีก\n' +
+        'ผูกใหม่ได้เสมอด้วย  ผูกกลุ่ม <รหัส>'
+      : 'กลุ่มนี้ยังไม่ได้ผูกอยู่แล้วค่ะ');
+    return true;
+  }
+
+  const m = text.match(LINE_BIND_PATTERN);
+  if (!m) return false;
+
+  if (groupId.charAt(0) !== 'C') {
+    replyLineMessage_(event.replyToken,
+      'ผูกได้เฉพาะ "กลุ่ม" LINE ค่ะ (ห้องแชทหลายคนแบบเก่าใช้ไม่ได้)\n' +
+      'สร้างกลุ่มใหม่ เชิญบอทเข้า แล้วพิมพ์ ผูกกลุ่ม <รหัส> อีกครั้ง');
+    return true;
+  }
+  if (isStaffGroup_(groupId)) {
+    replyLineMessage_(event.replyToken,
+      '✅ กลุ่มนี้ผูกอยู่แล้วค่ะ — พิมพ์ "เมนู" เพื่อดูคำสั่งทั้งหมด');
+    return true;
+  }
+
+  const code = String(m[1] || '').trim();
+  if (!code) {
+    replyLineMessage_(event.replyToken,
+      'พิมพ์รหัสต่อท้ายด้วยค่ะ เช่น\n   ผูกกลุ่ม AB12CD\n(ขอรหัสจากแพทย์แอดมิน)');
+    return true;
+  }
+  if (!bindAttemptAllowed_(groupId)) {
+    replyLineMessage_(event.replyToken,
+      'ลองรหัสผิดหลายครั้งแล้ว รออีก 1 ชั่วโมงค่อยลองใหม่ค่ะ');
+    return true;
+  }
+  if (code.toUpperCase() !== lineGroupCode_().toUpperCase()) {
+    console.warn('รหัสผูกกลุ่มผิดจาก ' + maskLineId_(groupId));
+    replyLineMessage_(event.replyToken,
+      '❌ รหัสไม่ถูกต้องค่ะ — ขอรหัสล่าสุดจากแพทย์แอดมินแล้วลองใหม่');
+    return true;
+  }
+
+  const total = bindLineGroup_(groupId);
+  console.log('ผูกกลุ่ม ' + maskLineId_(groupId) + ' แล้ว (รวม ' + total + ' กลุ่ม)');
+  replyLineMessage_(event.replyToken,
+    '✅ ผูกกลุ่มนี้แล้วค่ะ\n\n' +
+    'ทุกคนในกลุ่มถามบอทได้เลย — พิมพ์ "เมนู" ดูคำสั่งทั้งหมด\n' +
+    'เข้า dashboard: กด LINE login ที่หน้าเว็บ ระบบจะตรวจว่าอยู่ในกลุ่มนี้\n\n' +
+    'ย้ายกลุ่มเมื่อไหร่ เชิญบอทเข้ากลุ่มใหม่แล้วพิมพ์ ผูกกลุ่ม <รหัส> ซ้ำได้เสมอ');
+  return true;
 }
 
 /**
@@ -1260,9 +1435,9 @@ function lineContactAllowed_(sourceId) {
 /** ข้อความบอก ID พร้อมบอกว่าต้องเอาไปวางที่ Script Property ตัวไหน */
 function buildWhoAmIReply_(sourceType, id) {
   const target = {
-    group: 'LINE_TARGET_RESIDENT หรือ LINE_TARGET_ADMIN หรือ LINE_TARGET_FELLOW\n' +
-      '(เลือกตามว่ากลุ่มนี้คือกลุ่มไหน)',
-    room: 'LINE_TARGET_* ตามหน้าที่ของห้องนี้',
+    group: 'ไม่ต้องคัดลอกไปวางแล้ว — พิมพ์  ผูกกลุ่ม <รหัส>  ในกลุ่มนี้ได้เลย\n' +
+      '(หรือวางใน LINE_TARGET_* แบบเดิมก็ยังได้)',
+    room: 'ห้องแชทแบบเก่าผูกไม่ได้ — สร้าง "กลุ่ม" แล้วเชิญบอทเข้าใหม่',
     user: 'ไม่ต้องใช้ — นี่คือ ID ส่วนตัว ไม่ใช่ของกลุ่ม',
   }[sourceType] || 'LINE_TARGET_*';
 
