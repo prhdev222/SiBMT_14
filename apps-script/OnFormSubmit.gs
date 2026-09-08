@@ -283,9 +283,23 @@ function buildVerifyEmailUrl_(referralId, token) {
 function formLabelHeader_(map) {
   const keys = Object.keys(map);
   for (let i = 0; i < keys.length; i++) {
-    if (/^ต้องการติดต่อ/.test(keys[i])) return keys[i];
+    // normalize ก่อนเทียบ — หัวคอลัมน์จากฟอร์มมีอักขระล่องหน (zero-width) ปนได้
+    if (/^ต้องการติดต่อ/.test(normalizeFormLabel_(keys[i]))) return keys[i];
   }
   return '';
+}
+
+/** พิมพ์ว่า Apps Script ผูกกับไฟล์ไหน/แท็บไหน/หัวคอลัมน์อะไร — ไว้เทียบกับ banner บนเว็บ */
+function whichSheetAmIReading() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = getSheet_(SHEETS.referrals);
+  const id = ss.getId();
+  Logger.log('ไฟล์ที่ Apps Script อ่าน: …' + id.slice(-8) + '  (' + ss.getName() + ')');
+  Logger.log('URL: ' + ss.getUrl());
+  Logger.log('แท็บ: "' + sheet.getName() + '" · แถวข้อมูล ' + (sheet.getLastRow() - 1));
+  Logger.log('หัวคอลัมน์ทั้งหมด: ' + Object.keys(headerMap_(sheet)).join(' | '));
+  Logger.log('เทียบ 8 ตัวท้ายของ ID กับ "ไฟล์ที่เว็บอ่าน" ใน banner แดงบน dashboard — ' +
+    'ถ้าไม่ตรง = GOOGLE_SHEET_ID บน Cloudflare ชี้คนละไฟล์');
 }
 
 /** ป้ายตัวเลือกกลุ่มของแถวนี้ — จาก referral_type ก่อน ไม่มีค่อยไปคอลัมน์คำถามฟอร์ม */

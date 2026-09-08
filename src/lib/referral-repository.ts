@@ -85,6 +85,7 @@ export async function loadReferrals(): Promise<ReferralSource> {
           rows.filter((r) => text(r[key])).length;
         const refHeads = heads.filter((h) => /referral|status/i.test(h));
         diag =
+          `ไฟล์ที่เว็บอ่าน: ${idTail} · ` +
           `อ่านได้ ${rows.length} แถว แต่แปลงเป็นเคสไม่ได้เลย · ` +
           `referral_type มีค่า ${filled("referral_type")}/${rows.length} แถว · ` +
           `referral_id มีค่า ${filled("referral_id")}/${rows.length} · ` +
