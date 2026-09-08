@@ -216,10 +216,11 @@ function sendMessageEmailToReferrer_(email, referralId, caseToken, text, fromNam
  */
 function buildCaseActionsBlock_(caseToken, includeClose) {
   if (!caseToken) return '';
-  let s = 'เลือกได้:\n' +
-    '  • มีคำถามเพิ่ม / อ่านทั้งหมด → ' + SITE_URL + '/case/' + caseToken + '\n';
+  // แนวใหม่ (8 ก.ย. 2569): ห้องเคสมีไว้ส่งเอกสารเพิ่ม/อ่านทั้งหมด ไม่ใช่ถาม-ตอบทั่วไป
+  let s = '▶ ห้องเคสของท่าน (ไม่ต้อง login)\n' +
+    '  ส่งเอกสารเพิ่ม / อ่านทั้งหมด → ' + SITE_URL + '/case/' + caseToken + '\n';
   if (includeClose !== false) {
-    s += '  • พอใจคำตอบแล้ว จบเคส → ' + SITE_URL + '/case/' + caseToken + '?done=1\n';
+    s += '  พอใจคำตอบแล้ว กดจบเคส   → ' + SITE_URL + '/case/' + caseToken + '?done=1\n';
   }
   return s + '\n';
 }

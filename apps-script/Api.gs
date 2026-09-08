@@ -1101,31 +1101,25 @@ function sendAdviceCopyEmail_(row) {
   const appointment = String(row['appointment_note'] || '').trim();
   const clinicDate = row['appointment_date'];
 
-  const body =
-    'สำเนาคำตอบการปรึกษา (ส่งซ้ำตามที่ร้องขอทาง LINE)\n\n' +
-    'เลขที่อ้างอิง: ' + referralId + '\n\n' +
-    (row['clinical_question']
-      ? '--- คำถามของท่าน ---\n' + row['clinical_question'] + '\n\n' : '') +
-    '--- คำตอบ ---\n' + advice + '\n\n' +
-    (clinicDate
-      ? '--- นัดที่ OPD 700 ---\n' +
-        formatThaiDate_(toDate_(clinicDate), true) + '\n' +
-        (appointment ? appointment + '\n' : '') + '\n'
-      : '') +
-    buildAttachmentBlock_({
-      fileName: row['advice_file_name'],
-      fileUrl: row['advice_file_url'],
-    }) +
-    buildAdviceContactBlock_({
-      answeredBy: row['advice_by'],
-      attending: row['advice_attending'],
-      wardPhone: row['advice_ward_phone'],
-      directPhone: row['advice_direct_phone'],
-    }) +
-    'กรุณาอย่าส่งชื่อ-สกุล หรือเลข HN ของผู้ป่วยทางอีเมลนี้\n\n' +
-    '--\n' +
-    'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช\n' +
-    'อีเมลนี้ส่งจากระบบอัตโนมัติ กรุณาอย่าตอบกลับ';
+  // ประกอบเป็น data ชุดเดียวกับตอนตอบครั้งแรก แล้วใช้ตัวสร้างกลาง → สำเนาเหมือนต้นฉบับเป๊ะ
+  // (รวมลิงก์ห้องเคส/ลิงก์คำตอบ ซึ่งฉบับเดิมไม่มี — 8 ก.ย. 2569)
+  const answerToken = String(row['answer_token'] || '').trim();
+  const body = buildAdviceEmailBody_({
+    referralId: referralId,
+    status: row['status'],
+    advice: advice,
+    question: row['clinical_question'],
+    answeredBy: row['advice_by'],
+    attending: row['advice_attending'],
+    wardPhone: row['advice_ward_phone'],
+    directPhone: row['advice_direct_phone'],
+    fileName: row['advice_file_name'],
+    fileUrl: row['advice_file_url'],
+    appointmentDate: clinicDate,
+    appointmentNote: appointment,
+    answerUrl: answerToken ? SITE_URL + '/answer/' + answerToken : '',
+    caseToken: String(row['case_token'] || '').trim(),
+  }, { copy: true });
 
   try {
     MailApp.sendEmail({
@@ -1138,6 +1132,89 @@ function sendAdviceCopyEmail_(row) {
     console.error('ส่งสำเนาคำตอบไม่สำเร็จ (' + referralId + '): ' + err);
     return false;
   }
+}
+
+/**
+ * เนื้ออีเมลคำตอบ — ใช้ร่วมกันทั้ง "คำตอบชุดแรก" และ "สำเนาที่ขอซ้ำทาง LINE"
+ * เพื่อให้สองฉบับเหมือนกันเป๊ะ (เคยต่างกันจนสำเนาไม่มีลิงก์ห้องเคส — 8 ก.ย. 2569)
+ *
+ * อ่านง่าย: คำตอบอยู่ในกรอบชัด ๆ ก่อน → นัด → ไฟล์ → ติดต่อกลับ → ลิงก์ไว้ท้ายสุด
+ * data: { referralId, status, advice, question, answeredBy, attending, wardPhone,
+ *         directPhone, fileName, fileUrl, visit (object) | appointmentDate+appointmentNote,
+ *         answerUrl, caseToken }   · opts.copy = true → หัวบอกว่าเป็นสำเนา
+ */
+function buildAdviceEmailBody_(data, opts) {
+  opts = opts || {};
+  const isIncomplete = String(data.status || '') === 'Incomplete';
+  const top = '╔══════════════════════════════════════╗\n';
+  const bottom = '╚══════════════════════════════════════╝\n';
+
+  let s = '';
+  if (opts.copy) {
+    s += 'สำเนาคำตอบการปรึกษา (ส่งซ้ำตามที่ท่านร้องขอทาง LINE)\n\n';
+  } else if (isIncomplete) {
+    s += 'ทีมโลหิตวิทยา ศิริราช ขอข้อมูลเพิ่มเติมก่อนให้คำแนะนำ\n\n';
+  } else {
+    s += 'ทีมโลหิตวิทยา ศิริราช ได้ตอบคำปรึกษาของท่านแล้ว\n\n';
+  }
+  s += 'เลขที่อ้างอิง  ' + data.referralId + '\n\n';
+
+  if (data.question) {
+    s += 'คำถามของท่าน: ' + data.question + '\n\n';
+  }
+
+  // กรอบคำตอบ — ให้เห็นชัดว่า "ตรงนี้คือคำตอบที่ได้รับ"
+  s += top +
+    (isIncomplete ? '  ข้อมูลที่ทีมขอเพิ่ม\n' : '  คำตอบที่ได้รับ\n') +
+    '\n' +
+    String(data.advice || '').split('\n').map(function (l) { return '  ' + l; }).join('\n') +
+    '\n\n' + bottom + '\n';
+
+  if (isIncomplete) {
+    const wardPhone = String(data.wardPhone || '').trim();
+    s += '▶ วิธีส่งข้อมูลเพิ่ม\n' +
+      '  แนบ/พิมพ์ในห้องเคส (ลิงก์ท้ายอีเมล) หรือตอบอีเมลแพทย์-ถึง-แพทย์ ' +
+      'โดยอ้างเลข ' + data.referralId + ' แทนชื่อผู้ป่วย\n' +
+      (wardPhone ? '  หรือสอบถามวอร์ดเคมีบำบัด โทร ' + wardPhone + '\n' : '') +
+      '  ได้ข้อมูลครบแล้ว ทีมจะตอบกลับให้\n\n';
+  }
+
+  // นัด — จากอ็อบเจกต์ตอนตอบ (ชุดแรก) หรือจากคอลัมน์ในชีต (สำเนา)
+  if (data.visit) {
+    s += buildVisitBlock_(data.visit);
+  } else if (data.appointmentDate) {
+    s += '▶ นัดที่ OPD 700\n' +
+      '  ' + formatThaiDate_(toDate_(data.appointmentDate), true) + '\n' +
+      (data.appointmentNote ? '  ' + data.appointmentNote + '\n' : '') + '\n';
+  }
+
+  if (data.fileUrl) {
+    s += '▶ ไฟล์แนบ\n  ' + (data.fileName || 'ไฟล์') + '\n  ' + data.fileUrl + '\n\n';
+  }
+
+  // ติดต่อกลับ — เอาเฉพาะบรรทัดที่มีค่า ไม่ปล่อยหัวข้อว่าง
+  const contact = [];
+  if (data.answeredBy) contact.push('  ผู้ตอบ: ' + data.answeredBy);
+  if (data.attending) contact.push('  อาจารย์ผู้ให้คำปรึกษา: ' + data.attending);
+  if (data.wardPhone) {
+    contact.push('  วอร์ดเคมีบำบัด: ' + data.wardPhone +
+      '  (ถ้าแพทย์ผู้ตอบติดภารกิจ พยาบาลรับเรื่องแล้วให้ติดต่อกลับ)');
+  }
+  if (data.directPhone) contact.push('  แพทย์ผู้ตอบโดยตรง: ' + data.directPhone);
+  if (contact.length) s += '▶ ติดต่อกลับหากยังไม่เข้าใจ\n' + contact.join('\n') + '\n\n';
+
+  // ลิงก์ทั้งหมดไว้ท้าย
+  if (!isIncomplete && data.answerUrl) {
+    s += '▶ เปิดคำตอบนี้บนเว็บ (ส่งต่อให้ทีมดูได้)\n  ' + data.answerUrl + '\n\n';
+  }
+  s += buildCaseActionsBlock_(data.caseToken, !isIncomplete);
+  s += buildLineLinkInvite_();
+  s += 'คำถามอื่น ๆ ทัก LINE ' + LINE_OA_ID + ' กดปุ่ม "ติดต่อเจ้าหน้าที่" พร้อมแจ้งเลขที่อ้างอิง\n' +
+    'กรุณาอย่าส่งชื่อ-สกุล หรือเลข HN ของผู้ป่วยทางอีเมลนี้\n\n' +
+    '--\n' +
+    'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช\n' +
+    'อีเมลนี้ส่งจากระบบอัตโนมัติ กรุณาอย่าตอบกลับ';
+  return s;
 }
 
 function sendAdviceEmail_(email, data) {
@@ -1153,37 +1230,10 @@ function sendAdviceEmail_(email, data) {
     (wardPhone ? 'หรือสอบถามที่วอร์ดเคมีบำบัด โทร ' + wardPhone + '\n' : '') +
     'เมื่อได้ข้อมูลครบ ทีมจะดำเนินการต่อและตอบกลับให้\n\n';
 
-  const body = isIncomplete
-    ? 'ทีมโลหิตวิทยา ศิริราช ขอข้อมูลเพิ่มเติมก่อนให้คำแนะนำ\n\n' +
-      'เลขที่อ้างอิง: ' + data.referralId + '\n\n' +
-      (data.question ? '--- คำถามของท่าน ---\n' + data.question + '\n\n' : '') +
-      '--- ข้อมูลที่ขอเพิ่ม ---\n' + data.advice + '\n\n' +
-      requestReply +
-      buildCaseActionsBlock_(data.caseToken, false) +
-      buildAttachmentBlock_(data) +
-      buildAdviceContactBlock_(data) +
-      buildLineLinkInvite_() +
-      'กรุณาอย่าส่งชื่อ-สกุล หรือเลข HN ของผู้ป่วยทางอีเมลนี้\n\n' +
-      '--\n' +
-      'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช\n' +
-      'อีเมลนี้ส่งจากระบบอัตโนมัติ กรุณาอย่าตอบกลับ'
-    : 'ทีมโลหิตวิทยา ศิริราช ได้ตอบคำปรึกษาของท่านแล้ว\n\n' +
-      'เลขที่อ้างอิง: ' + data.referralId + '\n\n' +
-      (data.question ? '--- คำถามของท่าน ---\n' + data.question + '\n\n' : '') +
-      '--- คำตอบ ---\n' + data.advice + '\n\n' +
-      buildVisitBlock_(data.visit) +
-      buildAttachmentBlock_(data) +
-      buildAdviceContactBlock_(data) +
-      (data.answerUrl
-        ? '--- เปิดคำตอบนี้บนเว็บ ---\n' + data.answerUrl + '\n' +
-          '(ลิงก์นี้เปิดได้เฉพาะผู้ที่มีลิงก์ ส่งต่อให้ทีมดูได้)\n\n'
-        : '') +
-      buildCaseActionsBlock_(data.caseToken) +
-      buildLineLinkInvite_() +
-      'กรุณาอย่าส่งชื่อ-สกุล หรือเลข HN ของผู้ป่วยทางอีเมลนี้\n\n' +
-      '--\n' +
-      'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช\n' +
-      'อีเมลนี้ส่งจากระบบอัตโนมัติ กรุณาอย่าตอบกลับ';
+  // เนื้ออีเมลมาจากตัวสร้างกลางตัวเดียวกับสำเนา — ดู buildAdviceEmailBody_
+  // (requestReply/wardPhone ด้านบนคงไว้ให้โค้ดเดิมที่อ้างถึงยังทำงาน)
+  void requestReply;
+  const body = buildAdviceEmailBody_(data);
 
   try {
     MailApp.sendEmail({
