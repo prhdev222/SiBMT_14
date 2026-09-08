@@ -171,3 +171,20 @@ export async function deleteDocumentAction(
 export async function setLinePushAction(on: boolean): Promise<ActionResult> {
   return runWrite(() => setConfig({ key: "line_push", value: on ? "on" : "off" }));
 }
+
+/**
+ * รหัสผูกกลุ่ม LINE (line_group_code ในชีต config) — พิมพ์ "ผูกกลุ่ม <รหัส>"
+ * ในกลุ่ม LINE ที่เชิญบอทเข้าไป กลุ่มนั้นจะถามบอทและเข้า dashboard ได้
+ */
+export async function setLineGroupCodeAction(
+  code: string,
+): Promise<ActionResult> {
+  const value = code.trim().toUpperCase();
+  if (!/^[A-Z0-9]{4,12}$/.test(value)) {
+    return {
+      ok: false,
+      error: "รหัสต้องเป็นตัวอักษรอังกฤษ/ตัวเลข 4-12 ตัว ไม่มีช่องว่าง",
+    };
+  }
+  return runWrite(() => setConfig({ key: "line_group_code", value }));
+}

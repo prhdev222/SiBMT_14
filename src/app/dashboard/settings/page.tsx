@@ -8,6 +8,7 @@ import { StructureCheck } from "./StructureCheck";
 import { AttendingsEditor } from "./AttendingsEditor";
 import { DocumentsEditor } from "./DocumentsEditor";
 import { LinePushToggle } from "./LinePushToggle";
+import { LineGroupCodeEditor } from "./LineGroupCodeEditor";
 import {
   loadAttendingRows,
   loadConfigValues,
@@ -60,6 +61,7 @@ export default async function SettingsPage() {
     loadConfigValues(),
   ]);
   const linePushOn = (config["line_push"] ?? "").toLowerCase() === "on";
+  const lineGroupCode = (config["line_group_code"] ?? "").trim().toUpperCase();
 
   const urlFor = (which: "main" | "schedule") =>
     which === "main" ? mainUrl : schedUrl;
@@ -113,6 +115,24 @@ export default async function SettingsPage() {
             </p>
           </div>
           <LinePushToggle initialOn={linePushOn} />
+        </section>
+
+        {/* รหัสผูกกลุ่ม LINE — ทีมเชิญบอทเข้ากลุ่มตัวเองแล้วพิมพ์ ผูกกลุ่ม <รหัส> */}
+        <section className="rounded-xl bg-white border border-zinc-200 p-5 space-y-3">
+          <div>
+            <h2 className="font-semibold text-zinc-900">
+              <span className="mr-1.5" aria-hidden>
+                🔗
+              </span>
+              รหัสผูกกลุ่ม LINE
+            </h2>
+            <p className="text-sm text-zinc-500 mt-0.5">
+              เชิญบอท LINE OA เข้ากลุ่มของทีม (dent / fellow / แอดมิน) แล้วพิมพ์
+              รหัสนี้ในกลุ่ม — กลุ่มจะถามบอทได้ทุกคำสั่งและเข้า dashboard ด้วย
+              LINE ได้ทันที ไม่ต้องขอ #id
+            </p>
+          </div>
+          <LineGroupCodeEditor initialCode={lineGroupCode} />
         </section>
 
         <section className="grid gap-4">

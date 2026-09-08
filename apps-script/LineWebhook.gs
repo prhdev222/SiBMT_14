@@ -91,6 +91,9 @@ const LINE_WHOAMI_KEYWORD = '#id';
  * และบอท "ตอบเมื่อถูกถาม" เท่านั้น — ไม่มี push เข้ากลุ่ม LINE (8 ก.ย. 2569)
  */
 const LINE_GROUPS_PROP = 'LINE_GROUPS';
+/** key ในแท็บ config ของชีต — แอดมินดู/แก้จากหน้าตั้งค่าบนเว็บ */
+const LINE_GROUP_CODE_KEY = 'line_group_code';
+/** Script Property เดิม (ย้ายไปชีตอัตโนมัติครั้งแรกที่ใช้) */
 const LINE_GROUP_CODE_PROP = 'LINE_GROUP_CODE';
 const LINE_BIND_PATTERN = /^ผูกกลุ่ม\s*(\S*)\s*$/;
 const LINE_UNBIND_KEYWORD = 'ยกเลิกผูกกลุ่ม';
@@ -1138,25 +1141,38 @@ function isAdminTarget_(sourceId) {
 /* ผูกกลุ่มจากในกลุ่ม — "ผูกกลุ่ม <รหัส>" / "ยกเลิกผูกกลุ่ม"              */
 /* ------------------------------------------------------------------ */
 
-/** รหัสผูกกลุ่ม — สร้างให้เองครั้งแรก (6 ตัว ตัดตัวที่สับสน 0/O 1/I ออก) */
-function lineGroupCode_() {
-  const props = PropertiesService.getScriptProperties();
-  let code = String(props.getProperty(LINE_GROUP_CODE_PROP) || '').trim();
-  if (!code) {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    code = '';
-    for (let i = 0; i < 6; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    props.setProperty(LINE_GROUP_CODE_PROP, code);
+/** สุ่มรหัส 6 ตัว ตัดตัวที่สับสน 0/O 1/I ออก */
+function randomLineGroupCode_() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
+  return code;
+}
+
+/**
+ * รหัสผูกกลุ่ม — อยู่ในแท็บ config ของชีต (key `line_group_code`)
+ * แอดมินดู/แก้ได้จากหน้าตั้งค่าบนเว็บ ไม่ต้องเปิด Apps Script
+ * ถ้ายังไม่มี สร้างให้เองแล้วเขียนลงชีต (ย้ายจาก Script Property เดิมถ้ามี)
+ */
+function lineGroupCode_() {
+  let code = readConfigValue_(LINE_GROUP_CODE_KEY);
+  if (code) return code;
+
+  const props = PropertiesService.getScriptProperties();
+  code = String(props.getProperty(LINE_GROUP_CODE_PROP) || '').trim() ||
+    randomLineGroupCode_();
+  setConfigValue_({ key: LINE_GROUP_CODE_KEY, value: code });
+  props.deleteProperty(LINE_GROUP_CODE_PROP);
   return code;
 }
 
 /** ออกรหัสใหม่ — รหัสเดิมใช้ไม่ได้ทันที กลุ่มที่ผูกไว้แล้วไม่กระทบ */
 function rotateLineGroupCode_() {
-  PropertiesService.getScriptProperties().deleteProperty(LINE_GROUP_CODE_PROP);
-  return lineGroupCode_();
+  const code = randomLineGroupCode_();
+  setConfigValue_({ key: LINE_GROUP_CODE_KEY, value: code });
+  return code;
 }
 
 /** กลุ่มที่ผูกเองทั้งหมด (ไม่รวม LINE_TARGET_* เดิม) */

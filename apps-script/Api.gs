@@ -872,9 +872,15 @@ function setConfigValue_(payload) {
   const value = String(payload.value || '').trim();
   if (!key) throw new Error('ไม่ได้ระบุ key');
 
-  const ALLOWED = ['line_push', 'chat_push_dent', 'chat_push_referrer'];
+  const ALLOWED = [
+    'line_push', 'chat_push_dent', 'chat_push_referrer',
+    'line_group_code', // รหัสผูกกลุ่ม LINE (LineWebhook.gs)
+  ];
   if (ALLOWED.indexOf(key) === -1) {
     throw new Error('ไม่อนุญาตให้แก้ "' + key + '" ผ่านเว็บ');
+  }
+  if (key === 'line_group_code' && !/^[A-Za-z0-9]{4,12}$/.test(value)) {
+    throw new Error('รหัสผูกกลุ่มต้องเป็นตัวอักษร/ตัวเลข 4-12 ตัว ไม่มีช่องว่าง');
   }
 
   const sheet = getSheet_(SHEETS.config);
