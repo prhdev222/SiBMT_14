@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * การ์ดกลุ่ม LINE หนึ่งกลุ่ม — QR วาดสดจากลิงก์เชิญฝั่งเบราว์เซอร์
+ * การ์ดกลุ่มแจ้งเตือนหนึ่งกลุ่ม (Telegram) — QR วาดสดจากลิงก์เชิญฝั่งเบราว์เซอร์
  * (ไม่ส่งลิงก์ไปให้บริการวาด QR ภายนอก — ลิงก์เชิญคือกุญแจเข้ากลุ่ม)
  */
 
@@ -14,7 +14,7 @@ export function GroupCard({
   audience,
   inviteLink,
   configKey,
-  scanWith = "LINE",
+  scanWith = "Telegram",
 }: {
   emoji: string;
   title: string;
@@ -73,7 +73,7 @@ export function GroupCard({
         <div className="w-full rounded-lg bg-amber-50 border border-amber-200 p-4 text-left text-sm text-amber-900">
           <p className="font-semibold">ยังไม่ได้วางลิงก์เชิญ</p>
           <ol className="mt-2 ml-4 list-decimal space-y-1">
-            <li>เปิดกลุ่มใน LINE → ≡ → เชิญ → คัดลอกลิงก์</li>
+            <li>เปิดกลุ่มใน {scanWith} → ชื่อกลุ่ม → เพิ่มสมาชิก / ลิงก์เชิญ → คัดลอกลิงก์</li>
             <li>
               วางลงชีต <code className="rounded bg-amber-100 px-1">config</code>{" "}
               แถวใหม่ key ={" "}

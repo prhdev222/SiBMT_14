@@ -14,13 +14,16 @@ export const metadata: Metadata = {
 };
 
 /**
- * ศูนย์รวม QR เข้ากลุ่ม LINE ทั้งสามของระบบ
+ * ศูนย์รวม QR เข้ากลุ่ม Telegram ทั้งสามของระบบ + วิธีผูกกลุ่ม LINE ของทีมเอง
  *
  * ปัญหาที่หน้านี้แก้: ลิงก์เชิญกลุ่มไม่มีที่อยู่ถาวร แอดมินต้องขุดหาในแชท
  * ทุกครั้งที่ resident/fellow รอบใหม่เข้ามา — เก็บลิงก์ไว้ในชีต config
- * (แก้ได้เองไม่ต้องแตะโค้ด ตาม NFR-005) แล้วให้หน้านี้เป็นบ้านถาวร:
- * วันปฐมนิเทศเปิดจอเดียว ทุกคนสแกนกลุ่มของตัวเอง หรือกดปุ่ม 🖨️
+ * (key telegram_invite_* แก้ได้เองไม่ต้องแตะโค้ด ตาม NFR-005) แล้วให้หน้านี้
+ * เป็นบ้านถาวร: วันปฐมนิเทศเปิดจอเดียว ทุกคนสแกนกลุ่มของตัวเอง หรือกดปุ่ม 🖨️
  * พิมพ์เป็นกระดาษแปะบอร์ดวอร์ด
+ *
+ * LINE ไม่มีลิงก์เชิญ (line_invite_* เลิกใช้ 8 ก.ย. 2569) — ทีมเชิญบอทเข้ากลุ่ม
+ * ของตัวเองแล้วพิมพ์ "ผูกกลุ่ม <รหัส>" (ดู LineWebhook.gs)
  *
  * ⚠️ ลิงก์เชิญ = ใครมีก็เข้ากลุ่มได้ หน้านี้จึงอยู่หลังล็อกอินเสมอ
  * และห้ามเอา QR ไปแปะหน้าเว็บสาธารณะ
@@ -56,33 +59,10 @@ const TELEGRAM_GROUPS = [
   },
 ];
 
-const GROUPS = [
-  {
-    key: "line_invite_resident",
-    emoji: "🩺",
-    title: "กลุ่ม Resident วอร์ดเคมีบำบัด",
-    audience:
-      "resident + แพทย์แอดมิน · กลุ่มสำรอง — แจ้งเตือนย้ายไป Telegram แล้ว",
-  },
-  {
-    key: "line_invite_fellow",
-    emoji: "👨‍⚕️",
-    title: "กลุ่ม Fellow Transplant",
-    audience:
-      "fellow + แพทย์แอดมิน · กลุ่มสำรอง — แจ้งเตือนย้ายไป Telegram แล้ว",
-  },
-  {
-    key: "line_invite_admin",
-    emoji: "🛡️",
-    title: "กลุ่มแพทย์แอดมินกลาง",
-    audience:
-      "แพทย์แอดมิน + ผู้ดูแล · กลุ่มสำรอง — แจ้งเตือนย้ายไป Telegram แล้ว",
-  },
-];
-
 export default async function LineGroupsPage() {
   const session = await requireSession("/dashboard/line-groups");
   const config = await loadConfigValues();
+  const lineGroupCode = (config["line_group_code"] ?? "").trim().toUpperCase();
 
   return (
     <div className="flex flex-col flex-1 bg-zinc-50">
@@ -126,37 +106,39 @@ export default async function LineGroupsPage() {
           </div>
         </section>
 
-        <section className="space-y-3">
-          <div className="print:hidden">
-            <h2 className="font-semibold text-zinc-900">
-              <span className="mr-1.5" aria-hidden>
-                💬
-              </span>
-              กลุ่ม LINE (สำรอง)
-            </h2>
-            <p className="text-xs text-zinc-500 mt-0.5">
-              แจ้งเตือนย้ายไป Telegram แล้ว — เปิดแจ้งเตือน LINE กลับได้จากสวิตช์
-              &ldquo;แจ้งเตือน LINE&rdquo; ในหน้าตั้งค่า (จะกลับมาเสียโควตา LINE)
-            </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {GROUPS.map((g) => (
-              <GroupCard
-                key={g.key}
-                emoji={g.emoji}
-                title={g.title}
-                audience={g.audience}
-                inviteLink={(config[g.key] ?? "").trim()}
-                configKey={g.key}
-              />
-            ))}
-          </div>
+        {/* LINE ไม่มีลิงก์เชิญแล้ว — ทีมใช้กลุ่มของตัวเอง เชิญบอทเข้าแล้วผูกด้วยรหัส */}
+        <section className="rounded-xl bg-white border border-zinc-200 p-5 space-y-2">
+          <h2 className="font-semibold text-zinc-900">
+            <span className="mr-1.5" aria-hidden>
+              💬
+            </span>
+            กลุ่ม LINE — ใช้กลุ่มของทีมเอง ไม่ต้องมี QR
+          </h2>
+          <ol className="ml-5 list-decimal text-sm text-zinc-700 space-y-1">
+            <li>เชิญบอท LINE OA ของระบบเข้ากลุ่ม dent / fellow / แอดมินที่ใช้กันอยู่</li>
+            <li>
+              พิมพ์ในกลุ่มนั้น{" "}
+              <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-semibold">
+                ผูกกลุ่ม {lineGroupCode || "<รหัส>"}
+              </code>
+            </li>
+            <li>
+              ถามบอทได้ทันที (เคสค้าง · นัดวันนี้ · เมนู) และเข้า dashboard
+              ด้วย LINE ได้ — บอทตอบเฉพาะเมื่อถูกถาม ไม่ส่งข้อความเอง
+            </li>
+          </ol>
+          <p className="print:hidden text-xs text-zinc-500">
+            เปลี่ยนกลุ่มเมื่อไหร่ก็เชิญบอทเข้ากลุ่มใหม่แล้วพิมพ์ผูกซ้ำ · ดู/แก้รหัสได้ที่{" "}
+            <a href="/dashboard/settings" className="text-blue-600 underline">
+              ตั้งค่าระบบ
+            </a>
+          </p>
         </section>
 
         <p className="print:hidden text-xs text-zinc-400">
-          ลิงก์เชิญเก็บอยู่ในชีต config (key ขึ้นต้น line_invite_) — ถ้ากลุ่มไหน
-          regenerate ลิงก์ใหม่ ให้วางลิงก์ล่าสุดทับใน value แล้วรีเฟรชหน้านี้
-          · หน้านี้อยู่หลังล็อกอิน อย่านำ QR ไปเผยแพร่สาธารณะ
+          ลิงก์เชิญ Telegram เก็บอยู่ในชีต config (key ขึ้นต้น telegram_invite_)
+          — ถ้ากลุ่มไหน regenerate ลิงก์ใหม่ ให้วางลิงก์ล่าสุดทับใน value
+          แล้วรีเฟรชหน้านี้ · หน้านี้อยู่หลังล็อกอิน อย่านำ QR ไปเผยแพร่สาธารณะ
         </p>
       </main>
     </div>
