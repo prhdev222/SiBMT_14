@@ -33,8 +33,12 @@ const GROUP_QUERY_MENU = /^(เมนู|menu|คำสั่ง)\s*$/i;
  */
 const GROUP_QUERY_FELLOW_UPCOMING = /^นัด\s*fellow\s*(\d{1,2})?\s*$/i;
 
-/** เวรตอบคำปรึกษากลุ่ม 2/3 — "เวร" "เวร resident" "เวรตอนนี้" */
-const GROUP_QUERY_DUTY = /^เวร(\s*resident|ตอนนี้)?\s*$/i;
+/**
+ * เวร Chief ประจำวอร์ด (= เวรตอบคำปรึกษากลุ่ม 2/3 ชุดเดียวกัน sync จาก HSOS)
+ * "เวร" "เวร resident" "เวรตอนนี้" "เวรราวด์" "เวร ward" "ราวด์" "chief"
+ */
+const GROUP_QUERY_DUTY =
+  /^(เวร(\s*resident|ตอนนี้|\s*ราวด์(\s*ward)?|\s*ward|\s*chief)?|ราวด์(\s*ward)?|chief)\s*$/i;
 
 /** เคสที่มีข้อความใหม่จากแพทย์ต้นทาง — "ข้อความใหม่" "ข้อความ" "แชท" */
 const GROUP_QUERY_UNREAD = /^(ข้อความใหม่|ข้อความ|แชท)\s*$/;
@@ -160,7 +164,21 @@ function handleGroupQuery_(event, text, sourceId) {
     // ไม่ตรงคำสั่งไหนเลย — ลองตีความว่าเป็น "ชื่อ fellow" ที่พิมพ์มาดูนัดตัวเอง
     // จับเฉพาะข้อความสั้น ๆ ที่ตรงชื่อ fellow จริงเท่านั้น จึงไม่แทรกบทสนทนาทั่วไป
     const matchedFellow = matchFellowByName_(text);
-    if (matchedFellow === null) return false; // ไม่ตรงชื่อใคร — เงียบตามเดิม
+    if (matchedFellow === null) {
+      // ไม่ใช่ fellow — ลอง "ชื่อ resident" → เคสค้างของตัวเอง + เวรของตัวเอง
+      const matchedResident = matchResidentByName_(text);
+      if (matchedResident === null) return false; // ไม่ตรงชื่อใคร — เงียบตามเดิม
+      if (Array.isArray(matchedResident)) {
+        replyLineMessage_(event.replyToken,
+          'มี resident ชื่อคล้ายกันหลายท่าน พิมพ์ให้ชัดขึ้นครับ:\n' +
+          matchedResident.map(function (n) { return '• ' + n; }).join('\n'));
+        return true;
+      }
+      replyOrReport_(event.replyToken, function () {
+        return buildResidentOwnReply_(matchedResident);
+      });
+      return true;
+    }
     if (Array.isArray(matchedFellow)) {
       replyLineMessage_(event.replyToken,
         'มี fellow ชื่อคล้ายกันหลายท่าน พิมพ์ให้ชัดขึ้นครับ:\n' +
@@ -229,7 +247,15 @@ function answerGroupQuery_(text, opts) {
   const match = text.match(GROUP_QUERY_APPOINTMENT);
   if (!match) {
     const matchedFellow = matchFellowByName_(text);
-    if (matchedFellow === null) return null; // ไม่ตรงคำสั่งไหนเลย
+    if (matchedFellow === null) {
+      const matchedResident = matchResidentByName_(text);
+      if (matchedResident === null) return null; // ไม่ตรงคำสั่งไหนเลย
+      if (Array.isArray(matchedResident)) {
+        return 'มี resident ชื่อคล้ายกันหลายท่าน พิมพ์ให้ชัดขึ้นครับ:\n' +
+          matchedResident.map(function (n) { return '• ' + n; }).join('\n');
+      }
+      return buildResidentOwnReply_(matchedResident);
+    }
     if (Array.isArray(matchedFellow)) {
       return 'มี fellow ชื่อคล้ายกันหลายท่าน พิมพ์ให้ชัดขึ้นครับ:\n' +
         matchedFellow.map(function (n) { return '• ' + n; }).join('\n');
@@ -281,7 +307,9 @@ function buildMenuText_(actions) {
     text += '  ' + a.text + '\n';
   });
   text += '  นัด 15/9  (ดูวันอื่น ใส่ปี พ.ศ. ได้)\n';
+  text += '  เวรราวด์  (เวร Chief ประจำวอร์ด ตอนนี้ + รอบถัดไป)\n';
   text += '  (fellow) พิมพ์ชื่อตัวเอง เพื่อดูนัดของตัวเอง\n';
+  text += '  (resident) พิมพ์ชื่อตัวเอง เพื่อดูเคสค้าง + เวรของตัวเอง\n';
   text += '\n📌 ปักหมุดข้อความนี้ไว้ให้ทุกคนเห็น';
   return text;
 }
@@ -696,7 +724,7 @@ function buildDutyReply_() {
   const now = new Date();
   const current = onDutyResidents_(now);
 
-  let text = '🩺 เวรตอบคำปรึกษากลุ่ม 2/3\n────────────────\n';
+  let text = '🩺 เวร Chief ประจำวอร์ด (ตอบคำปรึกษากลุ่ม 2/3)\n────────────────\n';
 
   if (current.length === 0) {
     text += '⚠️ ตอนนี้ไม่มีชื่อเวรในตาราง — เคสใหม่จะไม่ถูกมอบหมายอัตโนมัติ\n';
@@ -772,6 +800,124 @@ function matchFellowByName_(text) {
   // ตรงเป๊ะทั้งชื่อ ให้ชนะการตรงบางส่วน
   const exact = hits.filter(function (n) { return n.toLowerCase() === q; });
   return exact.length === 1 ? exact[0] : hits;
+}
+
+/**
+ * ชื่อ resident ที่รู้จัก — ชีต residents (active) + ทุกชื่อในตารางเวร
+ * รวมสองแหล่งเพราะชื่อในตารางเวรอาจ sync มาจาก HSOS ก่อนเข้าชีต residents
+ */
+function knownResidentNames_() {
+  const seen = {};
+  const out = [];
+  const add = function (name) {
+    name = String(name || '').trim();
+    if (!name || seen[name]) return;
+    seen[name] = true;
+    out.push(name);
+  };
+  try { activeResidentNames_().forEach(add); } catch (err) { /* ชีตยังไม่มี */ }
+  try {
+    readRows_(getSheet_(SHEETS.residentSchedule)).forEach(function (r) {
+      add(r['resident_name']);
+    });
+  } catch (err) { /* ตารางเวรยังไม่มี */ }
+  return out;
+}
+
+/**
+ * จับคู่ข้อความที่พิมพ์กับชื่อ resident — พิมพ์บางส่วนก็เจอ (แบบเดียวกับ fellow)
+ * คืน: ชื่อเต็ม / อาร์เรย์ (ตรงหลายคน) / null (ไม่ตรงใคร)
+ */
+function matchResidentByName_(text) {
+  const q = String(text || '').trim().toLowerCase();
+  if (!q || q.length > 40) return null;
+
+  const hits = knownResidentNames_().filter(function (n) {
+    return n.toLowerCase().indexOf(q) !== -1;
+  });
+  if (hits.length === 0) return null;
+  if (hits.length === 1) return hits[0];
+  const exact = hits.filter(function (n) { return n.toLowerCase() === q; });
+  return exact.length === 1 ? exact[0] : hits;
+}
+
+/** บรรทัดเวรของ resident หนึ่งคน — ช่วงที่กำลังอยู่เวร และรอบถัดไป */
+function residentDutyLines_(name) {
+  const now = new Date();
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let current = null;
+  const future = [];
+  try {
+    readRows_(getSheet_(SHEETS.residentSchedule)).forEach(function (r) {
+      if (String(r['resident_name'] || '').trim() !== name) return;
+      const from = toDate_(r['from_date']);
+      const to = toDate_(r['to_date']);
+      if (!from || !to) return;
+      const start = new Date(from); start.setHours(0, 0, 0, 0);
+      const end = new Date(to); end.setHours(23, 59, 59, 999);
+      if (now >= start && now <= end) current = { from: from, to: to };
+      else if (start > today) future.push({ from: from, to: to });
+    });
+  } catch (err) {
+    return '⚠️ อ่านตารางเวรไม่ได้: ' + err + '\n';
+  }
+
+  let text = '';
+  if (current) {
+    text += '🟢 อยู่เวร Chief ประจำวอร์ดตอนนี้ (ถึง ' +
+      formatThaiDate_(current.to) + ')\n';
+  } else {
+    text += '⚪ วันนี้ไม่ได้อยู่เวร\n';
+  }
+  if (future.length > 0) {
+    future.sort(function (a, b) { return a.from - b.from; });
+    text += '📆 เวรถัดไป: ' + formatThaiDate_(future[0].from) + ' – ' +
+      formatThaiDate_(future[0].to) + '\n';
+  }
+  return text;
+}
+
+/**
+ * resident พิมพ์ชื่อตัวเอง → เคสค้างที่ตนรับผิดชอบ + เวรของตน
+ * ในแชทมีแค่ เลขเคส·เวลาที่เหลือ·การวินิจฉัย·รพ.ต้นทาง (ไม่มีชื่อ/HN — PDPA-003)
+ */
+function buildResidentOwnReply_(name) {
+  const rows = readRows_(getSheet_(SHEETS.referrals));
+  const mine = rows.filter(function (r) {
+    const type = String(r['referral_type'] || '');
+    if (type !== TYPES.regimen && type !== TYPES.admission) return false;
+    if (TERMINAL_STATUSES.indexOf(String(r['status'] || '')) !== -1) return false;
+    return responsibleName_(r) === name;
+  });
+
+  let text = '🩺 ' + name + '\n────────────────\n' + residentDutyLines_(name) + '\n';
+
+  if (mine.length === 0) {
+    text += '📋 เคสค้างของคุณ: ไม่มี ✅';
+  } else {
+    // ด่วนสุด (รอนานสุด) ขึ้นก่อน — ลำดับเดียวกับสรุป 10:00
+    mine.sort(function (a, b) {
+      return (parseFloat(b['elapsed_business_hours']) || 0) -
+        (parseFloat(a['elapsed_business_hours']) || 0);
+    });
+    text += '📋 เคสค้างของคุณ: ' + mine.length + ' เคส\n';
+    mine.slice(0, 10).forEach(function (r) {
+      const id = String(r['referral_id'] || '').trim();
+      const elapsed = parseFloat(r['elapsed_business_hours']) || 0;
+      const left = Math.round((ESCALATION.redHours - elapsed) * 10) / 10;
+      const icon = elapsed >= ESCALATION.redHours ? '🔴'
+        : elapsed >= ESCALATION.yellowHours ? '🟡' : '⚪';
+      const timeLabel = left >= 0
+        ? 'เหลือ ' + left + ' ชม.ทำการ'
+        : 'เกิน ' + Math.abs(left) + ' ชม.ทำการ';
+      text += icon + ' ' + id + ' (' + timeLabel + ')\n' +
+        '   ' + (r['diagnosis'] || '-') + ' · จาก ' + (r['referrer_org'] || '-') + '\n';
+    });
+    if (mine.length > 10) text += '…และอีก ' + (mine.length - 10) + ' เคส\n';
+  }
+
+  text += '\nตอบเคส (ต้องล็อกอิน): ' + SITE_URL + '/dashboard/review';
+  return text;
 }
 
 /**
