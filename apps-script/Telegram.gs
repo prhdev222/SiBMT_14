@@ -550,6 +550,43 @@ function telegramGetChatId() {
   Logger.log('ถ้าไม่เห็นกลุ่ม → พิมพ์ข้อความอะไรก็ได้ในกลุ่มนั้นก่อน แล้วรันใหม่');
 }
 
+/**
+ * วินิจฉัย: ทำไม "นัดวันนี้/พรุ่งนี้" ขึ้น "ไม่มีนัด" ทั้งที่ชีตมีนัด
+ * รันจาก editor แล้วอ่าน log — จะบอกว่าอ่านชีตได้กี่แถว, กลุ่ม 1 กี่แถว,
+ * status/appointment_date ของแต่ละแถวเป็นอะไร และแปลงเป็นวันที่ได้ไหม
+ */
+function debugAppointments() {
+  const sheet = getSheet_(SHEETS.referrals);
+  Logger.log('ชีต "' + sheet.getName() + '" · แถวข้อมูล = ' + (sheet.getLastRow() - 1));
+  const rows = readRows_(sheet);
+  Logger.log('readRows_ อ่านได้ ' + rows.length + ' แถว · มีคอลัมน์ appointment_date? ' +
+    Boolean(rows[0] && ('appointment_date' in rows[0])) +
+    ' · มีคอลัมน์ referral_type? ' + Boolean(rows[0] && ('referral_type' in rows[0])));
+
+  const tx = rows.filter(function (r) {
+    return String(r['referral_type'] || '').trim() === TYPES.transplant;
+  });
+  Logger.log('กลุ่ม 1 (referral_type = "' + TYPES.transplant + '") = ' + tx.length + ' แถว');
+  if (tx.length === 0 && rows.length > 0) {
+    const seen = {};
+    rows.forEach(function (r) { seen[String(r['referral_type'])] = true; });
+    Logger.log('  ⚠️ ค่า referral_type ที่พบจริงในชีต: ' + Object.keys(seen).join(' | '));
+  }
+
+  const today = Utilities.formatDate(new Date(), TIMEZONE, 'yyyy-MM-dd');
+  tx.slice(0, 20).forEach(function (r) {
+    const raw = r['appointment_date'];
+    const d = toDate_(raw);
+    const iso = d ? Utilities.formatDate(d, TIMEZONE, 'yyyy-MM-dd') : '(แปลงวันที่ไม่ได้)';
+    Logger.log('  ' + r['referral_id'] + ' | status="' + r['status'] + '" | ' +
+      'appointment_date=' + JSON.stringify(raw) + ' ' +
+      Object.prototype.toString.call(raw) + ' → ' + iso +
+      (iso === today ? '   ← วันนี้' : ''));
+  });
+  Logger.log('วันนี้ (' + TIMEZONE + ') = ' + today);
+  Logger.log('ตัวกรองนัด: referral_type=TRANSPLANT_APPOINTMENT + status="Appointment Confirmed" (ตรงเป๊ะ) + วันที่ตรงวัน');
+}
+
 /** ทดสอบส่งเข้าทุกกลุ่มที่ตั้งไว้ */
 function testTelegram() {
   ['red', 'batch', 'fellow'].forEach(function (a) {
