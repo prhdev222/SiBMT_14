@@ -39,6 +39,12 @@ function ensureMessagesSheet_() {
   let sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);
+  }
+  // แท็บอาจถูกสร้างเปล่า ๆ ไว้ล่วงหน้าด้วยมือ (8 ก.ย. 2569) — ถ้าแถว 1 ยังไม่ใช่
+  // หัวคอลัมน์ ให้ใส่ให้ ไม่งั้นข้อความแรกจะไปตกแถว 1 แล้วเว็บอ่านเป็นหัวคอลัมน์ผิด
+  const first = String(sheet.getRange(1, 1).getValue() || '').trim();
+  if (first !== MESSAGE_COLUMNS[0]) {
+    if (sheet.getLastRow() > 0 && first) sheet.insertRowBefore(1); // มีข้อมูลค้าง → ดันลง
     sheet.getRange(1, 1, 1, MESSAGE_COLUMNS.length).setValues([MESSAGE_COLUMNS]);
     sheet.setFrozenRows(1);
   }
