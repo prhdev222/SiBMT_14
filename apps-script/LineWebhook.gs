@@ -586,7 +586,7 @@ function startMyCasesFlow_(event, userId) {
     { type: 'text', text:
       'พิมพ์เบอร์โทรที่ใช้ตอนส่งเคสเข้ามาครับ\n\n' +
       'ระบบจะแสดงรายการเคสของเบอร์นั้น และส่งคำตอบซ้ำไปที่อีเมลเดิมให้ได้\n\n' +
-      '🔒 คำตอบจะไม่แสดงใน LINE และจะถูกส่งไปที่อีเมลที่ลงทะเบียนไว้เท่านั้น' },
+      '🔒 คำตอบส่งไปที่อีเมลที่ลงทะเบียนไว้ · ถ้าผูกบัญชี LINE ไว้ จะได้ลิงก์ดูคำตอบบนเว็บใน LINE ด้วย' },
     cancelQuickReply_())]);
 }
 
@@ -707,12 +707,29 @@ function handleMyCasesResend_(event, flow, text, userId) {
   const sent = found ? sendAdviceCopyEmail_(found) : false;
   clearContactFlow_(userId);
 
+  // ลิงก์ดูคำตอบบนเว็บให้ "เฉพาะ" LINE ที่ผูกบัญชีกับเบอร์ของเคสนี้ (ยืนยันตัวตนแล้ว)
+  // — คนที่แค่พิมพ์เบอร์ถูกยังไม่ใช่เจ้าของเคส จึงได้แค่อีเมลตามเดิม (8 ก.ย. 2569)
+  let links = '';
+  if (sent && found) {
+    const link = findLineLink_(userId);
+    const isOwner = Boolean(link) &&
+      phoneKey_(link['referrer_phone']) === phoneKey_(found['referrer_phone']);
+    if (isOwner) {
+      const at = String(found['answer_token'] || '').trim();
+      const ct = String(found['case_token'] || '').trim();
+      if (at) links += '\n\n📄 ดูคำตอบบนเว็บ:\n' + SITE_URL + '/answer/' + at;
+      if (ct) links += '\n\n📎 ห้องเคส (ส่งเอกสารเพิ่ม / อ่านทั้งหมด):\n' + SITE_URL + '/case/' + ct;
+    } else {
+      links = '\n\n💡 ผูกบัญชี LINE กับเบอร์นี้ไว้ ครั้งหน้าจะได้ลิงก์ดูคำตอบใน LINE ทันที';
+    }
+  }
+
   // ไม่บอกอีเมลปลายทางกลับไป — คนที่พิมพ์เบอร์อาจไม่ใช่เจ้าของเคส
   // การยืนยันว่า "ส่งไปที่ a@b.com แล้ว" คือการเปิดเผยอีเมลให้คนนั้นฟรี ๆ
   replyLineMessage_(event.replyToken,
     sent
       ? 'ส่งสำเนาคำตอบของ ' + referralId + ' ไปที่อีเมลที่ลงทะเบียนไว้แล้ว ✓\n\n' +
-        'กรุณาตรวจกล่องจดหมาย รวมถึงโฟลเดอร์จดหมายขยะ'
+        'กรุณาตรวจกล่องจดหมาย รวมถึงโฟลเดอร์จดหมายขยะ' + links
       // ตามหา "คำตอบ" = งานของ resident กลุ่ม 2/3 → ชี้วอร์ดเคมีบำบัด
       : 'ส่งไม่สำเร็จ เคสนี้อาจยังไม่มีคำตอบหรือไม่มีอีเมลที่ลงทะเบียนไว้\n\n' +
         urgentPhoneLine_('ถ้าเร่งด่วน', true));
