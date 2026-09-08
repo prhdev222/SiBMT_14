@@ -178,6 +178,18 @@ function handleTelegramUpdate_(update) {
     return jsonResponse_({ ok: true });
   }
 
+  // แอดมินตอบตั๋วติดต่อจากแพทย์ต้นทาง: "#ABCD ข้อความ" — เฉพาะกลุ่มแอดมิน
+  // ส่งแบบฟรี (reply ตอนเขาทัก LINE + อีเมลถ้ามี) ไม่ใช้ push (8 ก.ย. 2569)
+  const tk = text.match(/^#([A-Za-z2-9]{4})\s+([\s\S]+)$/);
+  if (tk) {
+    if (chatId === String(telegramChatId_('red'))) {
+      telegramReply_(chatId, deliverAdminReplyFree_(tk[1].toUpperCase(), tk[2].trim()));
+    } else {
+      telegramReply_(chatId, 'คำสั่งตอบตั๋ว (#รหัส) ใช้ได้เฉพาะในกลุ่มแอดมิน');
+    }
+    return jsonResponse_({ ok: true });
+  }
+
   // เปลี่ยนผู้รับผิดชอบ: "มอบ HEM-xxxx: <ชื่อ>" → แจ้งกลุ่มแอดมิน/อาจารย์ด้วย
   const rm = text.match(/^มอบ\s+(HEM-\d{8}-\d{4})\s*[:：]\s*([\s\S]+)$/i);
   if (rm) {

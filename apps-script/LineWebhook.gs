@@ -257,6 +257,14 @@ function handleLineEvent_(event) {
   // คำสั่งของเจ้าหน้าที่จึงต้องอยู่เหนือบรรทัดนี้เท่านั้น
   if (source.type !== 'user') return;
 
+  // แอดมินตอบตั๋วไว้ (จาก Telegram/กลุ่ม) → ส่งให้เป็น reply ฟรีทันทีที่เขาทักมา
+  // รอบนี้ตอบแค่คำตอบที่ค้าง (ปกติเขาพิมพ์ "admin" มาเพื่อรับคำตอบอยู่แล้ว)
+  const pendingReply = takePendingAdminReply_(source.userId);
+  if (pendingReply) {
+    replyLineMessage_(event.replyToken, pendingReply);
+    return;
+  }
+
   if (LINE_CANCEL_WORDS.indexOf(text) !== -1) {
     clearContactFlow_(id);
     replyLineMessage_(event.replyToken, 'ยกเลิกแล้ว พิมพ์ใหม่ได้ทุกเมื่อ');
@@ -911,6 +919,9 @@ function sendContactToAdmin_(event, flow, userId) {
 
   const who = lineDisplayName_(userId);
   const ticket = issueLineTicket_(userId);
+  // เก็บเบอร์โทรกลับคู่ตั๋ว — ให้แอดมินโทรได้ทันทีจากข้อความยืนยันใน Telegram
+  PropertiesService.getScriptProperties()
+    .setProperty('line_ticket_phone_' + ticket, String(flow.phone || ''));
 
   sendTeamNotify_(
     '📨 มีเรื่องแจ้งจากแพทย์ต้นทาง\n\n' +
@@ -920,9 +931,11 @@ function sendContactToAdmin_(event, flow, userId) {
     'จาก: ' + who + '\n\n' +
     String(flow.detail || '').slice(0, 1200) + '\n\n' +
     '──────────\n' +
-    'ตอบกลับ: พิมพ์ในกลุ่มนี้ได้เลย\n\n' +
+    'ตอบกลับ (ฟรี ไม่ใช้ push): พิมพ์ในกลุ่มนี้\n\n' +
     '   #' + ticket + ' ตามด้วยข้อความที่จะตอบ\n\n' +
-    'บอทจะส่งข้อความนั้นถึงเขาให้ (ตั๋วใช้ได้ ' + LINE_TICKET_TTL_DAYS + ' วัน)\n' +
+    'บอทจะส่งให้เขาเป็น reply ทันทีที่เขาทัก LINE + อีเมลถ้ามี (ตั๋วใช้ได้ ' +
+    LINE_TICKET_TTL_DAYS + ' วัน)\n' +
+    'ด่วน → โทรกลับตามเบอร์ข้างบน\n' +
     '🔒 อย่าพิมพ์ข้อมูลผู้ป่วยในคำตอบ',
     'red'
   );
@@ -934,6 +947,7 @@ function sendContactToAdmin_(event, flow, userId) {
     (flow.referralId ? 'เคส: ' + flow.referralId + '\n' : '') +
     'โทรกลับ: ' + flow.phone + '\n\n' +
     'จะติดต่อกลับในเวลาราชการ (จันทร์-ศุกร์ 08:30-16:30 น.)\n\n' +
+    'ถ้าแอดมินพิมพ์ตอบไว้ พิมพ์ admin มาที่นี่เมื่อไหร่ก็ได้ จะเห็นคำตอบทันที\n' +
     'อยากส่งข้อความเพิ่ม พิมพ์ admin นำหน้า เช่น\n' +
     '   admin ลืมบอกว่า…'
   );
@@ -1021,27 +1035,9 @@ function handleAdminReply_(event, text, sourceId) {
     return;
   }
 
-  const token = PropertiesService.getScriptProperties()
-    .getProperty('LINE_CHANNEL_ACCESS_TOKEN');
-  if (!token) {
-    replyLineMessage_(event.replyToken, 'ยังไม่ได้ตั้ง LINE_CHANNEL_ACCESS_TOKEN');
-    return;
-  }
-
-  sendOneLinePush_(
-    token,
-    userId,
-    '💬 ตอบจากแพทย์แอดมินกลาง\n\n' + reply.slice(0, 1200) + '\n\n' +
-    '──────────\n' +
-    'ถ้าจะตอบกลับ พิมพ์ admin นำหน้า เช่น\n' +
-    '   admin ขอบคุณครับ\n' +
-    '(ข้อความที่ไม่มี admin นำหน้า จะไม่ถูกส่งถึงแอดมิน)'
-  );
-
-  replyLineMessage_(
-    event.replyToken,
-    '✅ ส่งถึงผู้ถาม (#' + ticket + ') แล้ว'
-  );
+  // ไม่ push แล้ว (8 ก.ย. 2569) — ส่งแบบฟรีผ่านตัวเดียวกับ Telegram
+  void userId;
+  replyLineMessage_(event.replyToken, deliverAdminReplyFree_(ticket, reply));
 }
 
 /**
@@ -1160,6 +1156,82 @@ function readLineTicket_(ticket) {
   if (Date.now() - issuedAt > LINE_TICKET_TTL_DAYS * 86400000) return '';
 
   return parts[0] || '';
+}
+
+/* ---------- ตอบตั๋วแบบ "ฟรี" (ไม่มี LINE push — 8 ก.ย. 2569) ---------- */
+
+/**
+ * เก็บคำตอบของแอดมินไว้รอส่ง — บอทจะส่งเป็น reply (ฟรี) ทันทีที่ผู้ใช้คนนั้น
+ * ทัก LINE ครั้งถัดไป · เก็บใน Script Properties อายุเท่าตั๋ว (7 วัน)
+ */
+function storePendingAdminReply_(userId, text) {
+  const props = PropertiesService.getScriptProperties();
+  const key = 'line_pending_reply_' + userId;
+  const prev = props.getProperty(key);
+  // มีของค้างอยู่ → ต่อท้าย ไม่ทับ (แอดมินอาจตอบ 2 ครั้งก่อนเขาเข้ามาอ่าน)
+  const merged = prev ? String(prev).split('|ts|')[0] + '\n\n' + text : text;
+  props.setProperty(key, merged + '|ts|' + Date.now());
+}
+
+/** ดึงคำตอบที่รออยู่ของผู้ใช้ (แล้วลบทิ้ง) — คืนสตริงว่างถ้าไม่มี/หมดอายุ */
+function takePendingAdminReply_(userId) {
+  const props = PropertiesService.getScriptProperties();
+  const key = 'line_pending_reply_' + userId;
+  const raw = props.getProperty(key);
+  if (!raw) return '';
+  props.deleteProperty(key);
+  const parts = String(raw).split('|ts|');
+  const ts = parseInt(parts[1] || '0', 10);
+  if (Date.now() - ts > LINE_TICKET_TTL_DAYS * 86400000) return '';
+  return parts[0] || '';
+}
+
+/**
+ * ส่งคำตอบตั๋วถึงแพทย์ต้นทางโดยไม่ใช้ push:
+ *   1) เก็บไว้ให้บอท reply ฟรีตอนเขาทัก LINE ครั้งถัดไป (เสมอ)
+ *   2) อีเมล (ฟรี) ถ้าผูก LINE ไว้และเบอร์ตรงกับเคสที่มีอีเมล
+ * คืนข้อความสรุปให้แอดมิน (ใช้ได้ทั้งจาก Telegram และกลุ่ม LINE)
+ */
+function deliverAdminReplyFree_(ticket, reply) {
+  const userId = readLineTicket_(ticket);
+  if (!userId) {
+    return 'ไม่พบตั๋ว #' + ticket + ' — อาจพิมพ์ผิดหรือหมดอายุ (เก็บไว้ ' +
+      LINE_TICKET_TTL_DAYS + ' วัน) เลื่อนขึ้นไปดูรหัสในข้อความแจ้งเตือน';
+  }
+  const body = '💬 ตอบจากแพทย์แอดมินกลาง (#' + ticket + ')\n\n' + reply.slice(0, 1200) +
+    '\n\n──────────\nถ้าจะตอบกลับ พิมพ์ admin นำหน้า เช่น\n   admin ขอบคุณครับ';
+  storePendingAdminReply_(userId, body);
+
+  // อีเมล (ฟรี) — เฉพาะที่ระบุตัวได้จากบัญชี LINE ที่ผูก + เคสที่มีอีเมล
+  let emailed = false;
+  try {
+    const link = findLineLink_(userId);
+    const phone = link ? String(link['referrer_phone'] || '').trim() : '';
+    const cases = phone ? openCasesForPhone_(phone) : [];
+    const email = cases.map(function (r) {
+      return String(r['referrer_email'] || '').trim();
+    }).filter(Boolean)[0] || '';
+    if (email) {
+      MailApp.sendEmail({
+        to: email,
+        subject: 'คำตอบจากแพทย์แอดมินกลาง (#' + ticket + ')',
+        body: reply.slice(0, 1200) + '\n\n' +
+          'ตอบกลับ: ทัก LINE ' + LINE_OA_ID + ' แล้วพิมพ์ admin นำหน้าข้อความ\n\n' +
+          'กรุณาอย่าส่งชื่อ-สกุล หรือเลข HN ของผู้ป่วยทางอีเมลนี้\n\n--\n' +
+          'ระบบส่งต่อผู้ป่วยนอก สาขาวิชาโลหิตวิทยา โรงพยาบาลศิริราช',
+      });
+      emailed = true;
+    }
+  } catch (err) {
+    console.warn('อีเมลตอบตั๋วไม่สำเร็จ: ' + err);
+  }
+
+  const phoneNote = PropertiesService.getScriptProperties()
+    .getProperty('line_ticket_phone_' + ticket) || '';
+  return '✅ เก็บคำตอบให้ #' + ticket + ' แล้ว (ไม่ใช้ push)\n' +
+    '• LINE: จะส่งให้ทันทีที่เขาทักบอทครั้งถัดไป (ฟรี)\n' +
+    '• อีเมล: ' + (emailed ? 'ส่งแล้ว ✓' : 'ไม่พบอีเมล (ยังไม่ผูก LINE/ไม่มีเคส)') +
+    (phoneNote ? '\n• ด่วน → โทรกลับ ' + phoneNote : '');
 }
 
 function purgeExpiredLineTickets_(props) {
