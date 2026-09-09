@@ -171,10 +171,48 @@ function handleTelegramUpdate_(update) {
   }
   if (!text) return jsonResponse_({ ok: true });
 
-  // dent ตอบแพทย์ต้นทาง: "ตอบ HEM-xxxx: <ข้อความ>"
-  const m = text.match(/^ตอบ\s+(HEM-\d{8}-\d{4})\s*[:：]\s*([\s\S]+)$/i);
+  // dent ตอบแพทย์ต้นทาง — 3 แบบ เรียงจากง่ายสุด (คำขอผู้ใช้ 9 ก.ย. 2569: เลขเคสยาวเกิน)
+  //   1) ปัด "Reply" ข้อความแจ้งเคสของบอท แล้วพิมพ์คำตอบเลย (ไม่ต้องพิมพ์เลขเคส)
+  //   2) ตอบ 0142: ข้อความ        (เลข 4 ตัวท้ายของเคส · colon ใส่หรือไม่ก็ได้)
+  //   3) ตอบ HEM-20260908-0142: ข้อความ   (แบบเต็ม ยังใช้ได้)
+  const quoted = msg.reply_to_message;
+  if (quoted && quoted.from && quoted.from.is_bot && !isTelegramCommandText_(text)) {
+    const ids = referralIdsInText_(
+      String(quoted.text || quoted.caption || ''));
+    const body = text.replace(/^ตอบ\s*[:：]?\s*/i, '').trim();
+    if (ids.length === 1 && body) {
+      handleTelegramDentReply_(chatId, ids[0], body);
+      return jsonResponse_({ ok: true });
+    }
+    if (ids.length > 1) {
+      telegramReply_(chatId,
+        'ข้อความที่ตอบมีหลายเคส เลือกเคสด้วยเลข 4 ตัวท้าย เช่น\n' +
+        '   ตอบ ' + ids[0].slice(-4) + ': ' + (body || 'ข้อความ'));
+      return jsonResponse_({ ok: true });
+    }
+    // ไม่มีเลขเคสในข้อความที่ตอบ → ปล่อยให้ตรรกะปกติด้านล่างจัดการ
+  }
+
+  const m = text.match(/^ตอบ\s+(?:HEM-)?(?:(\d{8})-)?(\d{4})\s*[:：]?\s*([\s\S]+)$/i);
   if (m) {
-    handleTelegramDentReply_(chatId, m[1].toUpperCase(), String(m[2] || '').trim());
+    const body = String(m[3] || '').trim();
+    if (m[1]) {
+      handleTelegramDentReply_(chatId, 'HEM-' + m[1] + '-' + m[2], body);
+      return jsonResponse_({ ok: true });
+    }
+    const found = resolveReferralIdSuffix_(m[2]);
+    if (found.id) {
+      handleTelegramDentReply_(chatId, found.id, body);
+    } else if (found.candidates.length > 0) {
+      telegramReply_(chatId,
+        'เลข ' + m[2] + ' ตรงกับหลายเคส พิมพ์แบบเต็ม:\n' +
+        found.candidates.map(function (id) {
+          return '   ตอบ ' + id + ': ' + body;
+        }).join('\n'));
+    } else {
+      telegramReply_(chatId, 'ไม่พบเคสที่ลงท้ายด้วย ' + m[2] +
+        ' — ดูเลขเคสได้จาก "เคสค้าง" หรือ dashboard');
+    }
     return jsonResponse_({ ok: true });
   }
 
@@ -264,6 +302,47 @@ function handleTelegramReassign_(msg, chatId, referralId, name) {
     '👤 เปลี่ยนผู้รับผิดชอบเคส\n' + referralId + ' → ' + name +
     (by ? '\n(โดย ' + by + ')' : ''),
     'red');
+}
+
+/** เลขเคสทั้งหมดที่ปรากฏในข้อความ (ไม่ซ้ำ) — ใช้กับ "Reply" ข้อความแจ้งเคสของบอท */
+function referralIdsInText_(text) {
+  const seen = {};
+  const out = [];
+  (String(text || '').match(/HEM-\d{8}-\d{4}/gi) || []).forEach(function (id) {
+    id = id.toUpperCase();
+    if (!seen[id]) { seen[id] = true; out.push(id); }
+  });
+  return out;
+}
+
+/**
+ * ข้อความนี้เป็นคำสั่ง/คำถามบอทอยู่แล้วหรือไม่ — ถ้าใช่ ต่อให้พิมพ์เป็น Reply
+ * ข้อความบอท ก็ต้องทำงานเป็นคำสั่ง ไม่ใช่ถูกตีความเป็นคำตอบถึงแพทย์ต้นทาง
+ */
+function isTelegramCommandText_(text) {
+  if (!text) return true;
+  if (/^[\/#]/.test(text)) return true;
+  if (/^(ตอบ\s+(HEM-|\d)|มอบ\s|ผูกกลุ่ม|รหัสผูกกลุ่ม|เปลี่ยนรหัสผูกกลุ่ม)/i.test(text)) return true;
+  return GROUP_QUERY_MENU.test(text) || GROUP_QUERY_PENDING.test(text) ||
+    GROUP_QUERY_UNREAD.test(text) || GROUP_QUERY_DUTY.test(text) ||
+    GROUP_QUERY_FELLOW_UPCOMING.test(text) || GROUP_QUERY_APPOINTMENT.test(text);
+}
+
+/**
+ * หาเคสจากเลข 4 ตัวท้าย — เคสที่ยังไม่จบก่อน (ปกติมีตัวเดียว) ถ้าไม่มีค่อยดูเคสที่จบแล้ว
+ * คืน { id } เมื่อชี้ได้ตัวเดียว · { candidates: [...] } เมื่อกำกวม · ทั้งคู่ว่างเมื่อไม่พบ
+ */
+function resolveReferralIdSuffix_(suffix) {
+  const tail = '-' + suffix;
+  const all = readRows_(getSheet_(SHEETS.referrals))
+    .map(function (r) {
+      return { id: String(r['referral_id'] || '').trim(), status: String(r['status'] || '') };
+    })
+    .filter(function (r) { return r.id.slice(-5) === tail; });
+  const open = all.filter(function (r) { return !isTerminal_(r.status); });
+  const pool = open.length > 0 ? open : all;
+  if (pool.length === 1) return { id: pool[0].id, candidates: [] };
+  return { id: '', candidates: pool.map(function (r) { return r.id; }) };
 }
 
 function handleTelegramDentReply_(chatId, referralId, body) {
@@ -486,8 +565,9 @@ function pinDashboardButtons() {
             '   หรือพิมพ์  /login  รับลิงก์เข้าทางเบราว์เซอร์\n\n' +
             '💬 ถามบอทได้ (ฟรี) — พิมพ์  เมนู  เพื่อดูคำสั่งทั้งหมด\n' +
             '   เช่น  เคสค้าง · นัดวันนี้ · นัดพรุ่งนี้ · ข้อความใหม่ · เวร\n\n' +
-            '↩️ ตอบแพทย์ต้นทาง\n' +
-            '   พิมพ์  ตอบ HEM-xxxxxxxx-xxxx: ข้อความ\n\n' +
+            '↩️ ตอบแพทย์ต้นทาง — ปัดข้อความแจ้งเคสของบอทไปทางขวา (Reply)\n' +
+            '   แล้วพิมพ์คำตอบได้เลย ไม่ต้องพิมพ์เลขเคส\n' +
+            '   หรือพิมพ์  ตอบ 0142: ข้อความ  (เลข 4 ตัวท้ายของเคส)\n\n' +
             '🔒 ห้ามพิมพ์ชื่อ–HN ผู้ป่วยในกลุ่ม — อ้างอิงด้วยเลขเคส HEM-... เท่านั้น',
           reply_markup: {
             inline_keyboard: [[{ text: '📲 เปิด dashboard', url: link }]],
