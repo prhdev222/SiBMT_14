@@ -235,7 +235,11 @@ export async function readSheetRows(
   return values.slice(1).map((row) => {
     const record: Record<string, string> = {};
     headers.forEach((header, i) => {
-      if (header) record[header] = row[i] !== undefined ? String(row[i]) : "";
+      // หัวซ้ำ → ยึดคอลัมน์แรก (ช่วงที่ Google Form เขียน) เหมือน headerMap_ ฝั่ง Apps Script
+      // เดิม "คอลัมน์หลังทับ" ทำให้เห็นค่าว่างจากคอลัมน์ซ้ำท้ายชีต → dashboard 0 เคส (10 ก.ย. 2569)
+      if (header && !(header in record)) {
+        record[header] = row[i] !== undefined ? String(row[i]) : "";
+      }
     });
     return record;
   });

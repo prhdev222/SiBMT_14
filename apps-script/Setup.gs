@@ -688,6 +688,14 @@ function runSelfTest() {
       if (!(c in map)) problems.push('ไม่พบคอลัมน์ระบบ: ' + c);
     });
 
+    // หัวคอลัมน์ซ้ำ — ต้นเหตุ "อีเมลไม่ส่ง + dashboard 0 เคส" 10 ก.ย. 2569
+    // (ฟอร์มเขียนคอลัมน์แรก แต่ระบบเคยอ่านคอลัมน์หลังที่ว่าง)
+    duplicateHeaderGroups_(referrals).forEach(function (g) {
+      problems.push('⚠️ หัวคอลัมน์ซ้ำ "' + g.name + '" ที่คอลัมน์ ' +
+        g.cols.map(function (c) { return c + 1; }).join(', ') +
+        ' — รัน previewRepairDuplicateHeaders() แล้ว applyRepairDuplicateHeaders() ใน Apps Script');
+    });
+
     // คอลัมน์จากฟอร์ม — จับกรณี Google เขียนหัวคอลัมน์ทับด้วยข้อความคำถามภาษาไทย
     const missingFormCols = FORM_COLUMNS_REQUIRED.filter(function (c) {
       return !(c in map);

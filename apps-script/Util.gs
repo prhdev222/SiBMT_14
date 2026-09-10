@@ -17,10 +17,21 @@ function headerMap_(sheet) {
   if (lastCol === 0) return {};
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   const map = {};
+  const dup = [];
   headers.forEach(function (h, i) {
     const key = String(h).trim();
-    if (key) map[key] = i;
+    if (!key) return;
+    // ⚠️ หัวซ้ำ: ยึด "คอลัมน์แรก" เสมอ — คอลัมน์แรกคือช่วงที่ Google Form เขียน
+    // (10 ก.ย. 2569: หัวถูกรีเซ็ตเป็นไทยชั่วคราว → ensureColumns_ ไปสร้าง referral_type/
+    // referrer_email ซ้ำท้ายชีต → เดิม map ยึดคอลัมน์หลัง ซึ่งว่าง → อีเมลไม่ถูกส่ง
+    // และ dashboard ขึ้น 0 เคส) รัน previewRepairDuplicateHeaders() เพื่อล้างหัวซ้ำ
+    if (key in map) { dup.push(key); return; }
+    map[key] = i;
   });
+  if (dup.length > 0) {
+    console.warn('หัวคอลัมน์ซ้ำในแท็บ ' + sheet.getName() + ': ' + dup.join(', ') +
+      ' — ใช้คอลัมน์แรก · รัน applyRepairDuplicateHeaders() เพื่อล้าง');
+  }
   return map;
 }
 
@@ -39,8 +50,26 @@ function headerMap_(sheet) {
  */
 function ensureColumns_(sheet, names) {
   let map = headerMap_(sheet);
-  const missing = names.filter(function (n) { return !(n in map); });
+  let missing = names.filter(function (n) { return !(n in map); });
   if (missing.length === 0) return map;
+
+  // ⚠️ ห้ามสร้างคอลัมน์ของฟอร์มซ้ำท้ายชีต — ถ้า "หาย" แปลว่าหัวถูก Google Form
+  // รีเซ็ตเป็นข้อความคำถามชั่วคราว ไม่ใช่หายจริง (ต้นเหตุหัวซ้ำ 10 ก.ย. 2569)
+  // กู้หัวก่อน แล้วถ้ายังหายจริงให้พังดัง ๆ ดีกว่าสร้างซ้ำเงียบ ๆ
+  const formOwned = typeof FORM_COLUMN_ORDER !== 'undefined'
+    ? missing.filter(function (n) { return FORM_COLUMN_ORDER.indexOf(n) !== -1; })
+    : [];
+  if (formOwned.length > 0 && sheet.getName() === SHEETS.referrals) {
+    if (typeof restoreFormHeadersQuiet_ === 'function') restoreFormHeadersQuiet_();
+    map = headerMap_(sheet);
+    missing = names.filter(function (n) { return !(n in map); });
+    const still = missing.filter(function (n) { return FORM_COLUMN_ORDER.indexOf(n) !== -1; });
+    if (still.length > 0) {
+      throw new Error('หัวคอลัมน์ของฟอร์มหาย: ' + still.join(', ') +
+        ' — ไม่สร้างซ้ำท้ายชีต ให้รัน restoreFormHeaders() ตรวจแถวหัวก่อน');
+    }
+    if (missing.length === 0) return map;
+  }
 
   const startCol = sheet.getLastColumn() + 1;
   sheet.getRange(1, startCol, 1, missing.length).setValues([missing]);
