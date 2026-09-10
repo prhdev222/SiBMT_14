@@ -137,7 +137,17 @@ const TYPES = {
 // กลุ่ม 4 ไปใช้ระบบนัดหมายของโรงพยาบาล
 const TYPE_FROM_FORM_LABEL = {
   'กลุ่มที่ 2 — ขอความเห็นสูตรยาเคมีบำบัด': TYPES.regimen,
+  // ป้ายใหม่ (10 ก.ย. 2569) — กลุ่ม 2 รับคำถามเรื่องอื่นด้วยแทนกลุ่ม 4
+  'กลุ่มที่ 2 — ขอความเห็นสูตรยาเคมีบำบัด และตอบคำถามเรื่องอื่นๆ': TYPES.regimen,
   'กลุ่มที่ 3 — ขอส่งตัวมาให้ยาเคมีบำบัด/ยากดภูมิ': TYPES.admission,
+};
+
+/** เลขกลุ่มที่นำหน้าป้าย ("กลุ่มที่ 2 — …") → type — ทางสำรองเมื่อข้อความป้ายถูกแก้ */
+const TYPE_FROM_GROUP_NUMBER = {
+  1: TYPES.transplant,
+  2: TYPES.regimen,
+  3: TYPES.admission,
+  4: TYPES.general,
 };
 
 /**
@@ -163,11 +173,25 @@ function normalizeFormLabel_(value) {
 /** หา referral type จากข้อความตัวเลือก — คืน '' เมื่อไม่รู้จัก */
 function typeFromFormLabel_(label) {
   const wanted = normalizeFormLabel_(label);
+  if (!wanted) return '';
+
+  // ค่าที่แปลงแล้ว (เช่น "REGIMEN_CONSULT") ส่งกลับมาเอง — เจอตอน reprocess แถวเก่า
+  const codes = Object.keys(TYPES).map(function (k) { return TYPES[k]; });
+  if (codes.indexOf(wanted) !== -1) return wanted;
+
   const keys = Object.keys(TYPE_FROM_FORM_LABEL);
   for (let i = 0; i < keys.length; i++) {
     if (normalizeFormLabel_(keys[i]) === wanted) {
       return TYPE_FROM_FORM_LABEL[keys[i]];
     }
+  }
+
+  // ทางสำรอง: ข้อความป้ายถูกแก้ในฟอร์ม แต่ยังขึ้นต้น "กลุ่มที่ N" — ยึดเลขกลุ่ม
+  // (10 ก.ย. 2569: แก้ป้ายกลุ่ม 2 แล้วเคสค้าง 2 เคสเพราะเทียบข้อความไม่ตรง)
+  const m = wanted.match(/^กลุ่ม\s*ที่\s*([1-4])\b/);
+  if (m && TYPE_FROM_GROUP_NUMBER[m[1]]) {
+    console.warn('ป้ายฟอร์มไม่ตรงตาราง แต่ขึ้นต้น "กลุ่มที่ ' + m[1] + '" → ใช้เลขกลุ่ม: "' + wanted + '"');
+    return TYPE_FROM_GROUP_NUMBER[m[1]];
   }
   return '';
 }
