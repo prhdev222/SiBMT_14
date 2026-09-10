@@ -114,23 +114,7 @@ function onFormSubmit(e) {
     // ให้ใครในทีมเวรชุดนี้ แล้วมอบเคสใหม่ให้คนถัดไป ครบแล้ววนกลับคนแรก
     // ไม่ต้องเก็บตัวนับที่ไหน อ่านจากประวัติในชีตเอง จึงไม่มีวันเพี้ยน
     if (referralType === TYPES.regimen || referralType === TYPES.admission) {
-      const duty = onDutyResidents_(submittedAt);
-      if (duty.length === 1) {
-        setCell_(sheet, map, row, 'assigned_to', duty[0].name);
-      } else if (duty.length > 1) {
-        const names = duty.map(function (d) { return d.name; });
-        let lastHolder = '';
-        readRows_(sheet).forEach(function (r) {
-          const holder = String(r['assigned_to'] || '').trim();
-          if (r._row !== row && names.indexOf(holder) !== -1) {
-            lastHolder = holder; // แถวล่างสุดที่เจอ = เคสล่าสุด
-          }
-        });
-        const next = names.indexOf(lastHolder) === -1
-          ? 0
-          : (names.indexOf(lastHolder) + 1) % names.length;
-        setCell_(sheet, map, row, 'assigned_to', names[next]);
-      }
+      autoAssignResident_(sheet, map, row, submittedAt);
     }
     setCell_(sheet, map, row, 'elapsed_business_hours', 0);
     setCell_(sheet, map, row, 'alert_level', 'none');
@@ -199,6 +183,42 @@ function onFormSubmit(e) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * มอบหมายเคสกลุ่ม 2/3 ให้ resident ที่อยู่เวร ณ วันที่ส่ง — คืนชื่อที่มอบ ('' = ไม่มีเวร)
+ *
+ * อยู่เวรพร้อมกันหลายคน: วนแจกตามลำดับแถวในตารางเวร (มติผู้ใช้ 4 ก.ย. 2569)
+ * ดูว่าเคสกลุ่ม 2/3 ล่าสุดถูกมอบให้ใครในทีมเวรชุดนี้ แล้วมอบเคสใหม่ให้คนถัดไป
+ * ไม่เก็บตัวนับที่ไหน อ่านจากประวัติในชีตเอง จึงไม่มีวันเพี้ยน
+ * ชื่อซ้ำในตารางเวร (คนเดียวสองช่วงเหลื่อมกัน) นับเป็นคนเดียว
+ *
+ * ใช้ทั้งตอนรับฟอร์ม (onFormSubmit) และตอนซ่อมย้อนหลัง (Repair.gs)
+ */
+function autoAssignResident_(sheet, map, row, submittedAt) {
+  const duty = onDutyResidents_(submittedAt || new Date());
+  const names = [];
+  duty.forEach(function (d) {
+    if (names.indexOf(d.name) === -1) names.push(d.name);
+  });
+  if (names.length === 0) return '';
+
+  let pick = names[0];
+  if (names.length > 1) {
+    let lastHolder = '';
+    readRows_(sheet).forEach(function (r) {
+      const holder = String(r['assigned_to'] || '').trim();
+      if (r._row !== row && names.indexOf(holder) !== -1) {
+        lastHolder = holder; // แถวล่างสุดที่เจอ = เคสล่าสุด
+      }
+    });
+    const next = names.indexOf(lastHolder) === -1
+      ? 0
+      : (names.indexOf(lastHolder) + 1) % names.length;
+    pick = names[next];
+  }
+  setCell_(sheet, map, row, 'assigned_to', pick);
+  return pick;
 }
 
 /**

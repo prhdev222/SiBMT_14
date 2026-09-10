@@ -249,9 +249,23 @@ function handleTelegramUpdate_(update) {
   }
 
   // เปลี่ยนผู้รับผิดชอบ: "มอบ HEM-xxxx: <ชื่อ>" → แจ้งกลุ่มแอดมิน/อาจารย์ด้วย
-  const rm = text.match(/^มอบ\s+(HEM-\d{8}-\d{4})\s*[:：]\s*([\s\S]+)$/i);
+  // รับทั้ง "มอบ HEM-20260910-0004: ชื่อ" และ "มอบ 0004: ชื่อ" (เลข 4 ตัวท้าย) แบบเดียวกับ ตอบ
+  const rm = text.match(/^มอบ\s+(?:HEM-)?(?:(\d{8})-)?(\d{4})\s*[:：]?\s*([\s\S]+)$/i);
   if (rm) {
-    handleTelegramReassign_(msg, chatId, rm[1].toUpperCase(), String(rm[2] || '').trim());
+    const who = String(rm[3] || '').trim();
+    if (rm[1]) {
+      handleTelegramReassign_(msg, chatId, 'HEM-' + rm[1] + '-' + rm[2], who);
+      return jsonResponse_({ ok: true });
+    }
+    const found = resolveReferralIdSuffix_(rm[2]);
+    if (found.id) {
+      handleTelegramReassign_(msg, chatId, found.id, who);
+    } else if (found.candidates.length > 0) {
+      telegramReply_(chatId, 'เลข ' + rm[2] + ' ตรงกับหลายเคส พิมพ์แบบเต็ม:\n' +
+        found.candidates.map(function (id) { return '   มอบ ' + id + ': ' + who; }).join('\n'));
+    } else {
+      telegramReply_(chatId, 'ไม่พบเคสที่ลงท้ายด้วย ' + rm[2]);
+    }
     return jsonResponse_({ ok: true });
   }
 

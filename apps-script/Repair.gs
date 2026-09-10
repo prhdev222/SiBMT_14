@@ -127,8 +127,13 @@ function reprocessBrokenRows_(dryRun) {
         String(r['email_verify_token'] || ''), String(r['case_token'] || ''));
     }
     if (code === TYPES.regimen || code === TYPES.admission) {
-      notifyResidentNewCase_(id, GROUP_NUMBER[code] || '-',
-        String(r['assigned_to'] || ''),
+      // มอบหมายอัตโนมัติตามเวร ณ วันที่ส่ง — ตอนรับฟอร์มข้ามไปเพราะยังอ่านกลุ่มไม่ออก
+      let assigned = String(r['assigned_to'] || '').trim();
+      if (!assigned) {
+        assigned = autoAssignResident_(sheet, map, r._row,
+          toDate_(r['submitted_at']) || new Date());
+      }
+      notifyResidentNewCase_(id, GROUP_NUMBER[code] || '-', assigned,
         (r['patient_sex'] || '-') + ' อายุ ' + (r['patient_age'] || '-') + ' ปี',
         String(r['diagnosis'] || '-'), String(r['referrer_org'] || '-'));
     }
@@ -139,3 +144,50 @@ function reprocessBrokenRows_(dryRun) {
 }
 function previewReprocessBrokenRows() { reprocessBrokenRows_(true); }
 function applyReprocessBrokenRows() { reprocessBrokenRows_(false); }
+
+/**
+ * เคสกลุ่ม 2/3 ที่ยังเปิดอยู่และ "ยังไม่มอบหมาย" → มอบให้เวร ณ วันที่ส่ง (วนตามลำดับ)
+ *   previewAssignUnassignedCases()  → ดูว่าจะมอบใครให้ใคร (ไม่เขียน)
+ *   applyAssignUnassignedCases()    → เขียนจริง + แจ้งกลุ่มแอดมิน
+ * ใช้เมื่อเคสค้าง "ยังไม่มอบหมาย" ทั้งที่มีเวรในตาราง (เช่นหลังซ่อมหัวซ้ำ 10 ก.ย. 2569)
+ */
+function assignUnassignedCases_(dryRun) {
+  const sheet = getSheet_(SHEETS.referrals);
+  const map = ensureColumns_(sheet, ['assigned_to']);
+  const rows = readRows_(sheet);
+  let done = 0, noDuty = 0;
+  const lines = [];
+
+  rows.forEach(function (r) {
+    const type = String(r['referral_type'] || '').trim();
+    if (type !== TYPES.regimen && type !== TYPES.admission) return;
+    if (isTerminal_(r['status'])) return;
+    if (String(r['assigned_to'] || '').trim()) return;
+
+    const id = String(r['referral_id'] || '').trim();
+    const when = toDate_(r['submitted_at']) || new Date();
+    const dutyNames = onDutyResidents_(when).map(function (d) { return d.name; });
+    if (dutyNames.length === 0) {
+      noDuty++;
+      Logger.log('⏭️ ' + id + ' — วันที่ส่ง ' + formatThaiDate_(when) + ' ไม่มีเวรในตาราง');
+      return;
+    }
+    if (dryRun) {
+      Logger.log('👀 ' + id + ' → หนึ่งในเวร ' + formatThaiDate_(when) + ': ' + dutyNames.join(' / '));
+      done++;
+      return;
+    }
+    const name = autoAssignResident_(sheet, map, r._row, when);
+    Logger.log('✅ ' + id + ' → ' + name);
+    lines.push(id + ' → ' + name);
+    done++;
+  });
+
+  if (!dryRun && lines.length > 0) {
+    sendTelegram_('👤 มอบหมายเคสค้างอัตโนมัติตามเวร\n' + lines.join('\n'), 'red');
+  }
+  Logger.log('สรุป: ' + (dryRun ? 'จะมอบ ' : 'มอบแล้ว ') + done + ' เคส · ไม่มีเวร ' + noDuty +
+    (dryRun ? '   ← preview — รัน applyAssignUnassignedCases() เพื่อทำจริง' : ''));
+}
+function previewAssignUnassignedCases() { assignUnassignedCases_(true); }
+function applyAssignUnassignedCases() { assignUnassignedCases_(false); }
