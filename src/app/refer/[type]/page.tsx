@@ -93,6 +93,17 @@ export default async function ReferTypePage({
   const waitsForTeam =
     type === "REGIMEN_CONSULT" || type === "CHEMO_ADMISSION";
 
+  // กลุ่มที่ทางไปต่อคือ Google Form — ปุ่มอยู่บนสุด + แถบลอยบนมือถือ
+  const usesForm = waitsForTeam;
+  const hasStickyCta = usesForm && Boolean(formUrl);
+  const checklistCount =
+    checklist.forReferrer.length + checklist.forPatient.length;
+  // สรุปสั้น ๆ ว่าต้องมีอะไรในมือ — ให้เห็นที่ปุ่มเลย ไม่ต้องกางเช็กลิสต์
+  const prepSummary =
+    type === "REGIMEN_CONSULT"
+      ? "การวินิจฉัย · สูตรยาที่เคยได้ · ผล lab ล่าสุด · สิทธิการรักษา"
+      : "การวินิจฉัย · การรักษาที่ผ่านมา · ผล lab · สิทธิการรักษา";
+
   return (
     <div className="flex flex-col flex-1 bg-zinc-50">
       <header className="bg-white border-b border-zinc-200">
@@ -113,7 +124,56 @@ export default async function ReferTypePage({
         </div>
       </header>
 
-      <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-6 space-y-6">
+      <main
+        className={`flex-1 max-w-3xl mx-auto w-full px-4 py-6 space-y-6 ${
+          hasStickyCta ? "pb-28 sm:pb-6" : ""
+        }`}
+      >
+        {/*
+          ปุ่มส่งฟอร์มอยู่บนสุด ใต้หัวข้อทันที (คำขอผู้ใช้ 11 ก.ย. 2569)
+
+          เดิมอยู่ล่างสุดหลังเช็กลิสต์สองชุดกับการ์ด PDPA — บนมือถือต้องเลื่อน
+          2-3 หน้าจอถึงจะเจอ คนที่มาหน้านี้ส่วนใหญ่รู้อยู่แล้วว่าจะส่ง ไม่ได้มาอ่าน
+          จึงให้ "ทางไปต่อ" อยู่ในจอแรก แล้วรายละเอียดตามหลัง
+        */}
+        {usesForm && (
+          <section className="rounded-xl bg-blue-600 p-5 sm:p-6 shadow-sm">
+            <h2 className="font-semibold text-white text-lg">ส่งข้อมูล</h2>
+            {formUrl ? (
+              <>
+                <p className="text-sm text-blue-100 mt-1">
+                  กรอกใน Google Form ใช้เวลาประมาณ 5 นาที ·
+                  เตรียมไว้: {prepSummary}
+                </p>
+                <a
+                  href={formUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-white px-6 py-4 text-blue-700 text-base font-bold hover:bg-blue-50 transition-colors"
+                >
+                  กรอกแบบฟอร์มกลุ่มที่ {meta.groupNumber} →
+                </a>
+                <p className="text-xs text-blue-100 mt-3">
+                  ส่งแล้วจะได้อีเมลรหัสเคสทันที พร้อมลิงก์แนบผล lab / ใบ refer เพิ่ม
+                  โดยไม่ต้อง login
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-blue-50 mt-2">
+                ช่องทางส่งข้อมูลของกลุ่มนี้อยู่ระหว่างเปิดใช้งาน
+                กรุณาติดต่อเจ้าหน้าที่ที่{" "}
+                <a
+                  href={`tel:${CONTACT.phone}`}
+                  className="font-semibold text-white underline"
+                >
+                  {CONTACT.phoneDisplay}
+                </a>{" "}
+                ในระหว่างนี้
+              </p>
+            )}
+          </section>
+        )}
+
         {/* กรอบเวลาตอบกลับ */}
         {waitsForTeam && (
         <section className="rounded-xl bg-white border border-zinc-200 p-5 text-sm">
@@ -151,24 +211,7 @@ export default async function ReferTypePage({
         </section>
         )}
 
-        {/* Checklist สำหรับแพทย์ต้นทาง */}
-        {checklist.forReferrer.length > 0 && (
-          <ChecklistCard
-            title="ขั้นตอนสำหรับแพทย์ผู้ส่งตัว"
-            items={checklist.forReferrer}
-          />
-        )}
-
-        {/* Checklist สำหรับผู้ป่วย */}
-        {checklist.forPatient.length > 0 && (
-          <ChecklistCard
-            title="สิ่งที่ผู้ป่วยต้องเตรียมมา"
-            subtitle="กรุณาเน้นย้ำผู้ป่วยให้เตรียมให้ครบ เพื่อไม่ต้องเสียเวลากลับไปกลับมา"
-            items={checklist.forPatient}
-          />
-        )}
-
-        {/* แบบฟอร์มรับทราบ PDPA */}
+        {/* แบบฟอร์มรับทราบ PDPA — อยู่เหนือเช็กลิสต์ เพราะเป็นข้อบังคับ ไม่ใช่คำแนะนำ */}
         {showConsentCard && (
         <section className="rounded-xl bg-blue-50 border border-blue-200 p-5 text-sm">
           <h2 className="font-semibold text-blue-900 mb-1">
@@ -224,53 +267,79 @@ export default async function ReferTypePage({
         </section>
         )}
 
+        {/*
+          เช็กลิสต์ — กลุ่มที่กรอกฟอร์มพับไว้ใต้ปุ่ม เปิดดูเมื่ออยากรู้ว่าต้องเตรียมอะไร
+          กลุ่ม 1/4 ยังกางไว้ เพราะเช็กลิสต์ "คือ" ขั้นตอนของกลุ่มนั้น ไม่ใช่ของประกอบ
+        */}
+        {usesForm ? (
+          checklistCount > 0 && (
+            <details className="group rounded-xl bg-white border border-zinc-200 open:shadow-sm">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5 [&::-webkit-details-marker]:hidden">
+                <span>
+                  <span className="font-semibold text-zinc-900">
+                    เตรียมอะไรบ้าง
+                  </span>
+                  <span className="ml-2 text-sm text-zinc-500">
+                    {checklistCount} รายการ · กดเพื่อดู
+                  </span>
+                </span>
+                <span
+                  aria-hidden
+                  className="text-zinc-400 transition-transform group-open:rotate-180"
+                >
+                  ▾
+                </span>
+              </summary>
+              <div className="border-t border-zinc-100 px-5 pb-5 divide-y divide-zinc-100">
+                {checklist.forReferrer.length > 0 && (
+                  <ChecklistCard
+                    title="ขั้นตอนสำหรับแพทย์ผู้ส่งตัว"
+                    items={checklist.forReferrer}
+                    marker="number"
+                    embedded
+                  />
+                )}
+                {checklist.forPatient.length > 0 && (
+                  <ChecklistCard
+                    title="สิ่งที่ผู้ป่วยต้องเตรียมมา"
+                    subtitle="กรุณาเน้นย้ำผู้ป่วยให้เตรียมให้ครบ เพื่อไม่ต้องเสียเวลากลับไปกลับมา"
+                    items={checklist.forPatient}
+                    embedded
+                  />
+                )}
+              </div>
+            </details>
+          )
+        ) : (
+          <>
+            {checklist.forReferrer.length > 0 && (
+              <ChecklistCard
+                title="ขั้นตอนสำหรับแพทย์ผู้ส่งตัว"
+                items={checklist.forReferrer}
+                marker="number"
+              />
+            )}
+            {checklist.forPatient.length > 0 && (
+              <ChecklistCard
+                title="สิ่งที่ผู้ป่วยต้องเตรียมมา"
+                subtitle="กรุณาเน้นย้ำผู้ป่วยให้เตรียมให้ครบ เพื่อไม่ต้องเสียเวลากลับไปกลับมา"
+                items={checklist.forPatient}
+              />
+            )}
+          </>
+        )}
+
         {type === "TRANSPLANT_APPOINTMENT" && (
           <IndicationCriteriaCard indications={indications} />
         )}
 
-        {/* กลุ่มที่ 1 จองคิวเองได้ กลุ่มที่ 4 ไปใช้ระบบนัดหมายของโรงพยาบาล */}
+        {/* กลุ่มที่ 1 จองคิวเองได้ กลุ่มที่ 4 ไปใช้ระบบนัดหมายของโรงพยาบาล
+            (กลุ่ม 2/3 ปุ่มส่งฟอร์มอยู่บนสุดของหน้าแล้ว) */}
         {type === "GENERAL_OPD" ? (
           <HospitalAppointmentCard />
         ) : type === "TRANSPLANT_APPOINTMENT" ? (
           <BookSlotCard />
-        ) : (
-        /*
-          ปุ่มส่งฟอร์ม — กล่องนี้คือทางไปต่อของหน้า จึงเป็นที่เดียวที่ใช้พื้นหลังสี
-          และปุ่มเต็มความกว้าง สิ่งอื่นบนหน้านี้เป็นข้อมูลประกอบทั้งหมด
-          ถ้าทุกอย่างเด่นเท่ากันก็เท่ากับไม่มีอะไรเด่น แล้วคนจะเลื่อนผ่านสิ่งที่ต้องกดจริง
-        */
-        <section className="rounded-xl bg-blue-600 p-5 sm:p-6 shadow-sm">
-          <h2 className="font-semibold text-white text-lg">ส่งข้อมูล</h2>
-          {formUrl ? (
-            <>
-              <p className="text-sm text-blue-100 mt-1 mb-4">
-                เตรียมเอกสารตามรายการด้านบนให้ครบก่อน แล้วกดปุ่มนี้เพื่อกรอกฟอร์ม
-              </p>
-              <a
-                href={formUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-white px-6 py-4 text-blue-700 text-base font-bold hover:bg-blue-50 transition-colors"
-              >
-                กรอกแบบฟอร์มกลุ่มที่ {meta.groupNumber} →
-              </a>
-            </>
-          ) : (
-            <p className="text-sm text-blue-50 mt-2">
-              ช่องทางส่งข้อมูลของกลุ่มนี้อยู่ระหว่างเปิดใช้งาน
-              กรุณาติดต่อเจ้าหน้าที่ที่{" "}
-              <a
-                href={`tel:${CONTACT.phone}`}
-                className="font-semibold text-white underline"
-              >
-                {CONTACT.phoneDisplay}
-              </a>{" "}
-              ในระหว่างนี้
-            </p>
-          )}
-
-        </section>
-        )}
+        ) : null}
 
         {/*
           เบอร์ธุรการแสดงเฉพาะกลุ่มที่ 1 และเฉพาะเรื่องวันที่ผู้ป่วยมาถึง
@@ -340,6 +409,24 @@ export default async function ReferTypePage({
 
         <DocumentLibrary documents={documents} groupNumber={meta.groupNumber} />
       </main>
+
+      {/*
+        แถบปุ่มลอยขอบล่าง — มือถือเท่านั้น (จอกว้างเห็นปุ่มบนสุดอยู่แล้ว)
+        ไม่ว่าเลื่อนไปอ่านตรงไหน ทางไปต่อยังกดได้ทุกเมื่อ
+        เว้นขวาไว้ให้ปุ่ม Hemato Bot กับตัวปรับขนาดตัวหนังสือที่ลอยอยู่มุมขวาล่าง
+      */}
+      {hasStickyCta && formUrl && (
+        <div className="sm:hidden fixed inset-x-0 bottom-0 z-30 border-t border-blue-700/20 bg-white/95 backdrop-blur px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pr-28 print:hidden">
+          <a
+            href={formUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-white text-sm font-bold shadow-md shadow-blue-600/25 active:bg-blue-700"
+          >
+            กรอกแบบฟอร์มกลุ่มที่ {meta.groupNumber} →
+          </a>
+        </div>
+      )}
     </div>
   );
 }
@@ -580,26 +667,53 @@ function IndicationCriteriaCard({
   );
 }
 
+/**
+ * รายการเตรียมตัว — ตัวนำหน้าเป็น "ลำดับขั้น" หรือ "จุด" ไม่ใช่กล่องสี่เหลี่ยม
+ *
+ * เดิมใช้ ☐ นำหน้าทุกรายการ แพทย์ต้นทางเข้าใจว่าต้องติ๊กก่อนถึงจะกดต่อได้
+ * พอติ๊กไม่ได้ก็คิดว่าหน้าเสีย แล้วเลิกใช้ (รายงานผู้ใช้ 11 ก.ย. 2569)
+ * กล่องสี่เหลี่ยมสื่อว่า "กดได้" เสมอ ต่อให้เขียนกำกับก็ไม่ช่วย
+ */
 function ChecklistCard({
   title,
   subtitle,
   items,
+  marker = "bullet",
+  embedded = false,
 }: {
   title: string;
   subtitle?: string;
   items: ChecklistItem[];
+  /** number = ขั้นตอนที่ต้องทำตามลำดับ · bullet = ของที่ต้องมี ไม่มีลำดับ */
+  marker?: "number" | "bullet";
+  /** อยู่ในกล่องพับได้แล้ว — ไม่ต้องมีกรอบซ้อนกรอบ */
+  embedded?: boolean;
 }) {
+  const Wrapper = embedded ? "div" : "section";
   return (
-    <section className="rounded-xl bg-white border border-zinc-200 p-5">
+    <Wrapper
+      className={
+        embedded ? "pt-4" : "rounded-xl bg-white border border-zinc-200 p-5"
+      }
+    >
       <h2 className="font-semibold text-zinc-900">{title}</h2>
       {subtitle && <p className="text-sm text-zinc-500 mt-0.5">{subtitle}</p>}
       <ul className="mt-3 space-y-3">
         {items.map((item, i) => (
           <li key={i} className="flex gap-3 text-sm">
-            <span
-              aria-hidden
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border border-zinc-400"
-            />
+            {marker === "number" ? (
+              <span
+                aria-hidden
+                className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-[11px] font-semibold tabular-nums text-white"
+              >
+                {i + 1}
+              </span>
+            ) : (
+              <span
+                aria-hidden
+                className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-400"
+              />
+            )}
             <div>
               {item.conditionTh && (
                 <span className="mr-1.5 inline-flex rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800">
@@ -627,6 +741,6 @@ function ChecklistCard({
           </li>
         ))}
       </ul>
-    </section>
+    </Wrapper>
   );
 }
