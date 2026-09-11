@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CONTACT } from "@/lib/config";
 import {
   isBookingConfigured,
   lookupBooking,
@@ -151,7 +152,10 @@ export default async function SlipPage({
             <div className="flex items-baseline gap-3">
               <dt className="w-24 shrink-0 text-sm text-zinc-500">สถานที่</dt>
               <dd className="font-semibold text-zinc-900">
-                OPD 700 โรงพยาบาลศิริราช
+                {CONTACT.officeTh}
+                <span className="block text-sm font-normal text-zinc-600">
+                  โทร. {CONTACT.phoneDisplay} ({CONTACT.hoursTh})
+                </span>
               </dd>
             </div>
             {isReadinessVisit ? (

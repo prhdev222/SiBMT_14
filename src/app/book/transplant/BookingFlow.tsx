@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { bookAction, type BookingState } from "./actions";
+import { CONTACT } from "@/lib/config";
 import { DISEASE_GROUPS } from "@/lib/referral-types";
 import {
   INDICATION_OTHER,
@@ -395,8 +396,12 @@ function Confirmation({
         <dl className="mt-4 space-y-1.5 text-sm">
           <Row label="วันนัด" value={formatDateTh(clinicDate)} />
           <Row label="เวลา" value="08:00 น." />
-          <Row label="สถานที่" value="OPD 700 โรงพยาบาลศิริราช" />
+          <Row label="สถานที่" value={CONTACT.officeTh} />
           <Row label="พบแพทย์" value={fellowName} />
+          <Row
+            label="สอบถาม"
+            value={`โทร. ${CONTACT.phoneDisplay} (${CONTACT.hoursTh})`}
+          />
         </dl>
       </div>
 
@@ -420,7 +425,7 @@ function Confirmation({
         </h2>
         <ul className="space-y-2 text-zinc-700">
           <li>• ทำบัตรโรงพยาบาลศิริราชให้เรียบร้อยก่อนวันนัด</li>
-          <li>• มาถึง OPD 700 เวลา 08:00 น.</li>
+          <li>• มาถึง OPD 700 โลหิตวิทยา ตึกผู้ป่วยนอก ชั้น 7 เวลา 08:00 น.</li>
           <li>• นำเอกสารตาม checklist มาให้ครบ</li>
         </ul>
         <Link

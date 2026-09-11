@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BackButton } from "@/components/BackButton";
 import { DocumentLibrary } from "@/components/DocumentLibrary";
+import { Opd700Contact } from "@/components/Opd700Contact";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
@@ -408,12 +409,24 @@ export default async function ReferTypePage({
               เช็กวันนัดหรือเปิด/บันทึกรูปใบนัดซ้ำได้ที่นี่ — กรอกเลขอ้างอิง
               และเบอร์ที่ลงทะเบียนไว้
             </p>
+            <Opd700Contact className="mb-3" />
             <Link
               href="/booking"
               className="inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-5 py-3 font-medium text-blue-800 hover:bg-blue-100 transition-colors"
             >
               📅 เช็กวันนัด / เปิดใบนัด
             </Link>
+          </section>
+        )}
+
+        {/* กลุ่ม 2 ไม่มีผู้ป่วยเดินทางมา แต่แพทย์ต้นทางยังต้องรู้ว่าหน่วยอยู่ที่ไหน/โทรหาใคร
+            (คำขอผู้ใช้ 11 ก.ย. 2569: ให้ทั้งกลุ่ม 1-3 เห็นที่อยู่และเบอร์ OPD 700 เต็ม) */}
+        {type === "REGIMEN_CONSULT" && (
+          <section className="rounded-xl bg-white border border-zinc-200 p-5">
+            <h2 className="font-semibold text-zinc-900 mb-2">
+              ติดต่อหน่วยโลหิตวิทยา
+            </h2>
+            <Opd700Contact />
           </section>
         )}
 

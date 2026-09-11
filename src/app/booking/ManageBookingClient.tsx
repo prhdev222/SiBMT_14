@@ -189,7 +189,11 @@ function BookingPanel({
           {formatDateTh(booking.clinicDate)}
         </p>
         <dl className="mt-3 space-y-1.5 text-sm">
-          <Row label="สถานที่" value="OPD 700 โรงพยาบาลศิริราช" />
+          <Row label="สถานที่" value={CONTACT.officeTh} />
+          <Row
+            label="สอบถาม"
+            value={`โทร. ${CONTACT.phoneDisplay} (${CONTACT.hoursTh})`}
+          />
           {isReadinessVisit ? (
             <Row
               label="รายละเอียด"
