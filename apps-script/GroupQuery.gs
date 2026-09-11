@@ -546,15 +546,18 @@ function buildRecentReply_(limit) {
     const status = String(r['status'] || '');
     const open = TERMINAL_STATUSES.indexOf(status) === -1;
     const when = Utilities.formatDate(item.at, TIMEZONE, 'd/M HH:mm');
-    msg += (open ? '🟢 ' : '⚪ ') + r['referral_id'] + ' · กลุ่ม ' +
+    const id = String(r['referral_id'] || '').trim();
+    msg += (open ? '🟢 ' : '⚪ ') + id + ' · กลุ่ม ' +
       (GROUP_NUMBER[type] || '?') + ' · ' + when + '\n' +
       '   ' + (statusTh[status] || status || '-') +
       ' · ' + responsibleName_(r) + '\n' +
       '   🏥 ' + (r['referrer_org'] || '-') +
       (String(r['dent_unread'] || '').toLowerCase() === 'yes' ? ' · 💬 มีข้อความใหม่' : '') +
       '\n';
+    // เคสที่ยังเปิดอยู่ให้ลิงก์เข้าเคสตรง ๆ — ตอบจริงใน dashboard ไม่ใช่ในแชท
+    if (open) msg += '   ▶ ' + SITE_URL + '/dashboard/review#' + id + '\n';
   });
-  msg += '\n(พิมพ์ "เคสใหม่ 10" เพื่อดูมากขึ้น) · ' + DASHBOARD_URL;
+  msg += '\n(พิมพ์ "เคสใหม่ 10" เพื่อดูมากขึ้น)';
   return msg;
 }
 
@@ -588,9 +591,27 @@ function buildPendingReply_() {
   if (yellow > 0) text += '🟡 ใกล้ครบกำหนด ' + yellow + ' เคส\n';
   const normal = open.length - red - yellow;
   if (normal > 0) text += '⚪ ยังอยู่ในกรอบเวลา ' + normal + ' เคส\n';
-  text += '\nรอนานสุด ' + oldest + ' ชม.ทำการ';
+  text += 'รอนานสุด ' + oldest + ' ชม.ทำการ\n';
 
-  return text + '\n' + SITE_URL + '/dashboard/review';
+  // ลิงก์เข้าเคสตรง ๆ (ด่วนสุดก่อน) — การตอบจริงทำใน dashboard (มีอาจารย์รับรอง/สูตรยา)
+  // ไม่ใช่ในแชท จึงพาไปให้ถึงเคสในคลิกเดียว (คำขอผู้ใช้ 11 ก.ย. 2569)
+  open.sort(function (a, b) {
+    return (parseFloat(b['elapsed_business_hours']) || 0) -
+      (parseFloat(a['elapsed_business_hours']) || 0);
+  });
+  text += '\n';
+  open.slice(0, 8).forEach(function (r) {
+    const id = String(r['referral_id'] || '').trim();
+    const elapsed = parseFloat(r['elapsed_business_hours']) || 0;
+    const icon = elapsed >= ESCALATION.redHours ? '🔴'
+      : elapsed >= ESCALATION.yellowHours ? '🟡' : '⚪';
+    text += icon + ' ' + id + ' · ' + responsibleName_(r) + '\n' +
+      '   ' + SITE_URL + '/dashboard/review#' + id + '\n';
+  });
+  if (open.length > 8) {
+    text += '…และอีก ' + (open.length - 8) + ' เคส → ' + SITE_URL + '/dashboard/review\n';
+  }
+  return text.replace(/\n$/, '');
 }
 
 /**
