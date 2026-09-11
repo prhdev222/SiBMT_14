@@ -193,6 +193,16 @@ const LINE_RESEND_PATTERN = /^ส่งซ้ำ\s*(\d{1,2})$/;
 const LINE_CANCEL_WORDS = ['ยกเลิก', 'เลิก', 'cancel'];
 
 /**
+ * เมนูข้อความในแชท 1:1 — ทางเข้าที่ไม่พึ่ง rich menu
+ *
+ * LINE บนคอมพิวเตอร์ไม่แสดง rich menu และไม่แสดงปุ่ม quick reply (ข้อจำกัดของ LINE)
+ * คนที่ใช้คอมจึงเจอบอทที่ "ไม่มีอะไรให้กด" (รายงานผู้ใช้ 11 ก.ย. 2569)
+ * ข้อความธรรมดา + ลิงก์ แสดงได้ทุกอุปกรณ์ — พิมพ์ "เมนู" หรือตัวเลข 1-6 แทนการกดปุ่ม
+ */
+const LINE_MENU_PATTERN = /^(เมนู|menu|help|ช่วยเหลือ|เริ่ม|start|\?)$/i;
+const LINE_MENU_DIGIT = /^[1-6]$/;
+
+/**
  * หัวข้อที่เลือกได้ในโฟลว์ติดต่อเจ้าหน้าที่
  *
  * มีแค่สามเรื่องโดยเจตนา — สองข้อแรกคือปัญหาของระบบที่กลุ่มที่ 2 รับไม่ได้จริง ๆ
@@ -314,6 +324,13 @@ function handleLineEvent_(event) {
     return;
   }
 
+  // เมนูข้อความ — ทางเข้าสำหรับ LINE บนคอม (ไม่มี rich menu) และคนที่หาปุ่มไม่เจอ
+  if (LINE_MENU_PATTERN.test(text)) {
+    clearContactFlow_(id);
+    replyLineMessage_(event.replyToken, buildTextMenuReply_(''));
+    return;
+  }
+
   // ปุ่ม rich menu — ข้อความสำเร็จรูปที่ปุ่มส่งมา
   if (matchesButton_(text, LINE_BUTTON_UNSURE)) {
     clearContactFlow_(id);
@@ -373,6 +390,9 @@ function handleLineEvent_(event) {
     return;
   }
 
+  // ตัวเลข 1-6 จากเมนูข้อความ — หลังโฟลว์เท่านั้น (ในโฟลว์ตัวเลขคือคำตอบของคำถาม)
+  if (LINE_MENU_DIGIT.test(text) && handleMenuDigit_(event, text, id)) return;
+
   // ปุ่มลัดจากการ์ดคำตอบ: "จบเคส HEM-xxxx" / "ถามเพิ่ม HEM-xxxx"
   // ต้องมาก่อนการค้นรหัส เพราะข้อความมีรหัสอ้างอิงอยู่ด้วย
   if (handleReferrerCommand_(event, text, id)) return;
@@ -403,12 +423,12 @@ function handleLineEvent_(event) {
     // (ก่อนตอบ "ไม่แน่ใจ" — เพราะคนที่ผูกบัญชีแล้วส่วนใหญ่คือแพทย์ต้นทางจริง)
     if (handleReferrerLineMessage_(event, text, id)) return;
 
-    // คำถามลอย ๆ — ชี้ไปกลุ่มที่ 2 ไม่ส่งต่อให้แอดมิน
-    //
-    // เดิมตรงนี้ส่งเข้ากลุ่มแอดมินทุกข้อความ ซึ่งย้อนกลับไปหาปัญหาเดิมพอดี
-    // คือแอดมินต้องคอยตอบคำถามจิปาถะ ทั้งที่กลุ่มที่ 2 รับคำถามแบบนี้อยู่แล้ว
-    // และตอบได้ดีกว่าเพราะมีเลขที่อ้างอิง เข้าคิว และมีกรอบเวลา
-    replyLineMessage_(event.replyToken, buildUnsureGroupReply_());
+    // ข้อความที่บอทไม่รู้จัก — ตอบเมนูข้อความ (แสดงได้ทุกอุปกรณ์ รวม LINE บนคอม)
+    // พร้อมบรรทัดชี้ว่าคำถามทางคลินิกให้ส่งผ่านกลุ่มที่ 2 (ไม่ส่งต่อให้แอดมิน —
+    // กลุ่มที่ 2 มีเลขที่อ้างอิง เข้าคิว และมีกรอบเวลา แอดมินไม่มี)
+    replyLineMessage_(event.replyToken, buildTextMenuReply_(
+      'ยังไม่เข้าใจข้อความนี้ครับ — ถ้าเป็นคำถามทางคลินิกหรือไม่แน่ใจว่าเข้ากลุ่มไหน ' +
+      'ให้ส่งผ่านกลุ่มที่ 2 (ข้อ 2)'));
     return;
   }
 
@@ -551,6 +571,52 @@ function matchesButton_(text, keyword) {
  * อยู่แล้ว และตอบได้ดีกว่าเพราะคำถามจะได้เลขที่อ้างอิง เข้าคิว
  * และมีแพทย์ประจำบ้านตอบตามกรอบเวลา ต่างจากการทักแอดมินซึ่งไม่มีอะไรรับประกัน
  */
+/** เมนูข้อความ — ใช้เป็นคำตอบของ "เมนู" และเป็น fallback ของข้อความที่บอทไม่รู้จัก */
+function buildTextMenuReply_(intro) {
+  return (
+    (intro ? intro + '\n\n' : '') +
+    '🩸 ระบบส่งต่อผู้ป่วยโลหิตวิทยา ศิริราช\n' +
+    'พิมพ์ตัวเลข หรือกดลิงก์\n' +
+    '────────────────\n' +
+    '1  นัดพบแพทย์ปลูกถ่ายฯ (กลุ่ม 1)\n' +
+    '   ' + SITE_URL + '/refer/transplant\n' +
+    '2  ขอความเห็นสูตรยาเคมี / ถามก่อนส่งตัว (กลุ่ม 2)\n' +
+    '   ' + SITE_URL + '/refer/regimen-consult\n' +
+    '3  ขอส่งตัวมาให้ยาเคมี/ยากดภูมิ (กลุ่ม 3)\n' +
+    '   ' + SITE_URL + '/refer/chemo-admission\n' +
+    '4  Refer ผู้ป่วยนอกเรื่องอื่น (กลุ่ม 4)\n' +
+    '   ' + SITE_URL + '/refer/general\n' +
+    '5  ติดต่อเจ้าหน้าที่ / แอดมิน\n' +
+    '6  เคสของฉัน (เช็คสถานะ · ดูคำตอบ)\n' +
+    '────────────────\n' +
+    'หรือพิมพ์เลขเคส เช่น HEM-20260910-0002 เพื่อดูสถานะ\n' +
+    'ใช้ LINE บนคอมพิวเตอร์จะไม่เห็นเมนูด้านล่าง — พิมพ์ "เมนู" ได้ทุกเมื่อ\n\n' +
+    'ทีมภายใน: เข้า dashboard ที่ ' + SITE_URL + '/login (กด "เข้าด้วย LINE")'
+  );
+}
+
+/** ตัวเลข 1-6 จากเมนูข้อความ → ทำเหมือนกดปุ่ม rich menu ช่องนั้น · คืน true ถ้าจัดการแล้ว */
+function handleMenuDigit_(event, digit, userId) {
+  const pages = {
+    '1': ['🧬 กลุ่มที่ 1 — นัดพบแพทย์ปลูกถ่ายฯ', '/refer/transplant'],
+    '2': ['💊 กลุ่มที่ 2 — ขอความเห็นสูตรยาเคมี / ถามก่อนส่งตัว', '/refer/regimen-consult'],
+    '3': ['🏥 กลุ่มที่ 3 — ขอส่งตัวมาให้ยาเคมี/ยากดภูมิ', '/refer/chemo-admission'],
+    '4': ['🌐 กลุ่มที่ 4 — Refer ผู้ป่วยนอกเรื่องอื่น', '/refer/general'],
+  };
+  if (pages[digit]) {
+    clearContactFlow_(userId);
+    replyLineMessage_(event.replyToken,
+      pages[digit][0] + '\n' +
+      'เปิดลิงก์นี้เพื่อดูสิ่งที่ต้องเตรียมและปุ่มส่งข้อมูล\n' +
+      SITE_URL + pages[digit][1] + '\n\n' +
+      'พิมพ์ "เมนู" เพื่อกลับเมนูหลัก');
+    return true;
+  }
+  if (digit === '5') { startContactFlow_(event, userId); return true; }
+  if (digit === '6') { startMyCasesFlow_(event, userId); return true; }
+  return false;
+}
+
 function buildUnsureGroupReply_() {
   return [
     {
