@@ -6,6 +6,9 @@
  * ⚠️ print:hidden — หน้าที่ออกแบบมาให้พิมพ์ (หนังสือรับทราบ, คลังคำตอบ)
  * ไม่ควรมีบรรทัดเครดิตติดไปบนกระดาษที่เข้าแฟ้มผู้ป่วยหรือใช้ present
  */
+import Link from "next/link";
+import { CREDITS } from "@/lib/config";
+
 export function SiteFooter() {
   return (
     <footer className="border-t border-zinc-200 py-4 px-4 text-center text-[11px] leading-relaxed text-zinc-400 print:hidden">
@@ -23,9 +26,24 @@ export function SiteFooter() {
         </span>
         <span>ไม่ใช่ระบบวินิจฉัยโรคหรือเวชระเบียนหลัก</span>
       </p>
-      <p className="mt-1.5">
-        Built with <span aria-label="ความตั้งใจ">❤️</span> for Siriraj
-        Hematology · © 2026 Directed by Uradev
+      {/* เครดิต — อาจารย์เป็นผู้ริเริ่มและกำกับ ต้องเห็นชื่อบน footer เลย ไม่ซ่อนหลังลิงก์
+          (ความน่าเชื่อถือกับแพทย์ต้นทาง) รายละเอียดเต็มอยู่หน้า /about · ชื่อแก้ที่ CREDITS */}
+      <p className="mt-1.5 flex flex-col sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-2">
+        <span>
+          {CREDITS.directorsLabelTh} {CREDITS.directors.join(", ")}
+        </span>
+        <span aria-hidden="true" className="hidden sm:inline">
+          ·
+        </span>
+        <span>
+          {CREDITS.developerLabelTh} {CREDITS.developer} · © {CREDITS.yearTh}
+        </span>
+        <span aria-hidden="true" className="hidden sm:inline">
+          ·
+        </span>
+        <Link href="/about" className="text-blue-600 hover:underline">
+          เกี่ยวกับระบบ
+        </Link>
       </p>
     </footer>
   );
