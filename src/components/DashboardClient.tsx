@@ -161,6 +161,16 @@ export function DashboardClient({
     setAssignSaving(false);
   }
 
+  // เคสล่าสุด — ไม่ผ่านตัวกรองใด ๆ โดยเจตนา (ตัวกรองมีไว้ค้น ส่วนนี้มีไว้เห็นทันที)
+  const [recentLimit, setRecentLimit] = useState(5);
+  const recent = useMemo(
+    () =>
+      [...referrals]
+        .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
+        .slice(0, recentLimit),
+    [referrals, recentLimit],
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     // เห็นเคสที่ปิดแล้วเมื่อกดสวิตช์ หรือเมื่อเลือกกรองสถานะ "ปิดเคสแล้ว" ตรง ๆ
@@ -321,6 +331,70 @@ export function DashboardClient({
             </button>
           );
         })}
+      </div>
+
+      {/* เคสล่าสุด — "เมื่อกี้มีอะไรเข้ามา" โดยไม่ต้องตั้งตัวกรอง (คำขอผู้ใช้ 11 ก.ย. 2569)
+          ทุกกลุ่ม ทุกสถานะ เรียงจากใหม่ไปเก่า · กดแล้วเปิดรายละเอียดเคสด้านล่าง */}
+      <div className="rounded-xl bg-white border border-zinc-200 p-4">
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <h2 className="text-sm font-semibold text-zinc-900">
+            <span className="mr-1" aria-hidden>🆕</span>
+            เคสที่เข้ามาล่าสุด
+          </h2>
+          <button
+            type="button"
+            onClick={() => setRecentLimit((n) => (n >= 15 ? 5 : n + 5))}
+            className="text-xs text-blue-600 hover:underline"
+          >
+            {recentLimit >= 15 ? "ย่อ" : `ดูเพิ่ม (${recentLimit} → ${recentLimit + 5})`}
+          </button>
+        </div>
+        {recent.length === 0 ? (
+          <p className="text-sm text-zinc-500">ยังไม่มีเคสในระบบ</p>
+        ) : (
+          <ul className="divide-y divide-zinc-100">
+            {recent.map((r) => {
+              const meta = REFERRAL_TYPE_META[r.referralType];
+              const st = statusOf(r);
+              const open = !isTerminal(st);
+              return (
+                <li key={r.referralId}>
+                  <button
+                    type="button"
+                    onClick={() => setSelected(r)}
+                    className="w-full flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-left text-sm hover:bg-zinc-50 rounded-lg px-1"
+                  >
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ${open ? "bg-green-500" : "bg-zinc-300"}`}
+                      title={open ? "ยังเปิดอยู่" : "จบแล้ว"}
+                    />
+                    <span className="font-medium text-zinc-900 whitespace-nowrap">
+                      {r.referralId}
+                    </span>
+                    <span className="text-zinc-500 whitespace-nowrap">
+                      {meta.emoji} กลุ่ม {meta.groupNumber}
+                    </span>
+                    <span className="text-zinc-500 whitespace-nowrap tabular-nums">
+                      {r.submittedAt}
+                    </span>
+                    <span className="text-zinc-600 truncate">{r.referrerOrg}</span>
+                    <span className="ml-auto flex items-center gap-2">
+                      {r.dentUnread && (
+                        <span className="text-xs text-blue-600" title="มีข้อความใหม่จากแพทย์ต้นทาง">
+                          💬
+                        </span>
+                      )}
+                      <span className="text-xs text-zinc-500 whitespace-nowrap">
+                        {assignedOf(r) ?? "ยังไม่มอบหมาย"}
+                      </span>
+                      <Badge label={STATUS_LABEL_TH[st]} colorClass={STATUS_COLOR[st]} />
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
 
       {/* filters */}
