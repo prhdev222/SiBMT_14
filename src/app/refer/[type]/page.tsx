@@ -430,7 +430,9 @@ export default async function ReferTypePage({
           </section>
         )}
 
-        <DocumentLibrary documents={documents} groupNumber={meta.groupNumber} />
+        <div id="documents" className="scroll-mt-4">
+          <DocumentLibrary documents={documents} groupNumber={meta.groupNumber} />
+        </div>
       </main>
 
       {/*
@@ -485,6 +487,30 @@ function BookSlotCard() {
       >
         ดูคิวว่างและเลือกวันนัด
       </Link>
+
+      {/* งานรองที่คนมาหน้านี้ทำบ่อยรองจากจอง — วางไว้ใกล้ปุ่มหลัก ไม่ต้องเลื่อนหา
+          (คำขอผู้ใช้ 11 ก.ย. 2569) เป็นปุ่มขอบบาง ไม่แย่งสายตาจากปุ่มจอง */}
+      <div className="mt-4 flex flex-wrap gap-2 border-t border-zinc-100 pt-4">
+        <Link
+          href="/booking"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm font-medium text-zinc-800 hover:border-blue-400 hover:bg-blue-50 transition-colors"
+        >
+          📅 จัดการนัด
+          <span className="text-zinc-500 font-normal">เลื่อน · ยกเลิก · ใบนัด</span>
+        </Link>
+        <Link
+          href="/consent"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm font-medium text-zinc-800 hover:border-blue-400 hover:bg-blue-50 transition-colors"
+        >
+          🖨️ พิมพ์หนังสือรับทราบ
+        </Link>
+        <a
+          href="#documents"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm font-medium text-zinc-800 hover:border-blue-400 hover:bg-blue-50 transition-colors"
+        >
+          📚 เอกสาร / แบบฟอร์ม
+        </a>
+      </div>
 
       <p className="text-sm text-zinc-600 mt-4">
         สำหรับโรงพยาบาลเครือข่าย SiAML: ติดต่อเรื่องส่งต่อปลูกถ่ายฯ (ทุกโรค) ผ่าน{" "}
