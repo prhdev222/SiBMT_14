@@ -43,6 +43,9 @@ const GROUP_QUERY_DUTY =
 /** เคสที่มีข้อความใหม่จากแพทย์ต้นทาง — "ข้อความใหม่" "ข้อความ" "แชท" */
 const GROUP_QUERY_UNREAD = /^(ข้อความใหม่|ข้อความ|แชท)\s*$/;
 
+/** เคสที่เพิ่งส่งเข้ามาล่าสุด (ทุกกลุ่ม) — "เคสใหม่" "ล่าสุด" "เคสใหม่ 10" */
+const GROUP_QUERY_RECENT = /^(เคสใหม่|ล่าสุด|เคสล่าสุด|มาใหม่)\s*(\d{1,2})?\s*$/;
+
 
 /**
  * ปุ่มทั้งหมดที่มี — ⚠️ template แบบปุ่มรับได้มากสุด 4 ปุ่ม ป้ายยาวได้ 20 ตัวอักษร
@@ -145,6 +148,14 @@ function handleGroupQuery_(event, text, sourceId) {
     return true;
   }
 
+  const recent = text.match(GROUP_QUERY_RECENT);
+  if (recent) {
+    replyOrReport_(event.replyToken, function () {
+      return buildRecentReply_(parseInt(recent[2], 10) || 5);
+    });
+    return true;
+  }
+
   const upcoming = text.match(GROUP_QUERY_FELLOW_UPCOMING);
   if (upcoming) {
     const days = parseInt(upcoming[1], 10) || 7;
@@ -237,6 +248,9 @@ function answerGroupQuery_(text, opts) {
   if (GROUP_QUERY_PENDING.test(text)) return buildPendingReply_();
   if (GROUP_QUERY_UNREAD.test(text)) return buildUnreadReply_();
 
+  const recent = text.match(GROUP_QUERY_RECENT);
+  if (recent) return buildRecentReply_(parseInt(recent[2], 10) || 5);
+
   const upcoming = text.match(GROUP_QUERY_FELLOW_UPCOMING);
   if (upcoming) return buildFellowUpcomingReply_(parseInt(upcoming[1], 10) || 7);
 
@@ -308,7 +322,8 @@ function buildMenuText_(actions, opts) {
 
   text += '\n📋 เคส\n' +
     '  เคสค้าง        เคสกลุ่ม 2/3 ที่ยังไม่ตอบ\n' +
-    '  ข้อความใหม่    เคสที่แพทย์ต้นทางส่งเอกสาร/ข้อความมา\n' +
+    '  เคสใหม่        เคสที่เพิ่งส่งเข้ามาล่าสุด 5 เคส (เคสใหม่ 10 = 10 เคส)\n' +
+    '  ข้อความใหม่    เคสที่แพทย์ต้นทางส่งเอกสาร/ข้อความเพิ่มในห้องเคส\n' +
     '  <ชื่อ resident>   เคสค้างของตัวเอง + เวรของตัวเอง\n';
 
   text += '\n📅 นัด (กลุ่ม 1 ปลูกถ่าย)\n' +
@@ -502,6 +517,44 @@ function buildUnreadReply_() {
     msg += '  ...และอีก ' + (unread.length - 15) + ' เคส\n';
   }
   msg += '\nเปิดอ่าน/ตอบใน dashboard:\n' + DASHBOARD_URL;
+  return msg;
+}
+
+/**
+ * เคสที่เพิ่งส่งเข้ามาล่าสุด ทุกกลุ่ม ทุกสถานะ — เรียงจากใหม่ไปเก่า
+ * ตอบคำถาม "เมื่อกี้มีใครส่งอะไรมา" โดยไม่ต้องเปิด dashboard
+ * ในแชทมีแค่ เวลา·เลขเคส·กลุ่ม·สถานะ·ผู้รับผิดชอบ·รพ.ต้นทาง (ไม่มีชื่อ/HN — PDPA-003)
+ */
+function buildRecentReply_(limit) {
+  limit = Math.max(1, Math.min(limit || 5, 20));
+  const rows = readRows_(getSheet_(SHEETS.referrals))
+    .filter(function (r) { return String(r['referral_id'] || '').trim(); })
+    .map(function (r) {
+      return { r: r, at: toDate_(r['submitted_at']) || new Date(0) };
+    })
+    .sort(function (a, b) { return b.at - a.at; })
+    .slice(0, limit);
+
+  const header = '🆕 เคสล่าสุด ' + rows.length + ' เคส\n────────────────\n';
+  if (rows.length === 0) return header + 'ยังไม่มีเคสในระบบ';
+
+  const statusTh = typeof LINE_STATUS_LABEL_TH !== 'undefined' ? LINE_STATUS_LABEL_TH : {};
+  let msg = header;
+  rows.forEach(function (item) {
+    const r = item.r;
+    const type = String(r['referral_type'] || '');
+    const status = String(r['status'] || '');
+    const open = TERMINAL_STATUSES.indexOf(status) === -1;
+    const when = Utilities.formatDate(item.at, TIMEZONE, 'd/M HH:mm');
+    msg += (open ? '🟢 ' : '⚪ ') + r['referral_id'] + ' · กลุ่ม ' +
+      (GROUP_NUMBER[type] || '?') + ' · ' + when + '\n' +
+      '   ' + (statusTh[status] || status || '-') +
+      ' · ' + responsibleName_(r) + '\n' +
+      '   🏥 ' + (r['referrer_org'] || '-') +
+      (String(r['dent_unread'] || '').toLowerCase() === 'yes' ? ' · 💬 มีข้อความใหม่' : '') +
+      '\n';
+  });
+  msg += '\n(พิมพ์ "เคสใหม่ 10" เพื่อดูมากขึ้น) · ' + DASHBOARD_URL;
   return msg;
 }
 

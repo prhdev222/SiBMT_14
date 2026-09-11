@@ -24,6 +24,7 @@ const TELEGRAM_CHAT_BY_AUDIENCE = {
 const TELEGRAM_SLASH_COMMANDS = {
   menu: 'เมนู',
   pending: 'เคสค้าง',
+  recent: 'เคสใหม่',
   unread: 'ข้อความใหม่',
   today: 'นัดวันนี้',
   tomorrow: 'นัดพรุ่งนี้',
@@ -338,6 +339,7 @@ function isTelegramCommandText_(text) {
   if (/^[\/#]/.test(text)) return true;
   if (/^(ตอบ\s+(HEM-|\d)|มอบ\s|ผูกกลุ่ม|รหัสผูกกลุ่ม|เปลี่ยนรหัสผูกกลุ่ม)/i.test(text)) return true;
   return GROUP_QUERY_MENU.test(text) || GROUP_QUERY_PENDING.test(text) ||
+    GROUP_QUERY_RECENT.test(text) ||
     GROUP_QUERY_UNREAD.test(text) || GROUP_QUERY_DUTY.test(text) ||
     GROUP_QUERY_FELLOW_UPCOMING.test(text) || GROUP_QUERY_APPOINTMENT.test(text);
 }
