@@ -7,6 +7,8 @@ Web portal + staff dashboard สำหรับ workflow การส่งต�
 | เอกสาร | เนื้อหา |
 | --- | --- |
 | [docs/HANDOVER.md](docs/HANDOVER.md) | **👈 เริ่มที่นี่** — คู่มือส่งมอบ: ระบบมีอะไร อยู่ที่ไหน พังแล้วดูตรงไหน และทำไมถึงออกแบบแบบนี้ |
+| [docs/ADMIN_GUIDE.md](docs/ADMIN_GUIDE.md) | **คู่มือใช้งานและดูแลระบบ** — วิธีใช้ทุกช่องทาง คำสั่งบอท งานประจำแอดมิน ซ่อมบำรุง ไล่อาการเมื่อพัง |
+| [docs/DATA_DICTIONARY.md](docs/DATA_DICTIONARY.md) | **Data dictionary** — ทุกแท็บ ทุกคอลัมน์ config / Script Properties / env / สถานะ / ค่าคงที่ |
 | [docs/SRS.md](docs/SRS.md) | Software Requirements Specification (v0.3) |
 | [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md) | **คู่มือติดตั้งทีละขั้น** — เริ่มที่นี่เมื่อจะลงมือสร้างจริง |
 | [docs/FORMS_AND_SHEETS.md](docs/FORMS_AND_SHEETS.md) | รายละเอียดคำถามในฟอร์มและโครงสร้างชีต (ใช้คู่กับคู่มือติดตั้ง) |
