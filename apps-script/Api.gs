@@ -256,6 +256,13 @@ function doPost(e) {
       return jsonResponse_({ ok: true, data: setConfigValue_(body.payload || {}) });
     }
 
+    // ผูก LINE ↔ เบอร์ จากเว็บ หลังแพทย์ต้นทางยืนยันรหัสทางอีเมลแล้ว (Hemato Bot)
+    // เว็บเป็นคนตรวจรหัส (verifyCodeAction) ที่นี่แค่เขียน line_links — token ของเว็บ
+    // คือสิ่งที่กันคนนอกเรียกตรง ๆ (ตรวจไปแล้วก่อนถึงบรรทัดนี้)
+    if (body.action === 'linkLineFromWeb') {
+      return jsonResponse_({ ok: true, data: linkLineFromWeb_(body.payload || {}) });
+    }
+
     if (body.action === 'postReferrerMessage') {
       return jsonResponse_({ ok: true, data: postReferrerMessage_(body.payload || {}) });
     }
@@ -867,6 +874,17 @@ function updateStatus_(payload) {
  * ตั้งค่า config จากหน้าเว็บ (เช่น สวิตช์เปิด/ปิด LINE push)
  * จำกัดเฉพาะ key ที่อนุญาต กันแก้ config อื่นมั่วจากเว็บ
  */
+/** เขียน line_links จากเว็บ — ใช้ตัวเขียนเดียวกับโฟลว์ "ผูกบัญชี" ใน LINE (LineWebhook.gs) */
+function linkLineFromWeb_(payload) {
+  const userId = String(payload.lineUserId || '').trim();
+  const phone = String(payload.phone || '').replace(/\D/g, '');
+  const email = String(payload.email || '').trim();
+  if (!/^U[0-9a-f]{32}$/i.test(userId)) throw new Error('LINE userId ไม่ถูกต้อง');
+  if (phone.length < 9) throw new Error('เบอร์โทรไม่ถูกต้อง');
+  saveLineLink_(userId, phone, email);
+  return { ok: true };
+}
+
 function setConfigValue_(payload) {
   const key = String(payload.key || '').trim();
   const value = String(payload.value || '').trim();

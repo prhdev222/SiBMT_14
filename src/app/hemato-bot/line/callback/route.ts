@@ -6,6 +6,8 @@ import {
 } from "@/lib/line-login";
 import { loadLineLink } from "@/lib/referral-repository";
 import {
+  BOT_LINE_PENDING_COOKIE,
+  BOT_LINE_PENDING_MAX_AGE,
   BOT_VERIFIED_COOKIE,
   BOT_VERIFIED_MAX_AGE,
   signBotPayload,
@@ -92,6 +94,24 @@ export async function GET(request: Request) {
       sameSite: "lax",
       path: "/",
       maxAge: BOT_VERIFIED_MAX_AGE,
+    });
+  } else {
+    // ยังไม่เคยผูก — จำ LINE นี้ไว้ 15 นาที ให้ยืนยันเบอร์ด้วยรหัสอีเมลบนเว็บต่อได้เลย
+    // ไม่ต้องเด้งกลับไปพิมพ์ "ผูกบัญชี" ใน LINE (คำขอผู้ใช้ 11 ก.ย. 2569)
+    // เก็บแค่ userId (ไม่มีชื่อ/รูป) และหมดอายุเร็ว — ใช้ครั้งเดียวใน verifyCodeAction
+    const pending = await signBotPayload(
+      {
+        lineUserId: profile.userId,
+        exp: Date.now() + BOT_LINE_PENDING_MAX_AGE * 1000,
+      },
+      secret,
+    );
+    response.cookies.set(BOT_LINE_PENDING_COOKIE, pending, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: BOT_LINE_PENDING_MAX_AGE,
     });
   }
 

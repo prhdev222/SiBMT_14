@@ -16,6 +16,7 @@ import { cookies } from "next/headers";
 import {
   BOT_CODE_COOKIE,
   BOT_CODE_MAX_AGE,
+  BOT_LINE_PENDING_COOKIE,
   BOT_VERIFIED_COOKIE,
   BOT_VERIFIED_MAX_AGE,
   readBotPayload,
@@ -36,7 +37,12 @@ import {
   loadRegimens,
 } from "@/lib/referral-repository";
 import { allowBotCode, allowBotLookup } from "@/lib/rate-limit";
-import { resendAdviceEmail, sendBotCodeEmail } from "@/lib/apps-script-api";
+import {
+  isBookingConfigured,
+  linkLineFromWeb,
+  resendAdviceEmail,
+  sendBotCodeEmail,
+} from "@/lib/apps-script-api";
 import { phoneKey } from "@/lib/phone-key";
 
 /** อ่านตอนถูกเรียก ไม่ใช่ตอนโหลดโมดูล — เหตุผลเดียวกับ apps-script-api.ts */
@@ -182,7 +188,7 @@ function scheduleBotCodeEmail(email: string, code: string): void {
 
 export async function verifyCodeAction(
   code: string,
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; linkedLine?: boolean }> {
   if (!(await allowBotLookup())) {
     return { ok: false, error: "ยืนยันรหัสบ่อยเกินไป กรุณารออีกสักครู่" };
   }
@@ -216,7 +222,33 @@ export async function verifyCodeAction(
     path: "/",
   });
   jar.delete(BOT_CODE_COOKIE);
-  return { ok: true };
+
+  // เพิ่ง LINE login มาแต่ยังไม่เคยผูก → รหัสถูก = เจ้าของเบอร์จริง → ผูก LINE นี้ให้เลย
+  // ครั้งหน้ากด "เข้าด้วย LINE" จะเห็นคำตอบทันที ไม่ต้องขอรหัสอีก (11 ก.ย. 2569)
+  let linkedLine = false;
+  const pending = await readBotPayload<{ lineUserId: string; exp: number }>(
+    jar.get(BOT_LINE_PENDING_COOKIE)?.value,
+    secret(),
+  );
+  if (pending?.lineUserId) {
+    jar.delete(BOT_LINE_PENDING_COOKIE);
+    if (isBookingConfigured()) {
+      try {
+        const email =
+          latestEmailForPhone(await loadRawReferralRows(), payload.phone) ?? "";
+        await linkLineFromWeb({
+          lineUserId: pending.lineUserId,
+          phone: payload.phone,
+          email,
+        });
+        linkedLine = true;
+      } catch (error) {
+        // ผูกไม่สำเร็จไม่ควรทำให้การยืนยันตัวตน (ซึ่งผ่านแล้ว) ล้มไปด้วย
+        console.error("[hemato-bot] ผูก LINE จากเว็บไม่สำเร็จ: " + String(error));
+      }
+    }
+  }
+  return { ok: true, linkedLine };
 }
 
 /* ------------------------------------------------------------------ */

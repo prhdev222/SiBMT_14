@@ -39,6 +39,7 @@ import {
   CASES_NOT_FOUND_TEXT,
   CODE_EXAMPLE_PLACEHOLDER,
   CODE_SENT_TEXT,
+  CODE_VERIFIED_LINKED_TEXT,
   CODE_VERIFIED_TEXT,
   EXPIRED_CODE_MARKER,
   LINE_REDIRECT_TEXT,
@@ -165,8 +166,9 @@ export function HematoBotWidget() {
       setOpen(true);
       void refreshAnswers();
     } else if (bot === "unlinked") {
+      // ถามเบอร์ต่อทันที — ยืนยันรหัสผ่านแล้ว verifyCodeAction จะผูก LINE ให้เอง
       setMessages([lineUnlinkedMessage()]);
-      setStep("menu");
+      setStep("answers.phone");
       setOpen(true);
     } else {
       const text = BOT_PARAM_MESSAGES[bot];
@@ -441,7 +443,10 @@ export function HematoBotWidget() {
       return;
     }
 
-    setMessages((prev) => [...prev, { from: "bot", text: CODE_VERIFIED_TEXT }]);
+    setMessages((prev) => [
+      ...prev,
+      { from: "bot", text: result.linkedLine ? CODE_VERIFIED_LINKED_TEXT : CODE_VERIFIED_TEXT },
+    ]);
     await refreshAnswers();
   }
 

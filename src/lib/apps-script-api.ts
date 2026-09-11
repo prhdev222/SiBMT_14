@@ -503,6 +503,15 @@ export async function setConfig(payload: {
   return callAppsScript("setConfig", payload);
 }
 
+/** ผูก LINE userId กับเบอร์ที่ยืนยันรหัสอีเมลแล้ว (Hemato Bot — หลัง LINE login) */
+export async function linkLineFromWeb(payload: {
+  lineUserId: string;
+  phone: string;
+  email: string;
+}): Promise<{ ok: boolean }> {
+  return callAppsScript("linkLineFromWeb", payload);
+}
+
 /* ------------------------------------------------------------------ */
 /* บทสนทนาต่อเนื่องต่อเคส (Case Conversation)                          */
 /* ------------------------------------------------------------------ */

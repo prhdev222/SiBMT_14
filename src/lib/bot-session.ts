@@ -9,6 +9,12 @@ export const BOT_VERIFIED_COOKIE = "sibmt_bot_verified";
 export const BOT_CODE_COOKIE = "sibmt_bot_code";
 export const BOT_VERIFIED_MAX_AGE = 30 * 24 * 60 * 60; // วินาที
 export const BOT_CODE_MAX_AGE = 10 * 60;
+/**
+ * LINE login สำเร็จแต่ยังไม่เคยผูกเบอร์ — เก็บ LINE userId ไว้ชั่วคราวระหว่างที่
+ * แพทย์ยืนยันเบอร์ด้วยรหัสทางอีเมลบนเว็บ พอยืนยันผ่านค่อยผูกให้ (11 ก.ย. 2569)
+ */
+export const BOT_LINE_PENDING_COOKIE = "sibmt_bot_line_pending";
+export const BOT_LINE_PENDING_MAX_AGE = 15 * 60;
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
