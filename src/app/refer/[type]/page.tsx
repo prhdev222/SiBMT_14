@@ -95,7 +95,17 @@ export default async function ReferTypePage({
 
   // กลุ่มที่ทางไปต่อคือ Google Form — ปุ่มอยู่บนสุด + แถบลอยบนมือถือ
   const usesForm = waitsForTeam;
-  const hasStickyCta = usesForm && Boolean(formUrl);
+  const isTransplant = type === "TRANSPLANT_APPOINTMENT";
+  // ทางไปต่อหลักของหน้า — โผล่ซ้ำเป็นแถบลอยขอบล่างบนมือถือ
+  const stickyCta =
+    usesForm && formUrl
+      ? { href: formUrl, label: `กรอกแบบฟอร์มกลุ่มที่ ${meta.groupNumber} →`, external: true }
+      : isTransplant
+        ? { href: "/book/transplant", label: "ดูคิวว่างและเลือกวันนัด →", external: false }
+        : null;
+  const hasStickyCta = stickyCta !== null;
+  // กลุ่มที่มีปุ่มไปต่อชัดเจน (ฟอร์ม / จองคิว) พับเช็กลิสต์ไว้ใต้ปุ่ม
+  const collapseChecklist = usesForm || isTransplant;
   const checklistCount =
     checklist.forReferrer.length + checklist.forPatient.length;
   // สรุปสั้น ๆ ว่าต้องมีอะไรในมือ — ให้เห็นที่ปุ่มเลย ไม่ต้องกางเช็กลิสต์
@@ -172,6 +182,15 @@ export default async function ReferTypePage({
               </p>
             )}
           </section>
+        )}
+
+        {/* กลุ่ม 1: ปุ่มจองคิวขึ้นบนสุดเช่นกัน แล้วตามด้วยเกณฑ์ปลูกถ่าย
+            (เกณฑ์ยังกางไว้ เพราะเป็นตัวตัดสินว่าควรจองหรือไม่ ไม่ใช่ของประกอบ) */}
+        {isTransplant && (
+          <>
+            <BookSlotCard />
+            <IndicationCriteriaCard indications={indications} />
+          </>
         )}
 
         {/* กรอบเวลาตอบกลับ */}
@@ -271,7 +290,7 @@ export default async function ReferTypePage({
           เช็กลิสต์ — กลุ่มที่กรอกฟอร์มพับไว้ใต้ปุ่ม เปิดดูเมื่ออยากรู้ว่าต้องเตรียมอะไร
           กลุ่ม 1/4 ยังกางไว้ เพราะเช็กลิสต์ "คือ" ขั้นตอนของกลุ่มนั้น ไม่ใช่ของประกอบ
         */}
-        {usesForm ? (
+        {collapseChecklist ? (
           checklistCount > 0 && (
             <details className="group rounded-xl bg-white border border-zinc-200 open:shadow-sm">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5 [&::-webkit-details-marker]:hidden">
@@ -329,17 +348,8 @@ export default async function ReferTypePage({
           </>
         )}
 
-        {type === "TRANSPLANT_APPOINTMENT" && (
-          <IndicationCriteriaCard indications={indications} />
-        )}
-
-        {/* กลุ่มที่ 1 จองคิวเองได้ กลุ่มที่ 4 ไปใช้ระบบนัดหมายของโรงพยาบาล
-            (กลุ่ม 2/3 ปุ่มส่งฟอร์มอยู่บนสุดของหน้าแล้ว) */}
-        {type === "GENERAL_OPD" ? (
-          <HospitalAppointmentCard />
-        ) : type === "TRANSPLANT_APPOINTMENT" ? (
-          <BookSlotCard />
-        ) : null}
+        {/* กลุ่มที่ 4 ไปใช้ระบบนัดหมายของโรงพยาบาล (กลุ่ม 1-3 ปุ่มไปต่ออยู่บนสุดแล้ว) */}
+        {type === "GENERAL_OPD" && <HospitalAppointmentCard />}
 
         {/*
           เบอร์ธุรการแสดงเฉพาะกลุ่มที่ 1 และเฉพาะเรื่องวันที่ผู้ป่วยมาถึง
@@ -415,16 +425,25 @@ export default async function ReferTypePage({
         ไม่ว่าเลื่อนไปอ่านตรงไหน ทางไปต่อยังกดได้ทุกเมื่อ
         เว้นขวาไว้ให้ปุ่ม Hemato Bot กับตัวปรับขนาดตัวหนังสือที่ลอยอยู่มุมขวาล่าง
       */}
-      {hasStickyCta && formUrl && (
+      {stickyCta && (
         <div className="sm:hidden fixed inset-x-0 bottom-0 z-30 border-t border-blue-700/20 bg-white/95 backdrop-blur px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pr-28 print:hidden">
-          <a
-            href={formUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-white text-sm font-bold shadow-md shadow-blue-600/25 active:bg-blue-700"
-          >
-            กรอกแบบฟอร์มกลุ่มที่ {meta.groupNumber} →
-          </a>
+          {stickyCta.external ? (
+            <a
+              href={stickyCta.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-white text-sm font-bold shadow-md shadow-blue-600/25 active:bg-blue-700"
+            >
+              {stickyCta.label}
+            </a>
+          ) : (
+            <Link
+              href={stickyCta.href}
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-white text-sm font-bold shadow-md shadow-blue-600/25 active:bg-blue-700"
+            >
+              {stickyCta.label}
+            </Link>
+          )}
         </div>
       )}
     </div>
