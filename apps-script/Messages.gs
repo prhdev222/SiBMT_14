@@ -288,10 +288,23 @@ function reopenCaseByToken_(payload) {
 /** ตั้งเคสกลับเป็น "รอตรวจ" + ล้างเวลาปิด + บันทึก log (ใช้ทั้ง web และ LINE) */
 function reopenReferralRow_(sheet, map, row) {
   const prev = String(row['status'] || '').trim();
+  const referralId = String(row['referral_id'] || '').trim();
   setCell_(sheet, map, row._row, 'status', 'Pending Review');
   setCell_(sheet, map, row._row, 'closed_at', '');
-  logStatusChange_(row['referral_id'], prev, 'Pending Review', 'referrer',
+  logStatusChange_(referralId, prev, 'Pending Review', 'referrer',
     'แพทย์ต้นทางเปิดเคสใหม่เพื่อถามเพิ่ม');
+  // แจ้งทีมทาง Telegram (ฟรี) — ไม่มี LINE push แล้ว ถ้าไม่แจ้ง เคสจะโผล่กลับใน
+  // เคสค้างเงียบ ๆ โดยไม่มีใครรู้ว่าทำไม
+  try {
+    sendTelegram_(
+      '🔓 แพทย์ต้นทางเปิดเคสกลับ\n' + referralId +
+      (prev ? '  (เดิม: ' + prev + ')' : '') + '\n' +
+      'ผู้รับผิดชอบเคส: ' + responsibleName_(row) + '\n' +
+      'อ่าน: ' + SITE_URL + '/dashboard/review#' + referralId,
+      caseAudience_(row['referral_type']));
+  } catch (err) {
+    console.warn('แจ้ง Telegram ตอนเปิดเคสกลับไม่สำเร็จ: ' + err);
+  }
 }
 
 /** dent ส่งข้อความจาก dashboard */

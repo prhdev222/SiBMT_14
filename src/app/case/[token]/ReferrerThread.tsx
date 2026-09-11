@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { CaseMessage } from "@/lib/referral-repository";
 import { MessageThreadView } from "@/components/MessageThreadView";
 import {
   closeCaseAction,
   loadCaseMessagesAction,
   markReadReferrerAction,
+  reopenCaseAction,
   sendReferrerMessageAction,
 } from "./actions";
 
@@ -59,6 +61,17 @@ export function ReferrerThread({
     setClosing(false);
   }
 
+  // กดจบเคสพลาด (ลิงก์ ?done=1 ในอีเมลกดง่าย) → เปิดกลับได้เอง ไม่ต้องติดต่อทีม
+  // (คำขอผู้ใช้ 11 ก.ย. 2569) เคสกลับไปรอทีมและทีมได้รับแจ้งทาง Telegram
+  async function reopen() {
+    setClosing(true);
+    setError(null);
+    const result = await reopenCaseAction(caseToken);
+    if (result.ok) setClosed(false);
+    else setError(result.error ?? "เปิดเคสกลับไม่สำเร็จ");
+    setClosing(false);
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <MessageThreadView
@@ -79,12 +92,22 @@ export function ReferrerThread({
           <span className="text-sm text-emerald-800">
             ✓ เคสนี้ปิดแล้ว — เรื่องใหม่กรุณากรอกฟอร์มส่งต่อใหม่ (1 เรื่อง = 1 เคส)
           </span>
-          <a
-            href="/"
-            className="rounded-lg border border-emerald-400 bg-white px-3.5 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
-          >
-            กรอกฟอร์มเรื่องใหม่ →
-          </a>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={reopen}
+              disabled={closing}
+              className="rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+            >
+              {closing ? "กำลังเปิด…" : "ปิดผิด? เปิดเคสกลับ"}
+            </button>
+            <Link
+              href="/"
+              className="rounded-lg border border-emerald-400 bg-white px-3.5 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
+            >
+              กรอกฟอร์มเรื่องใหม่ →
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-zinc-50 border border-zinc-200 px-3 py-2.5">
