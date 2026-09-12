@@ -297,10 +297,10 @@ export default async function ReferTypePage({
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5 [&::-webkit-details-marker]:hidden">
                 <span>
                   <span className="font-semibold text-zinc-900">
-                    เตรียมอะไรบ้าง
+                    ข้อมูลและเอกสารที่ต้องเตรียม
                   </span>
                   <span className="ml-2 text-sm text-zinc-500">
-                    {checklistCount} รายการ · กดเพื่อดู
+                    {checklistCount} รายการ · กดเพื่อดูรายละเอียด
                   </span>
                 </span>
                 <span
