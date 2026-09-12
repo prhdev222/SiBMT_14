@@ -124,7 +124,7 @@ export const CHECKLIST_BY_TYPE: Record<ReferralType, ChecklistSection> = {
         label: "เบอร์ติดต่อกลับของแพทย์เจ้าของไข้",
         // ไม่พูดถึงเตียงว่างแล้ว — กลุ่มนี้ไม่มีการนัดมา admit ตรง
         // resident นัดมาประเมินความพร้อมที่ OPD 700 ก่อนเสมอ
-        detail: "บังคับกรอก เพื่อให้ทีมติดต่อกลับได้ทันที",
+        detail: "บังคับกรอก เพื่อให้ทีมติดต่อกลับได้สะดวก",
       },
       CONSENT_ITEM,
     ],
