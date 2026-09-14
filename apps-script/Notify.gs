@@ -417,10 +417,14 @@ function sendDailyBatch() {
   sendTelegram_(fellow, 'fellow');
   // admin: เตือนเฉพาะเคสค้างตาม SLA — เหลือง (ใกล้ครบ) / แดง (เกินกำหนดยังไม่ปิด)
   // ไม่รับ real-time (คำขอผู้ใช้ 7 ก.ย. 2569) ดูรอบ 10:00 รอบเดียวพอ
-  const adminMsg = buildAdminAlertMessage_(now, false);
+  // รอบนี้คือผู้ส่งสรุปแอดมิน "คนเดียว" ของวัน — markSent=true ประทับ red_alert_sent_at
+  // และจดวันที่ไว้ให้ sendRedAlert (trigger อีกตัวที่ 10:00 เหมือนกัน) ข้ามไป
+  // (14 ก.ย. 2569: สองตัวยิงคนละนาทีในชั่วโมงเดียวกัน กลุ่มแอดมินได้สรุปซ้ำ 2 รอบ)
+  const adminMsg = buildAdminAlertMessage_(now, true);
   sendTelegram_(
     adminMsg || ('✅ ไม่มีเคสเกินกำหนด/ใกล้ครบ — ' + formatThaiDate_(now)),
     'red');
+  markAdminAlertSentToday_(now);
 
   // ยังเปิดทาง LINE ถ้าเปิดสวิตช์ line_push (สรุป resident แบบข้อความ ไม่มีปุ่ม)
   if (linePushEnabled_()) {

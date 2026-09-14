@@ -90,14 +90,36 @@ function responsibleName_(r) {
   return 'ยังไม่มอบหมาย';
 }
 
+/** วันที่ (yyyy-MM-dd) ที่ส่งสรุปแอดมินไปแล้ว — กันสองตัวจับเวลาส่งซ้ำในวันเดียว */
+const ADMIN_ALERT_SENT_PROP = 'admin_alert_sent_date';
+
+function adminAlertDateKey_(now) {
+  return Utilities.formatDate(now, TIMEZONE, 'yyyy-MM-dd');
+}
+function markAdminAlertSentToday_(now) {
+  PropertiesService.getScriptProperties()
+    .setProperty(ADMIN_ALERT_SENT_PROP, adminAlertDateKey_(now));
+}
+function adminAlertSentToday_(now) {
+  return PropertiesService.getScriptProperties()
+    .getProperty(ADMIN_ALERT_SENT_PROP) === adminAlertDateKey_(now);
+}
+
+/**
+ * ตาข่ายสำรอง — ส่งสรุปแอดมินเฉพาะวันที่ sendDailyBatch ยังไม่ได้ส่ง
+ * (เช่น sendDailyBatch พังกลางทาง) ปกติ sendDailyBatch ส่งไปแล้วในชั่วโมงเดียวกัน
+ * จึงข้ามเงียบ ๆ — เดิมส่งทุกครั้ง ทำให้กลุ่มแอดมินได้สรุปซ้ำ 2 รอบ (14 ก.ย. 2569)
+ */
 function sendRedAlert() {
   const holidays = loadHolidays_();
   const now = new Date();
   if (!isWithinBusinessHours_(now, holidays)) return;
+  if (adminAlertSentToday_(now)) return;
 
   // markSent = true → ประทับ red_alert_sent_at จริง (โหมดส่งจริง)
   const message = buildAdminAlertMessage_(now, true);
   if (message) sendTeamNotify_(message, 'red');
+  markAdminAlertSentToday_(now);
 }
 
 /**

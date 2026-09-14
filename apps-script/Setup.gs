@@ -393,6 +393,9 @@ function setupTriggers() {
 
   // Red Alert รวมรอบเดียวกับสรุป 10:00 — ไม่ยิงตามเวลาครบชั่วโมงเป๊ะ ๆ
   // (มติผู้ใช้ 5 ก.ย. 2569) เคสที่ครบกำหนดระหว่างวันรอประกาศรอบเช้าถัดไป
+  // ⚠️ ตัวนี้เป็น "ตาข่ายสำรอง" เท่านั้น — sendDailyBatch ส่งสรุปแอดมินไปแล้ว
+  // ตัวนี้จะข้ามเอง (ดู adminAlertSentToday_ ใน Sla.gs) เพราะ atHour ยิงคนละนาที
+  // ในชั่วโมงเดียวกัน เคยทำให้กลุ่มแอดมินได้สรุปซ้ำ 2 รอบ (14 ก.ย. 2569)
   ScriptApp.newTrigger('sendRedAlert').timeBased().atHour(BATCH_HOUR).everyDays(1)
     .inTimezone(TIMEZONE).create();
 
