@@ -104,7 +104,7 @@ export default async function SchedulePage({
       <SessionBar username={session.username} />
 
         <PageHeader
-          eyebrow="กลุ่มที่ 1 — ปลูกถ่ายเซลล์ต้นกำเนิด"
+          eyebrow="ตารางออกตรวจ — ปลูกถ่ายเซลล์ต้นกำเนิด"
           title="ตารางออกตรวจ Fellow และคิวว่าง"
           width="max-w-5xl"
           links={[

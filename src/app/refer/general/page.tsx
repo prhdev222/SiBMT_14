@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { HOSPITAL_APPOINTMENT } from "@/lib/config";
 
-export const metadata = { title: "กลุ่มที่ 4 — นัด OPD อายุรศาสตร์" };
+export const metadata = { title: "นัด OPD อายุรศาสตร์" };
 
 export default function GeneralOpdPage() {
   return (
     <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
       <Link href="/" className="text-sm text-blue-600 hover:underline">← กลับหน้าแรก</Link>
-      <h1 className="text-2xl font-bold mt-4">กลุ่มที่ 4 — Refer ผู้ป่วยนอกด้วยเหตุผลอื่น</h1>
+      <h1 className="text-2xl font-bold mt-4">Refer ผู้ป่วยนอกด้วยเหตุผลอื่น</h1>
       <section className="rounded-xl bg-white border-2 border-green-600 p-5">
         <h2 className="font-semibold text-zinc-900">กลุ่มนี้ไม่ต้องกรอกแบบฟอร์ม</h2>
         <p className="text-sm text-zinc-600 mt-1">ให้ผู้ป่วยทำนัดผู้ป่วยนอกเองผ่านระบบนัดหมายของโรงพยาบาล ซึ่งเปิดใช้งานอยู่แล้ว — แพทย์ต้นทางเพียงแจ้งผู้ป่วยให้ทำตามขั้นตอนนี้</p>

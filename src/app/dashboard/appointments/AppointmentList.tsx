@@ -69,7 +69,7 @@ export function AppointmentList({
       <div className="rounded-xl bg-white border border-zinc-200 p-8 text-center">
         <p className="text-lg font-semibold text-zinc-900">ไม่มีนัดที่ยืนยันแล้ว</p>
         <p className="text-sm text-zinc-600 mt-1">
-          นัดกลุ่มที่ 1 ที่ยังไม่ถูกยกเลิกจะแสดงที่นี่
+          นัดหมายที่ยังไม่ถูกยกเลิกจะแสดงที่นี่
         </p>
       </div>
     );

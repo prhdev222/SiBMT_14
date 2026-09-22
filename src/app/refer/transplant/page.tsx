@@ -5,7 +5,7 @@ import {
   TRANSPLANT_TYPE_LABEL_TH,
 } from "@/lib/transplant-indications";
 
-export const metadata = { title: "กลุ่มที่ 1 — นัดพบแพทย์ปลูกถ่ายเซลล์ต้นกำเนิด" };
+export const metadata = { title: "นัดพบแพทย์ปลูกถ่ายเซลล์ต้นกำเนิด" };
 
 export default function TransplantPage() {
   const autologous = TRANSPLANT_INDICATIONS.filter((item) => item.type === "AUTOLOGOUS");
@@ -15,7 +15,6 @@ export default function TransplantPage() {
     <main className="max-w-3xl mx-auto w-full min-w-0 px-4 py-6 sm:py-8 space-y-5 sm:space-y-6 overflow-x-hidden">
       <Link href="/" className="text-sm text-blue-600 hover:underline">← กลับหน้าแรก</Link>
       <header>
-        <p className="text-sm font-medium text-blue-600">กลุ่มที่ 1</p>
         <h1 className="text-xl sm:text-2xl font-bold mt-1">ขอนัดหมายพบแพทย์ปลูกถ่ายเซลล์ต้นกำเนิด</h1>
         <p className="text-zinc-600 mt-2 break-words">นัดพบ fellow transplant ที่ {CONTACT.officeTh} เพื่อประเมินการปลูกถ่ายไขกระดูก/สเต็มเซลล์</p>
       </header>

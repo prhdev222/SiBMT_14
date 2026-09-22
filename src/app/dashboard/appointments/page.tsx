@@ -16,7 +16,7 @@ import { AppointmentList, type AppointmentRow } from "./AppointmentList";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "นัดกลุ่มที่ 1 — ส่งต่อผู้ป่วยโลหิตวิทยา ศิริราช",
+  title: "นัดหมาย — ส่งต่อผู้ป่วยโลหิตวิทยา ศิริราช",
   robots: { index: false, follow: false },
 };
 
@@ -88,7 +88,7 @@ export default async function AppointmentsPage() {
       <SessionBar username={session.username} />
 
         <PageHeader
-          eyebrow="กลุ่มที่ 1"
+          eyebrow="นัดหมาย"
           title="นัดพบแพทย์ปลูกถ่ายฯ"
           width="max-w-3xl"
           links={[

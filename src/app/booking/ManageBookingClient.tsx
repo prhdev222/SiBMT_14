@@ -175,7 +175,7 @@ function BookingPanel({
           href="/refer/transplant"
           className="inline-flex rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 transition-colors"
         >
-          {cancelState.done ? "จองนัดใหม่" : "กลับหน้ากลุ่มที่ 1"}
+          {cancelState.done ? "จองนัดใหม่" : "กลับหน้ารายละเอียด"}
         </Link>
       </div>
     );

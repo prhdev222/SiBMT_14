@@ -57,7 +57,7 @@ export default async function BookTransplantPage() {
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-2xl mx-auto px-4 py-5">
           <Link href="/refer/transplant" className="text-sm text-blue-600 hover:underline">
-            ← กลับหน้ารายละเอียดกลุ่มที่ 1
+            ← กลับหน้ารายละเอียด
           </Link>
           <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 mt-3">
             เลือกวันนัดพบแพทย์ปลูกถ่ายเซลล์ต้นกำเนิด
@@ -72,7 +72,7 @@ export default async function BookTransplantPage() {
         {!isGroup1BookingConfigured() ? (
           <Unavailable
             title="ระบบจองคิวยังไม่เปิดใช้งาน"
-            body="ยังไม่ได้ตั้งค่าฐานข้อมูลกลุ่ม 1 หรือระบบจองเดิม"
+            body="ยังไม่ได้ตั้งค่าฐานข้อมูลหรือระบบจอง"
           />
         ) : openDays.length === 0 ? (
           <Unavailable
