@@ -77,13 +77,6 @@ export async function bookAction(
     return { ok: false, message: "กรุณาเลือกกลุ่มโรค" };
   }
 
-  if (formData.get("consent") !== "on") {
-    return {
-      ok: false,
-      message: "กรุณายืนยันว่าได้แจ้งผู้ป่วยและให้ลงนามรับทราบเรียบร้อยแล้ว",
-    };
-  }
-
   try {
     const result = await bookTransplantSlot(input);
     return {

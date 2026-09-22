@@ -208,20 +208,6 @@ export function BookingFlow({
         <Field name="note" label="หมายเหตุ (ไม่บังคับ)" />
       </fieldset>
 
-      <label className="flex gap-3 rounded-xl bg-white border border-zinc-200 p-5 text-sm">
-        <input
-          type="checkbox"
-          name="consent"
-          required
-          className="mt-0.5 h-4 w-4 shrink-0"
-        />
-        <span className="text-zinc-700">
-          ข้าพเจ้าได้แจ้งผู้ป่วยหรือผู้แทนโดยชอบธรรม
-          และให้ลงนามรับทราบการส่งข้อมูลเรียบร้อยแล้ว
-          โดยเก็บต้นฉบับไว้ที่โรงพยาบาลต้นทาง
-        </span>
-      </label>
-
       {state.message && !state.ok && (
         <p
           role="alert"
