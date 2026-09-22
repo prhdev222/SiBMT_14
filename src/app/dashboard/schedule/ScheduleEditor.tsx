@@ -5,6 +5,7 @@ import {
   addClinicDaysAction,
   addFellowAction,
   deactivateFellowAction,
+  renameFellowAction,
   removeClinicDayAction,
   type ActionResult,
 } from "./actions";
@@ -49,12 +50,15 @@ export function ScheduleEditor({
   const [result, setResult] = useState<ActionResult | null>(null);
 
   const [pickedFellow, setPickedFellow] = useState("");
+  const [secondPickedFellow, setSecondPickedFellow] = useState("");
   const [weeks, setWeeks] = useState(1);
   const [slots, setSlots] = useState(2);
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("12:00");
   const [note, setNote] = useState("");
   const [newFellow, setNewFellow] = useState("");
+  const [editingFellow, setEditingFellow] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
 
   /**
    * ชื่อที่เลือกอยู่จริง — คำนวณตอน render ไม่เก็บเป็น state ตั้งต้น
@@ -67,6 +71,9 @@ export function ScheduleEditor({
   const fellowName = fellows.includes(pickedFellow)
     ? pickedFellow
     : (fellows[0] ?? "");
+  const secondFellowName = fellows.includes(secondPickedFellow)
+    ? secondPickedFellow
+    : (fellows[1] ?? "");
 
   // ปล่อยให้กดบันทึกแล้วค่อยรู้ว่าเวลากลับหัวเป็นการเสียเที่ยว บอกตั้งแต่พิมพ์
   const timeError =
@@ -161,14 +168,28 @@ export function ScheduleEditor({
           </p>
         ) : (
           <>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <label className="text-sm">
-                <span className="block text-xs text-zinc-500 mb-1">Fellow</span>
+                <span className="block text-xs text-zinc-500 mb-1">Fellow คนที่ 1</span>
                 <select
                   value={fellowName}
                   onChange={(e) => setPickedFellow(e.target.value)}
                   className="w-full rounded-md border border-zinc-300 px-2 py-1.5"
                 >
+                  {fellows.map((f) => (
+                    <option key={f}>{f}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="text-sm">
+                <span className="block text-xs text-zinc-500 mb-1">Fellow คนที่ 2</span>
+                <select
+                  value={secondFellowName}
+                  onChange={(e) => setSecondPickedFellow(e.target.value)}
+                  className="w-full rounded-md border border-zinc-300 px-2 py-1.5"
+                >
+                  <option value="">ไม่เพิ่มคนที่ 2</option>
                   {fellows.map((f) => (
                     <option key={f}>{f}</option>
                   ))}
@@ -260,17 +281,26 @@ export function ScheduleEditor({
             <button
               disabled={pending || !fellowName || timeError !== null}
               onClick={() =>
-                run(() =>
-                  addClinicDaysAction({
-                    fellowName,
-                    startDate: selectedDate,
-                    repeatWeeks: weeks,
-                    maxSlots: slots,
-                    note,
-                    startTime,
-                    endTime,
-                  }),
-                )
+                run(async () => {
+                  const names = [...new Set([fellowName, secondFellowName].filter(Boolean))];
+                  const results = await Promise.all(
+                    names.map((name) =>
+                      addClinicDaysAction({
+                        fellowName: name,
+                        startDate: selectedDate,
+                        repeatWeeks: weeks,
+                        maxSlots: slots,
+                        note,
+                        startTime,
+                        endTime,
+                      }),
+                    ),
+                  );
+                  return {
+                    ok: results.every((item) => item.ok),
+                    message: results.map((item) => item.message).join(" · "),
+                  };
+                })
               }
               className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-zinc-300"
             >
@@ -284,22 +314,61 @@ export function ScheduleEditor({
         <p className="text-sm font-medium text-zinc-800 mb-2">รายชื่อ Fellow</p>
 
         <div className="flex flex-wrap gap-2 mb-3">
-          {fellows.map((f) => (
-            <span
-              key={f}
-              className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-2.5 py-1 text-xs text-zinc-700"
-            >
-              {f}
-              <button
-                disabled={pending}
-                onClick={() => run(() => deactivateFellowAction(f))}
-                title="ปิดการใช้งาน — ตารางเก่ายังอยู่"
-                className="text-zinc-400 hover:text-red-600"
+          {fellows.map((f) =>
+            editingFellow === f ? (
+              <span key={f} className="inline-flex items-center gap-1.5">
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-40 rounded-md border border-zinc-300 px-2 py-1 text-xs"
+                  autoFocus
+                />
+                <button
+                  disabled={pending || !editName.trim()}
+                  onClick={() => {
+                    run(() => renameFellowAction(f, editName));
+                    setEditingFellow(null);
+                  }}
+                  className="text-xs text-blue-600 disabled:text-zinc-300"
+                >
+                  บันทึก
+                </button>
+                <button
+                  disabled={pending}
+                  onClick={() => setEditingFellow(null)}
+                  className="text-xs text-zinc-500"
+                >
+                  ยกเลิก
+                </button>
+              </span>
+            ) : (
+              <span
+                key={f}
+                className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-2.5 py-1 text-xs text-zinc-700"
               >
-                ✕
-              </button>
-            </span>
-          ))}
+                {f}
+                <button
+                  disabled={pending}
+                  onClick={() => {
+                    setEditingFellow(f);
+                    setEditName(f);
+                  }}
+                  title="แก้ชื่อ Fellow"
+                  className="text-zinc-400 hover:text-blue-600"
+                >
+                  แก้
+                </button>
+                <button
+                  disabled={pending}
+                  onClick={() => run(() => deactivateFellowAction(f))}
+                  title="ปิดการใช้งาน — ตารางเก่ายังอยู่"
+                  className="text-zinc-400 hover:text-red-600"
+                >
+                  ✕
+                </button>
+              </span>
+            ),
+          )}
           {fellows.length === 0 && (
             <span className="text-xs text-zinc-400">ยังไม่มีรายชื่อ</span>
           )}

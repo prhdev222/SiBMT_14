@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { SiteFooter } from "@/components/SiteFooter";
 import { FontSizeControl, FONT_SCALE_INIT } from "@/components/FontSizeControl";
 import { HematoBotWidget } from "@/components/hemato-bot/HematoBotWidget";
 
@@ -27,7 +26,6 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         {children}
-        <SiteFooter />
         <FontSizeControl />
         <HematoBotWidget />
       </body>

@@ -1,6 +1,6 @@
 import {
   addGroup1Fellow, addGroup1Schedule, deactivateGroup1Fellow, isGroup1BookingDbConfigured,
-  removeGroup1Schedule, listGroup1Fellows,
+  removeGroup1Schedule, listGroup1Fellows, renameGroup1Fellow,
 } from "./group1-booking-db";
 import { DEFAULT_SLOTS_PER_FELLOW } from "./fellow-schedule";
 
@@ -8,6 +8,10 @@ export async function listFellows(): Promise<string[]> { return listGroup1Fellow
 export async function addFellow(name: string): Promise<void> {
   if (!isGroup1BookingDbConfigured()) throw new Error("ยังไม่ได้ตั้งค่าฐานข้อมูลกลุ่ม 1");
   const clean = name.trim(); if (!clean) throw new Error("กรุณากรอกชื่อ"); await addGroup1Fellow(clean);
+}
+export async function renameFellow(oldName: string, newName: string): Promise<void> {
+  if (!isGroup1BookingDbConfigured()) throw new Error("ยังไม่ได้ตั้งค่าฐานข้อมูล");
+  await renameGroup1Fellow(oldName, newName);
 }
 export async function deactivateFellow(name: string): Promise<void> { await deactivateGroup1Fellow(name.trim()); }
 

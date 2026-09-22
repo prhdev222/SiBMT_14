@@ -155,6 +155,23 @@ export async function addGroup1Fellow(name: string): Promise<void> {
   );
 }
 
+export async function renameGroup1Fellow(oldName: string, newName: string): Promise<void> {
+  const from = oldName.trim();
+  const to = newName.trim();
+  if (!from || !to) throw new Error("กรุณากรอกชื่อ Fellow");
+  if (from === to) return;
+  if ((await execute("SELECT fellow_name FROM group1_fellows WHERE fellow_name = ?", [to]))[0]) {
+    throw new Error(`มีชื่อ "${to}" อยู่แล้ว`);
+  }
+  if (!(await execute("SELECT fellow_name FROM group1_fellows WHERE fellow_name = ?", [from]))[0]) {
+    throw new Error(`ไม่พบชื่อ "${from}"`);
+  }
+  await execute("UPDATE group1_fellows SET fellow_name = ? WHERE fellow_name = ?", [to, from]);
+  await execute("UPDATE group1_schedule SET fellow_name = ? WHERE fellow_name = ?", [to, from]);
+  await execute("UPDATE group1_bookings SET fellow_name = ? WHERE fellow_name = ?", [to, from]);
+  await execute("UPDATE group1_fellow_line_accounts SET fellow_name = ? WHERE fellow_name = ?", [to, from]);
+}
+
 export async function deactivateGroup1Fellow(name: string): Promise<void> {
   const rows = await execute("UPDATE group1_fellows SET active = 0 WHERE fellow_name = ? RETURNING fellow_name", [name]);
   if (!rows[0]) throw new Error(`ไม่พบชื่อ "${name}"`);

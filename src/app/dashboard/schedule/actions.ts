@@ -90,6 +90,18 @@ export async function addFellowAction(name: string): Promise<ActionResult> {
   }
 }
 
+export async function renameFellowAction(oldName: string, newName: string): Promise<ActionResult> {
+  await requireSession();
+
+  try {
+    await store.renameFellow(oldName, newName);
+    revalidatePath("/dashboard/schedule");
+    return { ok: true, message: `แก้ชื่อเป็น ${newName.trim()} แล้ว` };
+  } catch (error) {
+    return toResult(error);
+  }
+}
+
 export async function deactivateFellowAction(name: string): Promise<ActionResult> {
   // นอก try โดยตั้งใจ — requireSession() ทำงานด้วยการ throw redirect
   // ถ้าอยู่ใน try จะถูก catch กลืนแล้วกลายเป็นข้อความ error แทนการเด้งไปหน้า login

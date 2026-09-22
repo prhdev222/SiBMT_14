@@ -34,6 +34,7 @@ yarn-error.log*
 .env*
 # แต่ template ที่ไม่มีค่าจริงต้อง commit เพื่อให้คนอื่นรู้ว่าต้องตั้งค่าอะไร
 !.env.example
+Untitled
 
 # vercel
 .vercel

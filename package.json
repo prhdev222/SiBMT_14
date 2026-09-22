@@ -12,6 +12,7 @@
     "cf:preview": "opennextjs-cloudflare build && wrangler dev",
     "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf:typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "seed:group1-demo": "node --env-file=.env.local scripts/seed-group1-demo.mjs",
     "dev:demo": "GROUP1_DATABASE_URL= GROUP1_DATABASE_AUTH_TOKEN= AUTH_SECRET= DASHBOARD_USERS= next dev -p 3111"
   },
   "dependencies": {
