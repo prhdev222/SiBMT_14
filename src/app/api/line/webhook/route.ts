@@ -5,8 +5,6 @@ import {
   unlinkGroup1FellowLineUser,
 } from "@/lib/group1-booking-db";
 
-export const runtime = "edge";
-
 type LineEvent = {
   type?: string;
   replyToken?: string;
