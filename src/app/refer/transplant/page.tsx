@@ -12,12 +12,12 @@ export default function TransplantPage() {
   const allogeneic = TRANSPLANT_INDICATIONS.filter((item) => item.type === "ALLOGENEIC");
 
   return (
-    <main className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+    <main className="max-w-3xl mx-auto w-full min-w-0 px-4 py-6 sm:py-8 space-y-5 sm:space-y-6 overflow-x-hidden">
       <Link href="/" className="text-sm text-blue-600 hover:underline">← กลับหน้าแรก</Link>
       <header>
         <p className="text-sm font-medium text-blue-600">กลุ่มที่ 1</p>
-        <h1 className="text-2xl font-bold mt-1">ขอนัดหมายพบแพทย์ปลูกถ่ายเซลล์ต้นกำเนิด</h1>
-        <p className="text-zinc-600 mt-2">นัดพบ fellow transplant ที่ {CONTACT.officeTh} เพื่อประเมินการปลูกถ่ายไขกระดูก/สเต็มเซลล์</p>
+        <h1 className="text-xl sm:text-2xl font-bold mt-1">ขอนัดหมายพบแพทย์ปลูกถ่ายเซลล์ต้นกำเนิด</h1>
+        <p className="text-zinc-600 mt-2 break-words">นัดพบ fellow transplant ที่ {CONTACT.officeTh} เพื่อประเมินการปลูกถ่ายไขกระดูก/สเต็มเซลล์</p>
       </header>
 
       <section className="rounded-xl bg-white border-2 border-blue-600 p-5">
@@ -41,7 +41,7 @@ export default function TransplantPage() {
 
       <section className="rounded-xl bg-white border border-zinc-200 p-5">
         <details className="group" open>
-          <summary className="flex cursor-pointer list-none items-center justify-between font-semibold [&::-webkit-details-marker]:hidden"><span>ข้อมูลและเอกสารที่ต้องเตรียม <span className="ml-2 text-sm font-normal text-zinc-500">11 รายการ · กดเพื่อดูรายละเอียด</span></span><span className="text-zinc-400 transition-transform group-open:rotate-180">▾</span></summary>
+          <summary className="flex min-w-0 cursor-pointer list-none items-start justify-between gap-3 font-semibold [&::-webkit-details-marker]:hidden"><span className="min-w-0 break-words">ข้อมูลและเอกสารที่ต้องเตรียม <span className="block sm:inline text-sm font-normal text-zinc-500">11 รายการ · กดเพื่อดูรายละเอียด</span></span><span className="shrink-0 text-zinc-400 transition-transform group-open:rotate-180">▾</span></summary>
           <div className="mt-4 border-t border-zinc-100 pt-4 space-y-5 text-sm">
             <Checklist title="ขั้นตอนสำหรับแพทย์ผู้ส่งตัว" items={[
               "จองคิวและเลือกวันนัดจากปฏิทินในหน้านี้ — เลือกได้ทันที ไม่ต้องรอเจ้าหน้าที่ติดต่อกลับ",
@@ -81,7 +81,7 @@ export default function TransplantPage() {
 }
 
 function CriteriaTable({ title, rows }: { title: string; rows: typeof TRANSPLANT_INDICATIONS }) {
-  return <div className="mt-5"><h3 className="text-sm font-semibold text-blue-700">{title}</h3><div className="mt-2 overflow-x-auto"><table className="w-full text-sm border-collapse min-w-[620px]"><thead><tr className="text-left text-xs text-zinc-500"><th className="border-b border-zinc-200 py-1.5 pr-3 font-medium">โรค</th><th className="border-b border-zinc-200 py-1.5 pr-3 font-medium">สถานะโรค</th><th className="border-b border-zinc-200 py-1.5 font-medium">อายุ</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="align-top"><td className="border-b border-zinc-100 py-2 pr-3 font-medium text-zinc-900">{row.diseaseTh}</td><td className="border-b border-zinc-100 py-2 pr-3 text-zinc-600">{row.statusTh || "—"}</td><td className="border-b border-zinc-100 py-2 text-zinc-600">{row.ageTh || "—"}</td></tr>)}</tbody></table></div></div>;
+  return <div className="mt-5"><h3 className="text-sm font-semibold text-blue-700">{title}</h3><div className="mt-2 overflow-hidden"><table className="w-full table-fixed text-xs sm:text-sm border-collapse"><thead><tr className="text-left text-zinc-500"><th className="w-[30%] border-b border-zinc-200 py-1.5 pr-2 font-medium">โรค</th><th className="w-[50%] border-b border-zinc-200 py-1.5 pr-2 font-medium">สถานะโรค</th><th className="w-[20%] border-b border-zinc-200 py-1.5 font-medium">อายุ</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="align-top"><td className="border-b border-zinc-100 py-2 pr-2 font-medium text-zinc-900 break-words">{row.diseaseTh}</td><td className="border-b border-zinc-100 py-2 pr-2 text-zinc-600 break-words">{row.statusTh || "—"}</td><td className="border-b border-zinc-100 py-2 text-zinc-600 break-words">{row.ageTh || "—"}</td></tr>)}</tbody></table></div></div>;
 }
 
 function Checklist({ title, items }: { title: string; items: string[] }) {
