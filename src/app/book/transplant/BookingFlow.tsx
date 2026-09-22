@@ -218,10 +218,7 @@ export function BookingFlow({
         <span className="text-zinc-700">
           ข้าพเจ้าได้แจ้งผู้ป่วยหรือผู้แทนโดยชอบธรรม
           และให้ลงนามรับทราบการส่งข้อมูลเรียบร้อยแล้ว
-          โดยเก็บต้นฉบับไว้ที่โรงพยาบาลต้นทาง{" "}
-          <Link href="/consent" target="_blank" className="text-blue-600 hover:underline">
-            เปิดแบบฟอร์มเพื่อพิมพ์
-          </Link>
+          โดยเก็บต้นฉบับไว้ที่โรงพยาบาลต้นทาง
         </span>
       </label>
 

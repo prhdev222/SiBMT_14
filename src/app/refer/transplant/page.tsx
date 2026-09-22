@@ -25,7 +25,6 @@ export default function TransplantPage() {
         <Link href="/book/transplant" className="mt-4 inline-flex rounded-lg bg-blue-600 px-5 py-3 text-white font-semibold hover:bg-blue-700">ดูคิวว่างและเลือกวันนัด</Link>
         <div className="mt-4 flex flex-wrap gap-2 border-t border-zinc-100 pt-4">
           <Link href="/booking" className="inline-flex rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm font-medium hover:border-blue-400 hover:bg-blue-50">📅 จัดการนัด <span className="text-zinc-500 font-normal">เลื่อน · ยกเลิก · ใบนัด</span></Link>
-          <Link href="/consent" className="inline-flex rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm font-medium hover:border-blue-400 hover:bg-blue-50">🖨️ พิมพ์หนังสือรับทราบ</Link>
           <a href="#documents" className="inline-flex rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm font-medium hover:border-blue-400 hover:bg-blue-50">📚 เอกสาร / แบบฟอร์ม</a>
         </div>
         <p className="text-sm text-zinc-600 mt-4">สำหรับโรงพยาบาลเครือข่าย SiAML: ติดต่อเรื่องส่งต่อปลูกถ่ายฯ (ทุกโรค) ผ่าน <a href={LINE_OA.siamlUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">ลิงก์เครือข่าย SiAML</a></p>
