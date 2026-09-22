@@ -13,7 +13,7 @@ import { requireSession } from "@/lib/session";
  * ระบุชัดว่า proxy เป็นแค่ด่านคัดกรองหยาบ ๆ ไม่ใช่ระบบ authorization
  *
  * ข้อมูลที่แก้ได้ผ่านทางนี้เป็นตารางเวรของบุคลากรเท่านั้น
- * เขียนลงไฟล์ชีตตารางเวรซึ่งแยกคนละไฟล์กับข้อมูลผู้ป่วย — ดู schedule-store.ts
+ * เขียนลงตาราง group1_schedule ใน Turso/libSQL — ดู schedule-store.ts
  */
 
 export interface ActionResult {

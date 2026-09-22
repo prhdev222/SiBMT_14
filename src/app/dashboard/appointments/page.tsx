@@ -100,7 +100,7 @@ export default async function AppointmentsPage() {
         {isSampleData && (
           <p className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-900">
             <span className="font-semibold">กำลังแสดงข้อมูลตัวอย่าง</span> —
-            ยังไม่ได้ต่อ Google Sheet จริง การกดยกเลิกจะไม่มีผล
+            ยังไม่ได้เชื่อมต่อฐานข้อมูล Turso การกดยกเลิกจะไม่มีผล
           </p>
         )}
 

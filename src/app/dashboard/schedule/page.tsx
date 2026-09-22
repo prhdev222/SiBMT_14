@@ -127,7 +127,7 @@ export default async function SchedulePage({
         )}
 
         {!canEdit && source.days.length === 0 ? (
-          <EmptyState source={source} />
+          <EmptyState source={source} canEdit={canEdit} />
         ) : (
           <>
             {source.days.length === 0 && (
@@ -153,8 +153,7 @@ export default async function SchedulePage({
   );
 }
 
-function EmptyState({ source }: { source: FellowScheduleSource }) {
-  // แยกให้ชัดว่าติดตรงไหน — ทั้งสามกรณีหน้าตาเหมือนกันหมดถ้าไม่บอก
+function EmptyState({ source, canEdit }: { source: FellowScheduleSource; canEdit: boolean }) {
   const diagnosis = source.error
     ? {
         title: "อ่านฐานข้อมูลไม่สำเร็จ",
@@ -183,72 +182,18 @@ function EmptyState({ source }: { source: FellowScheduleSource }) {
         </p>
       )}
 
-      <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
-        <p className="font-semibold text-blue-900">กรอกตารางได้ที่ไหน</p>
-        <p className="text-blue-900/80 mt-1">
-          ตอนนี้หน้านี้ยัง<strong>แสดงผลอย่างเดียว</strong> เพราะยังไม่ได้ตั้งค่า{" "}
-          <code className="rounded bg-blue-100 px-1">GOOGLE_SCHEDULE_SHEET_ID</code>{" "}
-          — ตารางเวรต้องอยู่ในไฟล์ Google Sheet คนละไฟล์กับข้อมูลผู้ป่วย
-          เพื่อให้เว็บเขียนตารางเวรได้โดยไม่ต้องมีสิทธิ์แตะข้อมูลผู้ป่วย
-          ดูขั้นตอนใน docs/DEPLOYMENT.md แล้วตรวจด้วย{" "}
-          <code className="rounded bg-blue-100 px-1">node scripts/setup-schedule-sheet.mjs</code>
-        </p>
-
-        <ol className="mt-3 ml-4 list-decimal space-y-1 text-blue-900/80">
-          <li>สร้าง Google Sheet ไฟล์ใหม่ (อย่าใช้ไฟล์เดียวกับข้อมูลผู้ป่วย)</li>
-          <li>กด Share แชร์ไฟล์ให้อีเมล service account แบบ <strong>Editor</strong></li>
-          <li>
-            ใส่ ID ของไฟล์เป็น{" "}
-            <code className="rounded bg-blue-100 px-1">GOOGLE_SCHEDULE_SHEET_ID</code>
-          </li>
-          <li>
-            รัน{" "}
-            <code className="rounded bg-blue-100 px-1">
-              node scripts/setup-schedule-sheet.mjs
-            </code>{" "}
-            — สร้างแท็บและหัวตารางให้เอง แล้วตรวจว่าเขียนได้จริง
-          </li>
-        </ol>
-      </div>
-
-      <div className="rounded-lg bg-zinc-50 border border-zinc-200 p-3">
-        <p className="font-medium text-zinc-800 mb-1.5">
-          รูปแบบข้อมูล — หนึ่งแถวต่อ fellow หนึ่งท่านต่อวันออกตรวจ
-        </p>
-        <div className="overflow-x-auto">
-          <table className="text-xs">
-            <thead className="text-zinc-500">
-              <tr>
-                <th className="pr-6 pb-1 text-left font-medium">clinic_date</th>
-                <th className="pr-6 pb-1 text-left font-medium">fellow_name</th>
-                <th className="pr-6 pb-1 text-left font-medium">max_slots</th>
-                <th className="pr-6 pb-1 text-left font-medium">start_time</th>
-                <th className="pb-1 text-left font-medium">end_time</th>
-              </tr>
-            </thead>
-            <tbody className="font-mono text-zinc-700">
-              <tr>
-                <td className="pr-6">2026-08-05</td>
-                <td className="pr-6">พญ. สุดา</td>
-                <td className="pr-6">2</td>
-                <td className="pr-6">09:00</td>
-                <td>12:00</td>
-              </tr>
-              <tr>
-                <td className="pr-6">2026-08-05</td>
-                <td className="pr-6">นพ. ธนกร</td>
-                <td className="pr-6">2</td>
-                <td className="pr-6">13:00</td>
-                <td>16:00</td>
-              </tr>
-            </tbody>
-          </table>
+      {!canEdit ? (
+        <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 text-blue-900/80">
+          <p className="font-semibold text-blue-900">ตั้งค่าฐานข้อมูลก่อนกรอกตาราง</p>
+          <p className="mt-1">ตารางออกตรวจและรายการนัดใช้ Turso/libSQL ฐานข้อมูลเดียวกัน ไม่ใช้ Google Sheet</p>
+          <p className="mt-2">ตั้งค่า <code className="rounded bg-blue-100 px-1">GROUP1_DATABASE_URL</code> และ <code className="rounded bg-blue-100 px-1">GROUP1_DATABASE_AUTH_TOKEN</code> ใน Cloudflare Worker แล้วเปิดหน้านี้ใหม่</p>
         </div>
-      </div>
-      <p className="text-zinc-500">
-        เว้น <code className="rounded bg-zinc-100 px-1 py-0.5">max_slots</code> ว่างไว้
-        ระบบจะใช้ค่าเริ่มต้น 2 คนต่อ fellow ต่อวันตามที่กำหนดไว้ในโครงการ
-      </p>
+      ) : (
+        <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 text-blue-900/80">
+          ตารางนี้ใช้ Turso/libSQL แล้ว ให้เลือกเดือนและคลิกวันที่ในปฏิทินเพื่อเพิ่มวันออกตรวจและกำหนดจำนวนคิว
+        </div>
+      )}
+      <p className="text-zinc-500">รูปแบบข้อมูลในฐานข้อมูล: วันที่ออกตรวจ, ชื่อ Fellow, จำนวนคิว, เวลาเริ่ม และเวลาสิ้นสุด</p>
     </div>
   );
 }
