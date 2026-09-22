@@ -25,7 +25,6 @@ export default function TransplantPage() {
         <Link href="/book/transplant" className="mt-4 inline-flex rounded-lg bg-blue-600 px-5 py-3 text-white font-semibold hover:bg-blue-700">ดูคิวว่างและเลือกวันนัด</Link>
         <div className="mt-4 flex flex-wrap gap-2 border-t border-zinc-100 pt-4">
           <Link href="/booking" className="inline-flex rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm font-medium hover:border-blue-400 hover:bg-blue-50">📅 จัดการนัด <span className="text-zinc-500 font-normal">เลื่อน · ยกเลิก · ใบนัด</span></Link>
-          <a href="#documents" className="inline-flex rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm font-medium hover:border-blue-400 hover:bg-blue-50">📚 เอกสาร / แบบฟอร์ม</a>
         </div>
         <p className="text-sm text-zinc-600 mt-4">สำหรับโรงพยาบาลเครือข่าย SiAML: ติดต่อเรื่องส่งต่อปลูกถ่ายฯ (ทุกโรค) ผ่าน <a href={LINE_OA.siamlUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">ลิงก์เครือข่าย SiAML</a></p>
       </section>
@@ -69,11 +68,6 @@ export default function TransplantPage() {
         <Link href="/booking" className="mt-3 inline-flex rounded-lg border border-blue-300 bg-blue-50 px-5 py-3 font-medium text-blue-800 hover:bg-blue-100">📅 เปิดหน้าจัดการนัด</Link>
       </section>
 
-      <section id="documents" className="rounded-xl bg-white border border-zinc-200 p-5">
-        <h2 className="font-semibold text-zinc-900">📚 เอกสารสำคัญและอัปเดต (1 ไฟล์)</h2>
-        <p className="text-sm text-zinc-600 mt-1">เกณฑ์ตอบสนอง/อายุ รายโรค</p>
-        <div className="mt-3 flex flex-wrap gap-2"><a href="#criteria" className="inline-flex rounded-lg border border-blue-300 bg-blue-50 px-3.5 py-2 text-sm font-medium text-blue-800 hover:bg-blue-100">📄 เปิด / พิมพ์</a><a href="#criteria" className="inline-flex rounded-lg border border-zinc-300 px-3.5 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">⬇ ดาวน์โหลด PDF</a></div>
-      </section>
     </main>
   );
 }

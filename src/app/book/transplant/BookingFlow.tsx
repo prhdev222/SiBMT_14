@@ -11,7 +11,6 @@ import {
   TRANSPLANT_TYPE_LABEL_TH,
   type TransplantIndication,
 } from "@/lib/transplant-indications";
-import { DocButtons } from "@/components/DocButtons";
 import { formatTimeRange } from "@/lib/fellow-schedule";
 
 const TH_MONTH = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
@@ -41,13 +40,10 @@ const INITIAL: BookingState = { ok: false, message: "" };
 export function BookingFlow({
   days,
   indications,
-  indicationUrl,
 }: {
   days: OpenDay[];
   /** อ่านจากชีต transplant_indications เพื่อให้แก้เกณฑ์ได้โดยไม่ต้อง deploy */
   indications: TransplantIndication[];
-  /** ลิงก์ IndicationBMT.pdf จากชีต config — ว่างได้ แล้วปุ่มจะไม่แสดง */
-  indicationUrl: string;
 }) {
   const [state, formAction, pending] = useActionState(bookAction, INITIAL);
   const [picked, setPicked] = useState<{ date: string; fellow: OpenFellow } | null>(
@@ -204,7 +200,7 @@ export function BookingFlow({
           hint="เช่น AML, relapsed after 1st CR"
         />
 
-        <IndicationPicker indications={indications} indicationUrl={indicationUrl} />
+        <IndicationPicker indications={indications} />
         <Field name="note" label="หมายเหตุ (ไม่บังคับ)" />
       </fieldset>
 
@@ -238,10 +234,8 @@ export function BookingFlow({
  */
 function IndicationPicker({
   indications,
-  indicationUrl,
 }: {
   indications: TransplantIndication[];
-  indicationUrl: string;
 }) {
   const [selected, setSelected] = useState("");
   const detail = indications.find((i) => i.id === selected) ?? null;
@@ -313,11 +307,6 @@ function IndicationPicker({
         </p>
       )}
 
-      <DocButtons
-        url={indicationUrl}
-        label="เกณฑ์การส่งต่อเพื่อปลูกถ่ายฯ ฉบับเต็ม"
-        hint="เปิดดูตารางเกณฑ์ทั้งหมด หรือดาวน์โหลดไปพิมพ์ติดไว้ที่หน่วยงาน"
-      />
     </div>
   );
 }
