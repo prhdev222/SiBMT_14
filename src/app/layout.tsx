@@ -1,19 +1,8 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SiteFooter } from "@/components/SiteFooter";
 import { FontSizeControl, FONT_SCALE_INIT } from "@/components/FontSizeControl";
 import { HematoBotWidget } from "@/components/hemato-bot/HematoBotWidget";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "ระบบส่งต่อผู้ป่วยโลหิตวิทยา ศิริราช",
@@ -29,7 +18,8 @@ export default function RootLayout({
   return (
     <html
       lang="th"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className="h-full antialiased"
+      suppressHydrationWarning
     >
       <head>
         {/* ตั้งขนาดตัวหนังสือก่อนวาดหน้า กันจอกระพริบ — ดู FontSizeControl.tsx */}
@@ -37,9 +27,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         {children}
-        <HematoBotWidget />
         <SiteFooter />
         <FontSizeControl />
+        <HematoBotWidget />
       </body>
     </html>
   );

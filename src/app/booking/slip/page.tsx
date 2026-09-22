@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CONTACT } from "@/lib/config";
 import {
-  isBookingConfigured,
+  isGroup1BookingConfigured,
   lookupBooking,
   type BookingDetail,
 } from "@/lib/apps-script-api";
@@ -36,7 +36,7 @@ export default async function SlipPage({
   const { id, t } = await searchParams;
 
   // ลิงก์ไม่ครบ = เสียจริง (ไม่ต้องเรียก Apps Script) / ครบ = ลองเรียก
-  const hasLink = Boolean(id && t && isBookingConfigured());
+  const hasLink = Boolean(id && t && isGroup1BookingConfigured());
 
   let booking: BookingDetail | null = null;
   let transientError = false;

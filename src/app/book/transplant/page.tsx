@@ -7,7 +7,7 @@ import {
   loadTransplantIndications,
 } from "@/lib/referral-repository";
 import { buildSchedule } from "@/lib/fellow-schedule";
-import { isBookingConfigured } from "@/lib/apps-script-api";
+import { isGroup1BookingConfigured } from "@/lib/apps-script-api";
 import { CONTACT } from "@/lib/config";
 import { BookingFlow } from "./BookingFlow";
 
@@ -69,10 +69,10 @@ export default async function BookTransplantPage() {
       </header>
 
       <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
-        {!isBookingConfigured() ? (
+        {!isGroup1BookingConfigured() ? (
           <Unavailable
             title="ระบบจองคิวยังไม่เปิดใช้งาน"
-            body="ยังไม่ได้ตั้งค่า BOOKING_API_URL และ BOOKING_API_TOKEN"
+            body="ยังไม่ได้ตั้งค่าฐานข้อมูลกลุ่ม 1 หรือระบบจองเดิม"
           />
         ) : openDays.length === 0 ? (
           <Unavailable

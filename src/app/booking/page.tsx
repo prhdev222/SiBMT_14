@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { loadFellowSchedule, loadReferrals } from "@/lib/referral-repository";
 import { buildSchedule } from "@/lib/fellow-schedule";
 import {
-  isBookingConfigured,
+  isGroup1BookingConfigured,
   lookupBooking,
   type BookingDetail,
 } from "@/lib/apps-script-api";
@@ -39,7 +39,7 @@ export default async function ManageBookingPage({
    * เพราะสาเหตุที่พบบ่อยที่สุดคือโปรแกรมอ่านอีเมลตัดลิงก์ ไม่ใช่การโจมตี
    */
   let initialBooking: BookingDetail | null = null;
-  if (id && token && isBookingConfigured()) {
+  if (id && token && isGroup1BookingConfigured()) {
     try {
       initialBooking = await lookupBooking({ referralId: id.trim(), token });
     } catch {
@@ -65,7 +65,7 @@ export default async function ManageBookingPage({
       </header>
 
       <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
-        {!isBookingConfigured() ? (
+        {!isGroup1BookingConfigured() ? (
           <div className="rounded-xl bg-white border border-zinc-200 p-6 text-sm">
             <h2 className="font-semibold text-zinc-900 text-base">
               ระบบจัดการนัดยังไม่เปิดใช้งาน

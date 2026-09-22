@@ -16,21 +16,13 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  /*
-   * Geist โหลดมาเฉพาะชุดอักขระละติน (subsets: ["latin"] ใน layout.tsx)
-   * เนื้อหาของระบบเป็นภาษาไทยเกือบทั้งหมด จึงต้องมีฟอนต์ไทยของระบบต่อท้าย
-   * ไม่ใช้ Arial/Helvetica เพราะครอบคลุมอักขระไทยไม่ครบและ fallback ไม่แน่นอน
-   */
-  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont,
-    "Segoe UI", "Noto Sans Thai", "Leelawadee UI", "Thonburi", Tahoma,
-    sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans Thai",
+    "Leelawadee UI", "Thonburi", Tahoma, sans-serif;
 }
 
 /*

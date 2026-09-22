@@ -64,15 +64,16 @@ Worker ต้องมีอยู่ก่อนถึงจะใส่ secret
 npx wrangler secret bulk .env.local
 ```
 
-อัปโหลดทั้ง 8 ค่าในครั้งเดียว ค่าที่ตั้งแบบ secret จะอ่านกลับออกมาดูไม่ได้
+อัปโหลดค่าจาก `.env.local` ในครั้งเดียว ค่าที่ตั้งแบบ secret จะอ่านกลับออกมาดูไม่ได้
 ต่างจาก Variable ธรรมดาที่เห็นได้จากหน้า dashboard
 
 **ห้ามใส่ค่าเหล่านี้ใน `wrangler.jsonc`** เพราะไฟล์นั้นขึ้น git
 
-ตรวจว่าครบด้วย `npx wrangler secret list` (แสดงเฉพาะชื่อ ไม่แสดงค่า) ต้องเห็นครบ 8 ชื่อ:
-`GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`, `GOOGLE_SHEET_ID`,
-`GOOGLE_SCHEDULE_SHEET_ID`, `AUTH_SECRET`, `DASHBOARD_USERS`,
-`BOOKING_API_URL`, `BOOKING_API_TOKEN`
+ตรวจว่าครบด้วย `npx wrangler secret list` (แสดงเฉพาะชื่อ ไม่แสดงค่า) ต้องเห็นอย่างน้อย:
+`AUTH_SECRET`, `DASHBOARD_USERS`, `GROUP1_DATABASE_URL`,
+`GROUP1_DATABASE_AUTH_TOKEN`, `LINE_CHANNEL_SECRET`,
+`LINE_CHANNEL_ACCESS_TOKEN` และ `GROUP1_LINE_SHARED_CODE`
+หรือใช้ `GROUP1_LINE_FELLOW_CODES` แทนรหัสร่วม
 
 จากนั้นเปิดเว็บอีกครั้ง แถบ "ข้อมูลตัวอย่าง" ต้องหายไป
 
@@ -206,15 +207,16 @@ DELETE FROM referrals WHERE closed_at < date('now', '-3 years');
 
 | ชื่อ | ใช้ทำอะไร |
 | --- | --- |
-| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | อีเมล service account ที่มีสิทธิ์อ่าน Google Sheet |
-| `GOOGLE_PRIVATE_KEY` | private key ของ service account (ใช้เซ็น JWT) |
-| `GOOGLE_SHEET_ID` | ID ของ Google Sheet ที่เก็บข้อมูล referral |
-| `LINE_CHANNEL_ACCESS_TOKEN` | token สำหรับส่งข้อความผ่าน LINE Messaging API |
+| `GROUP1_DATABASE_URL` | URL ฐานข้อมูล Turso/libSQL เช่น `libsql://...` |
+| `GROUP1_DATABASE_AUTH_TOKEN` | token สำหรับอ่าน/เขียนฐานข้อมูลกลุ่ม 1 |
+| `LINE_CHANNEL_SECRET` | secret สำหรับตรวจสอบ webhook จาก LINE OA |
+| `LINE_CHANNEL_ACCESS_TOKEN` | token สำหรับตอบข้อความใน LINE OA |
 | `AUTH_SECRET` | กุญแจเซ็น session cookie ของ dashboard |
 | `DASHBOARD_USERS` | ชื่อผู้ใช้และ hash รหัสผ่านของผู้มีสิทธิ์เข้า dashboard |
-| `GOOGLE_SCHEDULE_SHEET_ID` | ID ของไฟล์ชีตตารางเวร fellow (คนละไฟล์กับข้อมูลผู้ป่วย) |
+| `GROUP1_LINE_SHARED_CODE` | รหัสลงทะเบียนร่วมของ Fellow ทุกคน (ปลอดภัยน้อยกว่า) |
+| `GROUP1_LINE_FELLOW_CODES` | รหัสแยกราย Fellow รูปแบบ `ชื่อ::รหัส;ชื่อ2::รหัส2` |
 
-> service account ต้องได้รับสิทธิ์ **Viewer** บน Google Sheet เท่านั้นเท่าที่จำเป็น และต้องแยก sheet ของ production ออกจาก test ตาม NFR-003
+ตั้ง Webhook ของ LINE OA เป็น `https://<โดเมน>/api/line/webhook` และเปิดใช้งาน Webhook ใน LINE Developers
 
 ## ไฟล์ชีตตารางเวร fellow (แยกคนละไฟล์)
 

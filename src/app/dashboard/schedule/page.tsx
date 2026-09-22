@@ -7,7 +7,7 @@ import {
   loadTransplantIndications,
   type FellowScheduleSource,
 } from "@/lib/referral-repository";
-import { canWriteSchedule } from "@/lib/google-sheets";
+import { isGroup1BookingDbConfigured } from "@/lib/group1-booking-db";
 import { requireSession } from "@/lib/session";
 import { SessionBar } from "@/components/SessionBar";
 import { PageHeader } from "@/components/PageHeader";
@@ -62,7 +62,7 @@ export default async function SchedulePage({
     loadTransplantIndications(),
   ]);
 
-  const canEdit = canWriteSchedule();
+  const canEdit = isGroup1BookingDbConfigured();
   const schedule = buildSchedule(source.days, referrals);
   const months = monthOptions(monthsAvailable(schedule), canEdit);
   const selected =
@@ -116,13 +116,12 @@ export default async function SchedulePage({
         {source.skippedRows > 0 && (
           <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-900">
             <p className="font-semibold">
-              มี {source.skippedRows} แถวในชีตที่ระบบใช้ไม่ได้
+              มี {source.skippedRows} รายการในฐานข้อมูลที่ระบบใช้ไม่ได้
             </p>
             <p className="mt-1">
-              มักเกิดจาก <code className="rounded bg-amber-100 px-1">clinic_date</code>{" "}
+              มักเกิดจากข้อมูลวันที่หรือชื่อ fellow ไม่ครบ
               ไม่ใช่รูปแบบวันที่ หรือ{" "}
-              <code className="rounded bg-amber-100 px-1">fellow_name</code> ว่าง
-              — แถวเหล่านี้จะไม่ขึ้นบนปฏิทิน
+              — รายการเหล่านี้จะไม่ขึ้นบนปฏิทิน
             </p>
           </div>
         )}
@@ -158,14 +157,14 @@ function EmptyState({ source }: { source: FellowScheduleSource }) {
   // แยกให้ชัดว่าติดตรงไหน — ทั้งสามกรณีหน้าตาเหมือนกันหมดถ้าไม่บอก
   const diagnosis = source.error
     ? {
-        title: "อ่านชีตไม่สำเร็จ",
-        body: `ระบบเปิดชีต fellow_schedule ไม่ได้ — มักเป็นเพราะยังไม่ได้รัน setupSheets() ใน Apps Script จึงยังไม่มีชีตนี้`,
+        title: "อ่านฐานข้อมูลไม่สำเร็จ",
+        body: "ตรวจสอบ GROUP1_DATABASE_URL และ GROUP1_DATABASE_AUTH_TOKEN",
         detail: source.error,
       }
     : source.rawRowCount === 0
       ? {
-          title: "มีชีตแล้ว แต่ยังไม่ได้กรอกข้อมูล",
-          body: "ชีต fellow_schedule ถูกสร้างเรียบร้อยแล้ว เหลือเพียงกรอกตารางออกตรวจ",
+        title: "ยังไม่มีตารางออกตรวจ",
+        body: "เพิ่มตารางออกตรวจจากปุ่มเพิ่มวันด้านล่าง",
           detail: null,
         }
       : {

@@ -100,6 +100,11 @@ export const REFERRAL_TYPES_ORDERED: ReferralType[] = [...REFERRAL_TYPES].sort(
     REFERRAL_TYPE_META[a].groupNumber - REFERRAL_TYPE_META[b].groupNumber,
 );
 
+/** กลุ่มที่เปิดรับเคสใหม่ผ่านหน้าเว็บตอนนี้ — เก็บกลุ่มเก่าไว้รองรับประวัติใน dashboard */
+export const ACTIVE_REFERRAL_TYPES: ReferralType[] = [
+  "TRANSPLANT_APPOINTMENT",
+];
+
 /** map จาก slug บน URL กลับเป็น ReferralType */
 export const REFERRAL_TYPE_BY_SLUG: Record<string, ReferralType> =
   Object.fromEntries(

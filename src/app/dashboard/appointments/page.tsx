@@ -5,7 +5,7 @@ import {
   loadTransplantIndications,
 } from "@/lib/referral-repository";
 import { buildSchedule } from "@/lib/fellow-schedule";
-import { isBookingConfigured } from "@/lib/apps-script-api";
+import { isGroup1BookingConfigured } from "@/lib/apps-script-api";
 import { requireSession } from "@/lib/session";
 import { SessionBar } from "@/components/SessionBar";
 import { PageHeader } from "@/components/PageHeader";
@@ -104,11 +104,11 @@ export default async function AppointmentsPage() {
           </p>
         )}
 
-        {!isBookingConfigured() && (
+        {!isGroup1BookingConfigured() && (
           <p className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-900">
             <span className="font-semibold">แก้ไขนัดไม่ได้</span> —
-            ยังไม่ได้ตั้งค่า <code>BOOKING_API_URL</code> และ{" "}
-            <code>BOOKING_API_TOKEN</code>
+            ยังไม่ได้ตั้งค่า <code>GROUP1_DATABASE_URL</code> และ{" "}
+            <code>GROUP1_DATABASE_AUTH_TOKEN</code>
           </p>
         )}
 
