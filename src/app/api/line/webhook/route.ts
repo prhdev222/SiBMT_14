@@ -31,6 +31,9 @@ async function answer(event: LineEvent): Promise<string> {
   const userId = event.source?.userId || "";
   const text = event.message?.type === "text" ? (event.message.text || "").trim() : "";
   if (event.type === "follow" || !text) return publicHelp();
+  if (text.toLowerCase() === "#id") {
+    return "สำหรับ Fellow ที่ต้องการดูคิวนัดค่ะ\nพิมพ์ต่อด้วยรูปแบบ:\nลงทะเบียน ชื่อ Fellow รหัสลงทะเบียน\n\nตัวอย่าง:\nลงทะเบียน พญ.สมหญิง test-fellow-1234";
+  }
 
   if (text.startsWith("ลงทะเบียน")) {
     const match = text.match(/^ลงทะเบียน\s+(.+?)\s+([^\s]+)$/);
