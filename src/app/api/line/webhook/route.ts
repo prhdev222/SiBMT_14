@@ -2,6 +2,10 @@ import {
   findGroup1FellowByLineUser,
   linkGroup1FellowLineUser,
   listGroup1Bookings,
+  clearGroup1LineRegistration,
+  pendingGroup1LineRegistration,
+  setPendingGroup1LineFellow,
+  startGroup1LineRegistration,
   unlinkGroup1FellowLineUser,
 } from "@/lib/group1-booking-db";
 
@@ -32,7 +36,8 @@ async function answer(event: LineEvent): Promise<string> {
   const text = event.message?.type === "text" ? (event.message.text || "").trim() : "";
   if (event.type === "follow" || !text) return publicHelp();
   if (text.toLowerCase() === "#id") {
-    return "สำหรับ Fellow ที่ต้องการดูคิวนัดค่ะ\nพิมพ์ต่อด้วยรูปแบบ:\nลงทะเบียน ชื่อ Fellow รหัสลงทะเบียน\n\nตัวอย่าง:\nลงทะเบียน พญ.สมหญิง test-fellow-1234";
+    await startGroup1LineRegistration(userId);
+    return "กรุณาพิมพ์ชื่อ Fellow ค่ะ";
   }
 
   if (text.startsWith("ลงทะเบียน")) {
@@ -40,9 +45,25 @@ async function answer(event: LineEvent): Promise<string> {
     if (!match) return "รูปแบบ: ลงทะเบียน ชื่อ Fellow รหัสลงทะเบียน";
     try {
       await linkGroup1FellowLineUser(match[1], userId, match[2]);
+      await clearGroup1LineRegistration(userId);
       return `ลงทะเบียนสำเร็จค่ะ ต่อไปนี้ถามคิวนัดของ ${match[1].trim()} ได้เลย\nพิมพ์ “เมนู” เพื่อดูคำสั่ง`;
     } catch (error) {
       return error instanceof Error ? error.message : "ลงทะเบียนไม่สำเร็จ";
+    }
+  }
+
+  const pendingName = await pendingGroup1LineRegistration(userId);
+  if (pendingName !== null) {
+    if (!pendingName) {
+      await setPendingGroup1LineFellow(userId, text);
+      return "กรุณาพิมพ์ password ค่ะ";
+    }
+    try {
+      await linkGroup1FellowLineUser(pendingName, userId, text);
+      await clearGroup1LineRegistration(userId);
+      return `ลงทะเบียนสำเร็จค่ะ ต่อไปนี้ถามคิวนัดของ ${pendingName} ได้เลย\nพิมพ์ “เมนู” เพื่อดูคำสั่ง`;
+    } catch {
+      return "password ไม่ถูกต้อง หรือไม่พบชื่อ Fellow นี้ค่ะ กรุณาพิมพ์ password ใหม่";
     }
   }
 
@@ -81,7 +102,7 @@ function publicHelp(): string {
     "• Refer ผู้ป่วยนอกทั่วไป",
     "https://sibmt-14.uradev222.workers.dev/refer/general",
     "",
-    "• Fellow ดูคิวนัด: พิมพ์ ลงทะเบียน ชื่อ Fellow รหัสลงทะเบียน",
+    "• Fellow ดูคิวนัด: พิมพ์ #id",
   ].join("\n");
 }
 

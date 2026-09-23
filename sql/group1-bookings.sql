@@ -53,3 +53,9 @@ CREATE TABLE IF NOT EXISTS group1_fellow_line_accounts (
 
 CREATE INDEX IF NOT EXISTS group1_fellow_line_lookup
   ON group1_fellow_line_accounts (fellow_name, active);
+
+CREATE TABLE IF NOT EXISTS group1_line_registration_sessions (
+  line_user_id TEXT PRIMARY KEY,
+  fellow_name TEXT NOT NULL DEFAULT '',
+  started_at TEXT NOT NULL
+);

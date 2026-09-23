@@ -301,6 +301,34 @@ export async function linkGroup1FellowLineUser(
   );
 }
 
+export async function startGroup1LineRegistration(lineUserId: string): Promise<void> {
+  await execute(
+    `INSERT INTO group1_line_registration_sessions (line_user_id, fellow_name, started_at)
+     VALUES (?, '', ?)
+     ON CONFLICT(line_user_id) DO UPDATE SET fellow_name = '', started_at = excluded.started_at`,
+    [lineUserId, new Date().toISOString()],
+  );
+}
+
+export async function pendingGroup1LineRegistration(lineUserId: string): Promise<string | null> {
+  const rows = await execute(
+    "SELECT fellow_name FROM group1_line_registration_sessions WHERE line_user_id = ? LIMIT 1",
+    [lineUserId],
+  );
+  return rows[0] ? text(rows[0].fellow_name) : null;
+}
+
+export async function setPendingGroup1LineFellow(lineUserId: string, fellowName: string): Promise<void> {
+  await execute(
+    "UPDATE group1_line_registration_sessions SET fellow_name = ? WHERE line_user_id = ?",
+    [fellowName.trim(), lineUserId],
+  );
+}
+
+export async function clearGroup1LineRegistration(lineUserId: string): Promise<void> {
+  await execute("DELETE FROM group1_line_registration_sessions WHERE line_user_id = ?", [lineUserId]);
+}
+
 export async function findGroup1FellowByLineUser(lineUserId: string): Promise<string | null> {
   const rows = await execute(
     "SELECT fellow_name FROM group1_fellow_line_accounts WHERE line_user_id = ? AND active = 1 LIMIT 1",
