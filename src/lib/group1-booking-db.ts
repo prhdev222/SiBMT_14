@@ -285,14 +285,15 @@ export async function linkGroup1FellowLineUser(
   lineUserId: string,
   code: string,
 ): Promise<void> {
-  const name = fellowName.trim();
+  const typedName = fellowName.trim();
+  const fellows = await listGroup1Fellows();
+  const name = fellows.find((candidate) => candidate.replace(/\s+/g, "") === typedName.replace(/\s+/g, ""));
+  if (!name) throw new Error("ยังไม่มีชื่อ Fellow นี้ในตารางระบบ");
   const individualCode = fellowLineCodes().get(name);
   const sharedCode = process.env.GROUP1_LINE_SHARED_CODE?.trim();
   if ((individualCode !== code.trim()) && (sharedCode !== code.trim())) {
     throw new Error("ชื่อ Fellow หรือรหัสลงทะเบียนไม่ถูกต้อง");
   }
-  const fellows = await listGroup1Fellows();
-  if (!fellows.includes(name)) throw new Error("ยังไม่มีชื่อ Fellow นี้ในตารางระบบ");
   await execute(
     `INSERT INTO group1_fellow_line_accounts (line_user_id, fellow_name, linked_at, active)
      VALUES (?, ?, ?, 1)
