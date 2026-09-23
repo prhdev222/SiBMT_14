@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 async function answer(event: LineEvent): Promise<string> {
   const userId = event.source?.userId || "";
   const text = event.message?.type === "text" ? (event.message.text || "").trim() : "";
-  if (event.type === "follow" || !text) return registrationHelp();
+  if (event.type === "follow" || !text) return publicHelp();
 
   if (text.startsWith("ลงทะเบียน")) {
     const match = text.match(/^ลงทะเบียน\s+(.+?)\s+([^\s]+)$/);
@@ -44,7 +44,11 @@ async function answer(event: LineEvent): Promise<string> {
   }
 
   const fellowName = await findGroup1FellowByLineUser(userId);
-  if (!fellowName) return registrationHelp();
+  if (!fellowName) {
+    if (/(ทั่วไป|refer|ผู้ป่วยนอก)/i.test(text)) return generalReferralHelp();
+    if (/(ปลูกถ่าย|transplant|stem cell|เซลล์ต้นกำเนิด)/i.test(text)) return transplantHelp();
+    return publicHelp();
+  }
   if (["ยกเลิกการเชื่อมต่อ", "เลิกผูก"].includes(text)) {
     await unlinkGroup1FellowLineUser(userId);
     return "ยกเลิกการเชื่อมต่อแล้วค่ะ หากต้องการใช้ใหม่ให้ลงทะเบียนอีกครั้ง";
@@ -64,8 +68,26 @@ async function answer(event: LineEvent): Promise<string> {
   return `ไม่เข้าใจคำถามค่ะ\n\n${menu(fellowName)}`;
 }
 
-function registrationHelp(): string {
-  return "บัญชีนี้ยังไม่ได้ผูกกับ Fellow ค่ะ\nให้พิมพ์:\nลงทะเบียน ชื่อ Fellow รหัสลงทะเบียน\n\nจากนั้นพิมพ์ “เมนู” เพื่อถามคิวนัด";
+function publicHelp(): string {
+  return [
+    "สวัสดีค่ะ เลือกบริการที่ต้องการได้เลย",
+    "",
+    "• นัดพบแพทย์ปลูกถ่ายฯ",
+    "https://sibmt-14.uradev222.workers.dev/refer/transplant",
+    "",
+    "• Refer ผู้ป่วยนอกทั่วไป",
+    "https://sibmt-14.uradev222.workers.dev/refer/general",
+    "",
+    "• Fellow ดูคิวนัด: พิมพ์ ลงทะเบียน ชื่อ Fellow รหัสลงทะเบียน",
+  ].join("\n");
+}
+
+function generalReferralHelp(): string {
+  return `Refer ผู้ป่วยนอกทั่วไป ให้ผู้ป่วยทำนัดผ่านระบบนัดหมายของโรงพยาบาลโดยตรงค่ะ\nดูรายละเอียด:\nhttps://sibmt-14.uradev222.workers.dev/refer/general`;
+}
+
+function transplantHelp(): string {
+  return `นัดพบแพทย์ปลูกถ่ายฯ และดูเกณฑ์ transplant candidate ได้ที่:\nhttps://sibmt-14.uradev222.workers.dev/refer/transplant\n\nหากต้องการดูคิว Fellow ให้ลงทะเบียนก่อนค่ะ`;
 }
 
 function menu(fellowName: string): string {
